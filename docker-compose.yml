@@ -1,0 +1,104 @@
+version: '3.9'
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: knk_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-knk}
+      POSTGRES_USER: ${POSTGRES_USER:-knk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - knk_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-knk}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: knk_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - knk_internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: knk_api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-knk}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-knk}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      SESSION_SECRET: ${SESSION_SECRET}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      CLIENT_ORIGIN: https://${FQDN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - knk_internal
+      - traefik
+    volumes:
+      - uploads:/app/uploads
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.knk-api.rule=Host(`${FQDN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.knk-api.entrypoints=websecure"
+      - "traefik.http.routers.knk-api.tls=true"
+      - "traefik.http.routers.knk-api.tls.certresolver=${CERT_RESOLVER:-letsencrypt}"
+      - "traefik.http.routers.knk-api.middlewares=knk-strip-api"
+      - "traefik.http.middlewares.knk-strip-api.stripprefix.prefixes=/api"
+      - "traefik.http.services.knk-api.loadbalancer.server.port=3001"
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+    container_name: knk_client
+    restart: unless-stopped
+    networks:
+      - knk_internal
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      - "traefik.http.routers.knk-client.rule=Host(`${FQDN}`)"
+      - "traefik.http.routers.knk-client.entrypoints=websecure"
+      - "traefik.http.routers.knk-client.tls=true"
+      - "traefik.http.routers.knk-client.tls.certresolver=${CERT_RESOLVER:-letsencrypt}"
+      - "traefik.http.routers.knk-client.priority=1"
+      - "traefik.http.services.knk-client.loadbalancer.server.port=80"
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads:
+
+networks:
+  knk_internal:
+    driver: bridge
+  traefik:
+    external: true
