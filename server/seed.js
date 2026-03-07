@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import 'dotenv/config';
 import pg from 'pg';
 import bcrypt from 'bcrypt';
 import fs from 'fs';
