@@ -16,19 +16,8 @@ import {
   itemBuilderRouter,
   eventMenusRouter,
   donationsRouter,
-} from './routes/modules.js';
-
-// add vendorsRouter:
-import {
-  ingredientsRouter,
-  itemBuilderRouter,
-  eventMenusRouter,
-  donationsRouter,
   vendorsRouter,
 } from './routes/modules.js';
-
-// In the routes section, add:
-app.use('/vendors', vendorsRouter);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -53,7 +42,7 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    maxAge: 1000 * 60 * 60 * 24 * 7,
     sameSite: 'lax',
   },
 }));
@@ -69,31 +58,4 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
   },
 });
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
-
-app.post('/upload', (req, res, next) => {
-  if (!req.session?.userId) return res.status(401).json({ error: 'Unauthorised' });
-  next();
-}, upload.single('file'), (req, res) => {
-  res.json({ url: `/uploads/${req.file.filename}` });
-});
-
-// ── Routes ────────────────────────────────────────────────
-app.use('/auth',         authRouter);
-app.use('/events',       eventsRouter);
-app.use('/recipes',      recipesRouter);
-app.use('/ingredients',  ingredientsRouter);
-app.use('/items',        itemBuilderRouter);
-app.use('/event-menus',  eventMenusRouter);
-app.use('/donations',    donationsRouter);
-
-// ── Health check ─────────────────────────────────────────
-app.get('/health', (_, res) => res.json({ ok: true, ts: new Date() }));
-
-// ── Error handler ─────────────────────────────────────────
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ error: 'Internal server error' });
-});
-
-app.listen(PORT, () => console.log(`API running on :${PORT}`));
+const upload = multer({ storage, limits: {
