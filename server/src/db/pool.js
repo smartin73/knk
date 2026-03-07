@@ -37,3 +37,7 @@ pool.on('error', (err) => {
 export const query = (text, params) => pool.query(text, params);
 export const getClient = () => pool.connect();
 export default pool;
+
+console.log('Secret file path:', secretFile);
+console.log('Password read:', password ? `[${password.length} chars]` : 'UNDEFINED');
+console.log('Connection string:', connectionString);
