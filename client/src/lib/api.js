@@ -1,13 +1,13 @@
 const BASE = import.meta.env.VITE_API_URL || '/api';
 
-async function request(method, path, body) {
+async function request(method, path, body, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: 'include',
     headers: body ? { 'Content-Type': 'application/json' } : {},
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 401) {
+  if (res.status === 401 && !opts.silent) {
     window.location.href = '/login';
     return;
   }
@@ -27,7 +27,7 @@ export const api = {
   // Auth
   login:  (u, p)  => request('POST', '/auth/login',  { username: u, password: p }),
   logout: ()      => request('POST', '/auth/logout'),
-  me:     ()      => request('GET',  '/auth/me'),
+  me: () => request('GET', '/auth/me', null, { silent: true }),
 
   // Upload
   upload: async (file) => {
