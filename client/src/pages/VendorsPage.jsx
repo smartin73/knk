@@ -3,10 +3,11 @@ import { api } from '../lib/api.js';
 
 const EMPTY_FORM = {
   vendor_name: '',
-  contact_name: '',
-  contact_email: '',
-  contact_phone: '',
-  website: '',
+  address: '',
+  city: '',
+  state: '',
+  zip: '',
+  website_url: '',
   logo_url: '',
   map_embed: '',
   notes: '',
@@ -44,14 +45,21 @@ function VendorForm({ initial, onSave, onCancel }) {
 
           <div className="field">
             <label>Contact Name</label>
-            <input value={form.contact_name || ''} onChange={e => set('contact_name', e.target.value)} placeholder="First Last" />
+            <input value={form.address || ''} onChange={e => set('address', e.target.value)} placeholder="First Last" />
           </div>
-
           <div className="field">
-            <label>Contact Email</label>
-            <input type="email" value={form.contact_email || ''} onChange={e => set('contact_email', e.target.value)} placeholder="email@example.com" />
+            <label>Contact Name</label>
+            <input value={form.city || ''} onChange={e => set('city', e.target.value)} placeholder="First Last" />
           </div>
-
+          <div className="field">
+            <label>Contact Name</label>
+            <input value={form.state || ''} onChange={e => set('state', e.target.value)} placeholder="First Last" />
+          </div>
+          <div className="field">
+            <label>Contact Name</label>
+            <input value={form.zip || ''} onChange={e => set('zip', e.target.value)} placeholder="First Last" />
+          </div>
+ty
           <div className="field">
             <label>Contact Phone</label>
             <input value={form.contact_phone || ''} onChange={e => set('contact_phone', e.target.value)} placeholder="(555) 555-5555" />
@@ -59,7 +67,7 @@ function VendorForm({ initial, onSave, onCancel }) {
 
           <div className="field">
             <label>Website</label>
-            <input value={form.website || ''} onChange={e => set('website', e.target.value)} placeholder="https://..." />
+            <input value={form.website_url || ''} onChange={e => set('website_url', e.target.value)} placeholder="https://..." />
           </div>
 
           <div className="field full">
