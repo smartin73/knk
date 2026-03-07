@@ -6,6 +6,7 @@ import LoginPage        from './pages/LoginPage.jsx';
 import DashboardPage    from './pages/DashboardPage.jsx';
 import { RecipesPage, IngredientsPage, ItemBuilderPage, EventMenusPage, DonationsPage } from './pages/stubs.jsx';
 import { EventsPage } from './pages/EventsPage.jsx';
+import { VendorsPage } from './pages/VendorsPage.jsx';
 
 const NAV = [
   { to: '/',            label: 'Dashboard',    icon: '▦' },
@@ -13,6 +14,7 @@ const NAV = [
   { to: '/ingredients', label: 'Ingredients',  icon: '🧂' },
   { to: '/items',       label: 'Item Builder', icon: '🧁' },
   { to: '/events',      label: 'Events',       icon: '📅' },
+  { to: '/events/vendors', label: 'Vendors', icon: '🏪' },
   { to: '/menus',       label: 'Event Menus',  icon: '🗒' },
   { to: '/donations',   label: 'Donations',    icon: '💛' },
 ];
@@ -57,6 +59,7 @@ function Layout() {
           <Route path="ingredients" element={<IngredientsPage />} />
           <Route path="items"       element={<ItemBuilderPage />} />
           <Route path="events/*"    element={<EventsPage />} />
+          <Route path="events/vendors" element={<VendorsPage />} />
           <Route path="menus/*"     element={<EventMenusPage />} />
           <Route path="donations"   element={<DonationsPage />} />
         </Routes>
