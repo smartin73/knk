@@ -1,0 +1,235 @@
+import { useState, useEffect, useCallback } from 'react';
+import { api } from '../lib/api.js';
+
+const EMPTY_FORM = {
+  vendor_name: '',
+  contact_name: '',
+  contact_email: '',
+  contact_phone: '',
+  website: '',
+  logo_url: '',
+  map_embed: '',
+  notes: '',
+};
+
+function VendorForm({ initial, onSave, onCancel }) {
+  const [form, setForm] = useState({ ...EMPTY_FORM, ...initial });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  async function handleSubmit() {
+    if (!form.vendor_name.trim()) return setErr('Vendor name is required.');
+    setErr(''); setSaving(true);
+    try {
+      await onSave(form);
+    } catch (e) {
+      setErr(e.message || 'Save failed.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onCancel()}>
+      <div className="modal" style={{ maxWidth: 560 }}>
+        <div className="modal-title">{initial?.id ? 'Edit Vendor' : 'New Vendor'}</div>
+
+        <div className="form-grid">
+          <div className="field full">
+            <label>Vendor Name</label>
+            <input value={form.vendor_name} onChange={e => set('vendor_name', e.target.value)} placeholder="e.g. Green City Market" />
+          </div>
+
+          <div className="field">
+            <label>Contact Name</label>
+            <input value={form.contact_name || ''} onChange={e => set('contact_name', e.target.value)} placeholder="First Last" />
+          </div>
+
+          <div className="field">
+            <label>Contact Email</label>
+            <input type="email" value={form.contact_email || ''} onChange={e => set('contact_email', e.target.value)} placeholder="email@example.com" />
+          </div>
+
+          <div className="field">
+            <label>Contact Phone</label>
+            <input value={form.contact_phone || ''} onChange={e => set('contact_phone', e.target.value)} placeholder="(555) 555-5555" />
+          </div>
+
+          <div className="field">
+            <label>Website</label>
+            <input value={form.website || ''} onChange={e => set('website', e.target.value)} placeholder="https://..." />
+          </div>
+
+          <div className="field full">
+            <label>Logo URL</label>
+            <input value={form.logo_url || ''} onChange={e => set('logo_url', e.target.value)} placeholder="https://..." />
+          </div>
+
+          <div className="field full">
+            <label>Map Embed</label>
+            <textarea
+              value={form.map_embed || ''}
+              onChange={e => set('map_embed', e.target.value)}
+              placeholder="Paste Google Maps iframe embed code..."
+              style={{ minHeight: 70 }}
+            />
+          </div>
+
+          <div className="field full">
+            <label>Notes</label>
+            <textarea value={form.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="Any additional notes..." />
+          </div>
+        </div>
+
+        {err && <div className="error-msg" style={{ marginTop: 12 }}>{err}</div>}
+
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
+            {saving ? 'Saving…' : 'Save Vendor'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeleteConfirm({ vendor, onConfirm, onCancel }) {
+  const [deleting, setDeleting] = useState(false);
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onCancel()}>
+      <div className="modal" style={{ maxWidth: 400 }}>
+        <div className="modal-title">Delete Vendor</div>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+          Are you sure you want to delete <strong style={{ color: 'var(--text)' }}>{vendor.vendor_name}</strong>? This cannot be undone.
+        </p>
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+          <button className="btn btn-danger" disabled={deleting} onClick={async () => {
+            setDeleting(true);
+            await onConfirm();
+          }}>
+            {deleting ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function VendorsPage() {
+  const [vendors, setVendors]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [modal, setModal]       = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api.get('/vendors');
+      setVendors(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleSave(form) {
+    if (modal.vendor?.id) {
+      await api.put(`/vendors/${modal.vendor.id}`, form);
+    } else {
+      await api.post('/vendors', form);
+    }
+    setModal(null);
+    load();
+  }
+
+  async function handleDelete() {
+    await api.delete(`/vendors/${modal.vendor.id}`);
+    setModal(null);
+    load();
+  }
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <div className="page-title">🏪 Vendors</div>
+          <div className="page-subtitle">{vendors.length} vendor{vendors.length !== 1 ? 's' : ''}</div>
+        </div>
+        <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>
+          + New Vendor
+        </button>
+      </div>
+
+      <div className="card" style={{ padding: 0 }}>
+        {loading ? (
+          <div className="loading">Loading…</div>
+        ) : vendors.length === 0 ? (
+          <div className="empty-state">
+            <div style={{ fontSize: 48 }}>🏪</div>
+            <p>No vendors yet. Add your first vendor to get started.</p>
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Vendor</th>
+                  <th>Contact</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Website</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {vendors.map(v => (
+                  <tr key={v.id}>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{v.vendor_name}</div>
+                    </td>
+                    <td style={{ color: 'var(--text-muted)' }}>{v.contact_name || '—'}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{v.contact_email || '—'}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{v.contact_phone || '—'}</td>
+                    <td>
+                      {v.website
+                        ? <a href={v.website} target="_blank" rel="noreferrer" style={{ color: 'var(--accent2)' }}>Link</a>
+                        : <span style={{ color: 'var(--text-muted)' }}>—</span>
+                      }
+                    </td>
+                    <td>
+                      <div className="actions">
+                        <button className="btn btn-secondary btn-sm" onClick={() => setModal({ mode: 'edit', vendor: v })}>Edit</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => setModal({ mode: 'delete', vendor: v })}>Del</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {(modal?.mode === 'new' || modal?.mode === 'edit') && (
+        <VendorForm
+          initial={modal.vendor}
+          onSave={handleSave}
+          onCancel={() => setModal(null)}
+        />
+      )}
+      {modal?.mode === 'delete' && (
+        <DeleteConfirm
+          vendor={modal.vendor}
+          onConfirm={handleDelete}
+          onCancel={() => setModal(null)}
+        />
+      )}
+    </div>
+  );
+}
