@@ -1,0 +1,363 @@
+import { useState, useEffect, useCallback } from 'react';
+import { api } from '../lib/api.js';
+
+const STATUS_BADGES = {
+  draft:     'badge-gray',
+  confirmed: 'badge-blue',
+  active:    'badge-green',
+  cancelled: 'badge-red',
+  completed: 'badge-yellow',
+};
+
+const STATUSES = ['draft', 'confirmed', 'active', 'completed', 'cancelled'];
+
+const EMPTY_FORM = {
+  vendor_id: '',
+  event_name: '',
+  event_date: '',
+  start_time: '',
+  end_time: '',
+  location: '',
+  description: '',
+  image_url: '',
+  ticket_url: '',
+  map_embed: '',
+  category: '',
+  tags: '',
+  price: '',
+  status: 'draft',
+  posted_to_web: false,
+};
+
+function fmt(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+}
+
+function EventForm({ initial, vendors, onSave, onCancel }) {
+  const [form, setForm] = useState({ ...EMPTY_FORM, ...initial });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  async function handleSubmit() {
+    if (!form.event_name.trim()) return setErr('Event name is required.');
+    if (!form.event_date)        return setErr('Event date is required.');
+    setErr(''); setSaving(true);
+    try {
+      await onSave(form);
+    } catch (e) {
+      setErr(e.message || 'Save failed.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onCancel()}>
+      <div className="modal" style={{ maxWidth: 680 }}>
+        <div className="modal-title">{initial?.id ? 'Edit Event' : 'New Event'}</div>
+
+        <div className="form-grid">
+          <div className="field full">
+            <label>Event Name</label>
+            <input value={form.event_name} onChange={e => set('event_name', e.target.value)} placeholder="e.g. Knife Skills Workshop" />
+          </div>
+
+          <div className="field">
+            <label>Date</label>
+            <input type="date" value={form.event_date} onChange={e => set('event_date', e.target.value)} />
+          </div>
+
+          <div className="field">
+            <label>Status</label>
+            <select value={form.status} onChange={e => set('status', e.target.value)}>
+              {STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+            </select>
+          </div>
+
+          <div className="field">
+            <label>Start Time</label>
+            <input type="time" value={form.start_time || ''} onChange={e => set('start_time', e.target.value)} />
+          </div>
+
+          <div className="field">
+            <label>End Time</label>
+            <input type="time" value={form.end_time || ''} onChange={e => set('end_time', e.target.value)} />
+          </div>
+
+          <div className="field full">
+            <label>Location</label>
+            <input value={form.location || ''} onChange={e => set('location', e.target.value)} placeholder="Venue name or address" />
+          </div>
+
+          <div className="field">
+            <label>Vendor</label>
+            <select value={form.vendor_id || ''} onChange={e => set('vendor_id', e.target.value)}>
+              <option value="">— No vendor —</option>
+              {vendors.map(v => <option key={v.id} value={v.id}>{v.vendor_name}</option>)}
+            </select>
+          </div>
+
+          <div className="field">
+            <label>Category</label>
+            <input value={form.category || ''} onChange={e => set('category', e.target.value)} placeholder="e.g. Workshop, Pop-up" />
+          </div>
+
+          <div className="field">
+            <label>Price</label>
+            <input type="number" step="0.01" value={form.price || ''} onChange={e => set('price', e.target.value)} placeholder="0.00" />
+          </div>
+
+          <div className="field">
+            <label>Tags</label>
+            <input value={form.tags || ''} onChange={e => set('tags', e.target.value)} placeholder="comma separated" />
+          </div>
+
+          <div className="field full">
+            <label>Description</label>
+            <textarea value={form.description || ''} onChange={e => set('description', e.target.value)} placeholder="Event details..." />
+          </div>
+
+          <div className="field">
+            <label>Image URL</label>
+            <input value={form.image_url || ''} onChange={e => set('image_url', e.target.value)} placeholder="https://..." />
+          </div>
+
+          <div className="field">
+            <label>Ticket URL</label>
+            <input value={form.ticket_url || ''} onChange={e => set('ticket_url', e.target.value)} placeholder="https://..." />
+          </div>
+
+          <div className="field full">
+            <label>Map Embed</label>
+            <textarea
+              value={form.map_embed || ''}
+              onChange={e => set('map_embed', e.target.value)}
+              placeholder="Paste Google Maps iframe embed code..."
+              style={{ minHeight: 70 }}
+            />
+          </div>
+
+          <div className="field full" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <input
+              type="checkbox"
+              id="posted_to_web"
+              checked={!!form.posted_to_web}
+              onChange={e => set('posted_to_web', e.target.checked)}
+              style={{ width: 'auto' }}
+            />
+            <label htmlFor="posted_to_web" style={{ textTransform: 'none', fontSize: 13, color: 'var(--text)' }}>
+              Posted to website
+            </label>
+          </div>
+        </div>
+
+        {err && <div className="error-msg" style={{ marginTop: 12 }}>{err}</div>}
+
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
+            {saving ? 'Saving…' : 'Save Event'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeleteConfirm({ event, onConfirm, onCancel }) {
+  const [deleting, setDeleting] = useState(false);
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onCancel()}>
+      <div className="modal" style={{ maxWidth: 400 }}>
+        <div className="modal-title">Delete Event</div>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+          Are you sure you want to delete <strong style={{ color: 'var(--text)' }}>{event.event_name}</strong>? This cannot be undone.
+        </p>
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+          <button className="btn btn-danger" disabled={deleting} onClick={async () => {
+            setDeleting(true);
+            await onConfirm();
+          }}>
+            {deleting ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function EventsPage() {
+  const [events, setEvents]     = useState([]);
+  const [vendors, setVendors]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [search, setSearch]     = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [modal, setModal]       = useState(null); // null | { mode: 'new'|'edit'|'delete', event? }
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (search)       params.set('search', search);
+      if (statusFilter) params.set('status', statusFilter);
+      const [evts, vens] = await Promise.all([
+        api.get(`/events?${params}`),
+        api.get('/vendors'),
+      ]);
+      setEvents(evts);
+      setVendors(vens);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [search, statusFilter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleSave(form) {
+    if (modal.event?.id) {
+      await api.put(`/events/${modal.event.id}`, form);
+    } else {
+      await api.post('/events', form);
+    }
+    setModal(null);
+    load();
+  }
+
+  async function handleDelete() {
+    await api.delete(`/events/${modal.event.id}`);
+    setModal(null);
+    load();
+  }
+
+  const counts = STATUSES.reduce((acc, s) => {
+    acc[s] = events.filter(e => e.status === s).length;
+    return acc;
+  }, {});
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <div className="page-title">📅 Events</div>
+          <div className="page-subtitle">{events.length} event{events.length !== 1 ? 's' : ''} total</div>
+        </div>
+        <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>
+          + New Event
+        </button>
+      </div>
+
+      {/* Status summary */}
+      <div className="stats-grid" style={{ marginBottom: 24 }}>
+        {STATUSES.map(s => (
+          <div
+            key={s}
+            className="card"
+            style={{ cursor: 'pointer', borderColor: statusFilter === s ? 'var(--accent)' : undefined }}
+            onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
+          >
+            <div className="card-title">{s}</div>
+            <div className="card-value">{counts[s] || 0}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Search + filter */}
+      <div className="search-bar">
+        <input
+          className="field"
+          style={{ flex: 1, maxWidth: 320, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 14 }}
+          placeholder="Search events…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <select
+          style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 14 }}
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+        >
+          <option value="">All statuses</option>
+          {STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+        </select>
+      </div>
+
+      {/* Table */}
+      <div className="card" style={{ padding: 0 }}>
+        {loading ? (
+          <div className="loading">Loading…</div>
+        ) : events.length === 0 ? (
+          <div className="empty-state">
+            <div style={{ fontSize: 48 }}>📅</div>
+            <p>No events found. Create your first event to get started.</p>
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Date</th>
+                  <th>Location</th>
+                  <th>Vendor</th>
+                  <th>Status</th>
+                  <th>Web</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.map(e => (
+                  <tr key={e.id}>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{e.event_name}</div>
+                      {e.category && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{e.category}</div>}
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{fmt(e.event_date)}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{e.location || '—'}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{e.vendor_name || '—'}</td>
+                    <td>
+                      <span className={`badge ${STATUS_BADGES[e.status] || 'badge-gray'}`}>
+                        {e.status}
+                      </span>
+                    </td>
+                    <td>{e.posted_to_web ? '✓' : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                    <td>
+                      <div className="actions">
+                        <button className="btn btn-secondary btn-sm" onClick={() => setModal({ mode: 'edit', event: e })}>Edit</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => setModal({ mode: 'delete', event: e })}>Del</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Modals */}
+      {(modal?.mode === 'new' || modal?.mode === 'edit') && (
+        <EventForm
+          initial={modal.event}
+          vendors={vendors}
+          onSave={handleSave}
+          onCancel={() => setModal(null)}
+        />
+      )}
+      {modal?.mode === 'delete' && (
+        <DeleteConfirm
+          event={modal.event}
+          onConfirm={handleDelete}
+          onCancel={() => setModal(null)}
+        />
+      )}
+    </div>
+  );
+}
