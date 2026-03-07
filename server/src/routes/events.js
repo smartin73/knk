@@ -42,7 +42,7 @@ router.post('/', async (req, res) => {
     `INSERT INTO events (vendor_id,event_name,event_date,start_time,end_time,
       location,description,image_url,ticket_url,map_embed,category,tags,price,status)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
-    [f.vendor_id,f.event_name,f.event_date,f.start_time,f.end_time,
+    [f.vendor_id || null,f.event_name,f.event_date,f.start_time,f.end_time,
      f.location,f.description,f.image_url,f.ticket_url,f.map_embed,
      f.category,f.tags,f.price,f.status||'draft']
   );
@@ -57,7 +57,7 @@ router.put('/:id', async (req, res) => {
       end_time=$5,location=$6,description=$7,image_url=$8,ticket_url=$9,
       map_embed=$10,category=$11,tags=$12,price=$13,status=$14,posted_to_web=$15
      WHERE id=$16 RETURNING *`,
-    [f.vendor_id,f.event_name,f.event_date,f.start_time,f.end_time,
+    [f.vendor_id || null,f.event_name,f.event_date,f.start_time,f.end_time,
      f.location,f.description,f.image_url,f.ticket_url,f.map_embed,
      f.category,f.tags,f.price,f.status,f.posted_to_web,req.params.id]
   );
