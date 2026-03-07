@@ -10,7 +10,6 @@ const EMPTY_FORM = {
   website_url: '',
   logo_url: '',
   map_embed: '',
-  notes: '',
 };
 
 function VendorForm({ initial, onSave, onCancel }) {
@@ -43,26 +42,24 @@ function VendorForm({ initial, onSave, onCancel }) {
             <input value={form.vendor_name} onChange={e => set('vendor_name', e.target.value)} placeholder="e.g. Green City Market" />
           </div>
 
-          <div className="field">
-            <label>Contact Name</label>
-            <input value={form.address || ''} onChange={e => set('address', e.target.value)} placeholder="First Last" />
+          <div className="field full">
+            <label>Address</label>
+            <input value={form.address || ''} onChange={e => set('address', e.target.value)} placeholder="Street address" />
           </div>
+
           <div className="field">
-            <label>Contact Name</label>
-            <input value={form.city || ''} onChange={e => set('city', e.target.value)} placeholder="First Last" />
+            <label>City</label>
+            <input value={form.city || ''} onChange={e => set('city', e.target.value)} placeholder="Chicago" />
           </div>
+
           <div className="field">
-            <label>Contact Name</label>
-            <input value={form.state || ''} onChange={e => set('state', e.target.value)} placeholder="First Last" />
+            <label>State</label>
+            <input value={form.state || ''} onChange={e => set('state', e.target.value)} placeholder="IL" />
           </div>
+
           <div className="field">
-            <label>Contact Name</label>
-            <input value={form.zip || ''} onChange={e => set('zip', e.target.value)} placeholder="First Last" />
-          </div>
-ty
-          <div className="field">
-            <label>Contact Phone</label>
-            <input value={form.contact_phone || ''} onChange={e => set('contact_phone', e.target.value)} placeholder="(555) 555-5555" />
+            <label>Zip</label>
+            <input value={form.zip || ''} onChange={e => set('zip', e.target.value)} placeholder="60601" />
           </div>
 
           <div className="field">
@@ -83,11 +80,6 @@ ty
               placeholder="Paste Google Maps iframe embed code..."
               style={{ minHeight: 70 }}
             />
-          </div>
-
-          <div className="field full">
-            <label>Notes</label>
-            <textarea value={form.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="Any additional notes..." />
           </div>
         </div>
 
@@ -128,9 +120,9 @@ function DeleteConfirm({ vendor, onConfirm, onCancel }) {
 }
 
 export function VendorsPage() {
-  const [vendors, setVendors]   = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [modal, setModal]       = useState(null);
+  const [vendors, setVendors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal]     = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -188,9 +180,8 @@ export function VendorsPage() {
               <thead>
                 <tr>
                   <th>Vendor</th>
-                  <th>Contact</th>
-                  <th>Email</th>
-                  <th>Phone</th>
+                  <th>City</th>
+                  <th>State</th>
                   <th>Website</th>
                   <th></th>
                 </tr>
@@ -198,15 +189,12 @@ export function VendorsPage() {
               <tbody>
                 {vendors.map(v => (
                   <tr key={v.id}>
+                    <td style={{ fontWeight: 600 }}>{v.vendor_name}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{v.city || '—'}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{v.state || '—'}</td>
                     <td>
-                      <div style={{ fontWeight: 600 }}>{v.vendor_name}</div>
-                    </td>
-                    <td style={{ color: 'var(--text-muted)' }}>{v.contact_name || '—'}</td>
-                    <td style={{ color: 'var(--text-muted)' }}>{v.contact_email || '—'}</td>
-                    <td style={{ color: 'var(--text-muted)' }}>{v.contact_phone || '—'}</td>
-                    <td>
-                      {v.website
-                        ? <a href={v.website} target="_blank" rel="noreferrer" style={{ color: 'var(--accent2)' }}>Link</a>
+                      {v.website_url
+                        ? <a href={v.website_url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent2)' }}>Link</a>
                         : <span style={{ color: 'var(--text-muted)' }}>—</span>
                       }
                     </td>
