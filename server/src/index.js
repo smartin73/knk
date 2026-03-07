@@ -1,13 +1,13 @@
 import express from 'express';
 import session from 'express-session';
-import { createClient } from 'ioredis';
-import connectRedis from 'connect-redis';
+import connectPg from 'connect-pg-simple';
 import helmet from 'helmet';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 
+import pool from './db/pool.js';
 import authRouter from './routes/auth.js';
 import eventsRouter from './routes/events.js';
 import recipesRouter from './routes/recipes.js';
@@ -22,10 +22,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// ── Redis session store ───────────────────────────────────
-const redisClient = createClient({ url: process.env.REDIS_URL });
-redisClient.connect().catch(console.error);
-const RedisStore = connectRedis(session);
+// ── Postgres session store ────────────────────────────────
+const PgSession = connectPg(session);
 
 // ── Middleware ────────────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -36,7 +34,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
-  store: new RedisStore({ client: redisClient }),
+  store: new PgSession({ pool, tableName: 'user_sessions' }),
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
