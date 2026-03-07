@@ -239,19 +239,19 @@ vendorsRouter.get('/:id', async (req, res) => {
 vendorsRouter.post('/', async (req, res) => {
   const f = req.body;
   const { rows } = await query(
-    `INSERT INTO event_vendors (vendor_name,contact_name,contact_email,contact_phone,website,logo_url,map_embed,notes)
+    `INSERT INTO event_vendors (vendor_name,address,city,state,zip,logo_url,map_embed,website_url)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-    [f.vendor_name,f.contact_name,f.contact_email,f.contact_phone,f.website,f.logo_url,f.map_embed,f.notes]
+    [f.vendor_name,f.address,f.city,f.state,f.zip,f.logo_url,f.map_embed,f.website_url]
   );
   res.status(201).json(rows[0]);
 });
 vendorsRouter.put('/:id', async (req, res) => {
   const f = req.body;
   const { rows } = await query(
-    `UPDATE event_vendors SET vendor_name=$1,contact_name=$2,contact_email=$3,
-      contact_phone=$4,website=$5,logo_url=$6,map_embed=$7,notes=$8
+    `UPDATE event_vendors SET vendor_name=$1,address=$2,city=$3,state=$4,
+      zip=$5,logo_url=$6,map_embed=$7,website_url=$8
      WHERE id=$9 RETURNING *`,
-    [f.vendor_name,f.contact_name,f.contact_email,f.contact_phone,f.website,f.logo_url,f.map_embed,f.notes,req.params.id]
+    [f.vendor_name,f.address,f.city,f.state,f.zip,f.logo_url,f.map_embed,f.website_url,req.params.id]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Not found' });
   res.json(rows[0]);
