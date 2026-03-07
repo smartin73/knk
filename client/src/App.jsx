@@ -4,7 +4,8 @@ import { AuthProvider, useAuth } from './hooks/useAuth.jsx';
 // Pages (stubs — each module fills these in)
 import LoginPage        from './pages/LoginPage.jsx';
 import DashboardPage    from './pages/DashboardPage.jsx';
-import { RecipesPage, IngredientsPage, ItemBuilderPage, EventsPage, EventMenusPage, DonationsPage } from './pages/stubs.jsx';
+import { RecipesPage, IngredientsPage, ItemBuilderPage, EventMenusPage, DonationsPage } from './pages/stubs.jsx';
+import { EventsPage } from './pages/EventsPage.jsx';
 
 const NAV = [
   { to: '/',            label: 'Dashboard',    icon: '▦' },

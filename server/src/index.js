@@ -18,6 +18,18 @@ import {
   donationsRouter,
 } from './routes/modules.js';
 
+// add vendorsRouter:
+import {
+  ingredientsRouter,
+  itemBuilderRouter,
+  eventMenusRouter,
+  donationsRouter,
+  vendorsRouter,
+} from './routes/modules.js';
+
+// In the routes section, add:
+app.use('/vendors', vendorsRouter);
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3001;
