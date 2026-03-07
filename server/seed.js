@@ -1,22 +1,33 @@
 #!/usr/bin/env node
-// Usage: node seed.js
-// Run once after first deploy to create the admin user
-// Reads ADMIN_PASSWORD and DATABASE_URL from environment
-
 import pg from 'pg';
 import bcrypt from 'bcrypt';
+import fs from 'fs';
 
 const { Client } = pg;
-const client = new Client({ connectionString: process.env.DATABASE_URL });
+
+// Read password from Docker secret
+let password;
+const secretFile = process.env.POSTGRES_PASSWORD_FILE;
+if (secretFile) {
+  try { password = fs.readFileSync(secretFile, 'utf8').trim(); } catch {}
+}
+if (!password) password = process.env.POSTGRES_PASSWORD;
+
+const connectionString = process.env.DATABASE_URL?.replace(
+  /^(postgresql:\/\/[^:@]+)(@.*)/,
+  `$1:${password}$2`
+);
+
+const client = new Client({ connectionString });
 
 async function seed() {
   await client.connect();
 
   const username = 'admin';
-  const password = process.env.ADMIN_PASSWORD;
-  if (!password) { console.error('Set ADMIN_PASSWORD env var'); process.exit(1); }
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) { console.error('Set ADMIN_PASSWORD env var'); process.exit(1); }
 
-  const hash = await bcrypt.hash(password, 12);
+  const hash = await bcrypt.hash(adminPassword, 12);
 
   await client.query(
     `INSERT INTO users (username, password_hash)
@@ -25,7 +36,7 @@ async function seed() {
     [username, hash]
   );
 
-  console.log(`✓ User '${username}' created/updated`);
+  console.log(`✓ User 'admin' created/updated`);
   await client.end();
 }
 
