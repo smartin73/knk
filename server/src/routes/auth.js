@@ -20,13 +20,14 @@ router.post('/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-    req.session.userId   = user.id;
-    req.session.username = user.username;
-    res.json({ ok: true, username: user.username });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+req.session.userId   = user.id;
+req.session.username = user.username;
+req.session.save((err) => {
+  if (err) {
+    console.error('Session save error:', err);
+    return res.status(500).json({ error: 'Session error' });
   }
+  res.json({ ok: true, username: user.username });
 });
 
 // POST /auth/logout
