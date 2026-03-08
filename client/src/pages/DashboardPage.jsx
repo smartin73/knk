@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 
+function fmt(dateStr) {
+  if (!dateStr) return '—';
+  const [y, m, d] = String(dateStr).slice(0, 10).split('-');
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState(null);
 
@@ -54,7 +62,7 @@ export default function DashboardPage() {
                 {upcoming.slice(0,5).map(e => (
                   <tr key={e.id}>
                     <td>{e.event_name}</td>
-                    <td>{e.event_date}</td>
+                    <td>{fmt(e.event_date)}</td>
                     <td className="text-muted">{e.location}</td>
                     <td><span className={`badge badge-${e.status === 'published' ? 'green' : e.status === 'cancelled' ? 'red' : 'yellow'}`}>{e.status}</span></td>
                   </tr>
