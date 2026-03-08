@@ -9,6 +9,9 @@ const EMPTY_FORM = {
   retail_price: '',
   include_packaging: false,
   include_fees: false,
+  packaging_cost: '',
+  square_fee: '',
+  square_fee_online: '',
   food_cook_time: '',
   ingredient_label: '',
   contains_label: '',
@@ -34,11 +37,10 @@ function fmtPrice(n) {
   return `$${parseFloat(n).toFixed(2)}`;
 }
 
-function calcItemCost(components, settings) {
+function calcItemCost(components) {
   let total = 0;
   for (const c of components) {
     if (c.type === 'recipe' || c.recipe_id) {
-      // recipe cost = recipeCostYield * quantity
       if (c.recipe_cost_yield && c.quantity) {
         total += parseFloat(c.recipe_cost_yield) * parseFloat(c.quantity);
       }
@@ -51,17 +53,15 @@ function calcItemCost(components, settings) {
   return total;
 }
 
-function calcRetailSuggestion(ingredientCost, form, settings) {
-  let cost = ingredientCost;
-  if (form.include_packaging && settings.packaging_cost) {
-    cost += parseFloat(settings.packaging_cost);
-  }
-  return cost;
+function calcFeeInPerson(retail, settings) {
+  const rate = parseFloat(settings.square_fee_rate || 0.026);
+  const flat = parseFloat(settings.square_fee_flat || 0.15);
+  return Math.round(((retail * rate) + flat) * 100) / 100;
 }
 
-function calcFee(retail, settings) {
-  const rate = parseFloat(settings.square_fee_rate || 0.029);
-  const flat = parseFloat(settings.square_fee_flat || 0.15);
+function calcFeeOnline(retail, settings) {
+  const rate = parseFloat(settings.square_fee_online_rate || 0.033);
+  const flat = parseFloat(settings.square_fee_online_flat || 0.30);
   return Math.round(((retail * rate) + flat) * 100) / 100;
 }
 
@@ -72,7 +72,6 @@ function ComponentRow({ comp, idx, total, recipes, allIngredients, onChange, onR
   return (
     <div style={{ background: 'var(--surface2)', border: `1px solid ${isRecipe ? 'var(--accent2)' : 'var(--border)'}`, borderRadius: 6, padding: 10, marginBottom: 8 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-        {/* Type toggle */}
         <div style={{ display: 'flex', gap: 4 }}>
           {['recipe', 'ingredient'].map(t => (
             <button
@@ -154,15 +153,37 @@ function ComponentRow({ comp, idx, total, recipes, allIngredients, onChange, onR
 
 // ── Item Form ─────────────────────────────────────────────
 function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel }) {
-  const [form, setForm]           = useState({ ...EMPTY_FORM, ...initial });
+  const [form, setForm]             = useState({ ...EMPTY_FORM, ...initial });
   const [components, setComponents] = useState(
     (initial?.items || []).map(i => ({ ...i, type: i.recipe_id ? 'recipe' : 'ingredient' }))
   );
-  const [saving, setSaving]       = useState(false);
-  const [err, setErr]             = useState('');
-  const [tab, setTab]             = useState('details');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr]       = useState('');
+  const [tab, setTab]       = useState('details');
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  // When retail price changes, auto-recalculate fee fields from settings rates
+  function handleRetailChange(val) {
+    const updates = { retail_price: val };
+    if (val) {
+      const retail = parseFloat(val);
+      if (!isNaN(retail)) {
+        updates.square_fee        = calcFeeInPerson(retail, settings).toFixed(2);
+        updates.square_fee_online = calcFeeOnline(retail, settings).toFixed(2);
+      }
+    }
+    setForm(f => ({ ...f, ...updates }));
+  }
+
+  // When packaging checkbox turns on, auto-populate from settings if field is empty
+  function handleIncludePackaging(checked) {
+    const updates = { include_packaging: checked };
+    if (checked && !form.packaging_cost && settings.packaging_cost) {
+      updates.packaging_cost = parseFloat(settings.packaging_cost).toFixed(2);
+    }
+    setForm(f => ({ ...f, ...updates }));
+  }
 
   function addComponent() {
     setComponents(cs => [...cs, { ...EMPTY_COMPONENT, sort_order: cs.length }]);
@@ -192,11 +213,14 @@ function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel
       return { ...c, cost_per_gram: ing?.cost_per_gram || null };
     }
   });
-  const ingredientCost = calcItemCost(enrichedComponents, settings);
-  const packagingCost  = form.include_packaging && settings.packaging_cost ? parseFloat(settings.packaging_cost) : 0;
-  const totalCost      = ingredientCost + packagingCost;
-  const fee            = form.include_fees && form.retail_price ? calcFee(parseFloat(form.retail_price), settings) : 0;
-  const totalWithFees  = totalCost + fee;
+
+  const ingredientCost = calcItemCost(enrichedComponents);
+  const packagingCost  = form.include_packaging && form.packaging_cost ? parseFloat(form.packaging_cost) : 0;
+  const feeInPerson    = form.include_fees && form.square_fee ? parseFloat(form.square_fee) : 0;
+  const feeOnline      = form.include_fees && form.square_fee_online ? parseFloat(form.square_fee_online) : 0;
+  const totalInPerson  = ingredientCost + packagingCost + feeInPerson;
+  const totalOnline    = ingredientCost + packagingCost + feeOnline;
+  const retail         = form.retail_price ? parseFloat(form.retail_price) : null;
 
   async function handleSubmit() {
     if (!form.item_name.trim()) { setTab('details'); return setErr('Item name is required.'); }
@@ -243,7 +267,7 @@ function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel
               </div>
               <div className="field">
                 <label>Retail Price ($)</label>
-                <input type="number" step="0.01" value={form.retail_price || ''} onChange={e => set('retail_price', e.target.value)} placeholder="0.00" />
+                <input type="number" step="0.01" value={form.retail_price || ''} onChange={e => handleRetailChange(e.target.value)} placeholder="0.00" />
               </div>
               <div className="field">
                 <label>Batch Qty</label>
@@ -273,18 +297,74 @@ function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel
                 <label>Woo ID</label>
                 <input value={form.woo_id || ''} onChange={e => set('woo_id', e.target.value)} />
               </div>
-              <div className="field full" style={{ flexDirection: 'row', gap: 20 }}>
+
+              {/* ── Packaging ── */}
+              <div className="field full" style={{ flexDirection: 'row', gap: 20, flexWrap: 'wrap' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text)', textTransform: 'none', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={!!form.include_packaging} onChange={e => set('include_packaging', e.target.checked)} style={{ width: 'auto' }} />
+                  <input type="checkbox" checked={!!form.include_packaging} onChange={e => handleIncludePackaging(e.target.checked)} style={{ width: 'auto' }} />
                   Include Packaging
-                  {settings.packaging_cost && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>(${parseFloat(settings.packaging_cost).toFixed(2)})</span>}
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text)', textTransform: 'none', cursor: 'pointer' }}>
                   <input type="checkbox" checked={!!form.include_fees} onChange={e => set('include_fees', e.target.checked)} style={{ width: 'auto' }} />
                   Include Square Fees
-                  {form.retail_price && form.include_fees && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>(${calcFee(parseFloat(form.retail_price || 0), settings).toFixed(2)})</span>}
                 </label>
               </div>
+
+              {form.include_packaging && (
+                <div className="field">
+                  <label>
+                    Packaging Cost ($)
+                    {settings.packaging_cost && (
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>
+                        default ${parseFloat(settings.packaging_cost).toFixed(2)}
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="number" step="0.01"
+                    value={form.packaging_cost || ''}
+                    onChange={e => set('packaging_cost', e.target.value)}
+                    placeholder={settings.packaging_cost ? parseFloat(settings.packaging_cost).toFixed(2) : '0.00'}
+                  />
+                </div>
+              )}
+
+              {form.include_fees && (
+                <>
+                  <div className="field">
+                    <label>
+                      In-Person Fee ($)
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>
+                        {settings.square_fee_rate
+                          ? `${(parseFloat(settings.square_fee_rate) * 100).toFixed(1)}% + $${settings.square_fee_flat}`
+                          : '2.6% + $0.15'}
+                      </span>
+                    </label>
+                    <input
+                      type="number" step="0.01"
+                      value={form.square_fee || ''}
+                      onChange={e => set('square_fee', e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="field">
+                    <label>
+                      Online Fee ($)
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>
+                        {settings.square_fee_online_rate
+                          ? `${(parseFloat(settings.square_fee_online_rate) * 100).toFixed(1)}% + $${settings.square_fee_online_flat}`
+                          : '3.3% + $0.30'}
+                      </span>
+                    </label>
+                    <input
+                      type="number" step="0.01"
+                      value={form.square_fee_online || ''}
+                      onChange={e => set('square_fee_online', e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -312,24 +392,35 @@ function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel
 
           {tab === 'costing' && (
             <div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 24px', marginBottom: 20 }}>
-                <CostRow label="Ingredient / Recipe Cost" value={ingredientCost} />
-                <CostRow label="Packaging" value={packagingCost} muted={!form.include_packaging} />
-                <CostRow label="Square Fee" value={fee} muted={!form.include_fees} note={form.retail_price ? `on $${form.retail_price}` : 'set retail price'} />
-                <CostRow label="Total Cost" value={totalWithFees} bold />
-                {form.retail_price && (
-                  <CostRow label="Retail Price" value={parseFloat(form.retail_price)} />
-                )}
-                {form.retail_price && totalWithFees > 0 && (
-                  <CostRow
-                    label="Margin"
-                    value={parseFloat(form.retail_price) - totalWithFees}
-                    note={`${(((parseFloat(form.retail_price) - totalWithFees) / parseFloat(form.retail_price)) * 100).toFixed(1)}%`}
-                    bold
-                  />
-                )}
+              {/* ── Dual-channel comparison ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+                {[
+                  { label: 'In-Person / Events', total: totalInPerson, fee: feeInPerson },
+                  { label: 'Online / Woo',        total: totalOnline,   fee: feeOnline  },
+                ].map(({ label, total, fee }) => (
+                  <div key={label} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: 16 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>{label}</div>
+                    <CostRow label="Ingredient / Recipe" value={ingredientCost} />
+                    <CostRow label="Packaging"           value={packagingCost} muted={!form.include_packaging} />
+                    <CostRow label="Square Fee"          value={fee}           muted={!form.include_fees} />
+                    <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
+                      <CostRow label="Total Cost" value={total} bold />
+                      {retail != null && <CostRow label="Retail" value={retail} />}
+                      {retail != null && (
+                        <CostRow
+                          label="Margin"
+                          value={retail - total}
+                          bold
+                          note={`${(((retail - total) / retail) * 100).toFixed(1)}%`}
+                          positive={retail - total > 0}
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
 
+              {/* ── Component breakdown ── */}
               {components.length > 0 && (
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>Component Breakdown</div>
@@ -367,7 +458,7 @@ function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel
 
               {!settings.packaging_cost && (
                 <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-muted)', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px' }}>
-                  💡 Set packaging cost in Settings to include it in cost calculations.
+                  💡 Set packaging cost and Square fee rates in Settings to auto-populate these fields.
                 </div>
               )}
             </div>
@@ -387,21 +478,30 @@ function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel
   );
 }
 
-function CostRow({ label, value, muted, bold, note }) {
+function CostRow({ label, value, muted, bold, note, positive }) {
   return (
-    <div>
-      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 14, fontWeight: bold ? 700 : 400, color: muted ? 'var(--text-muted)' : 'var(--text)', fontFamily: 'monospace' }}>
-        ${value.toFixed(4)}
-        {note && <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'sans-serif', marginLeft: 6 }}>{note}</span>}
-      </div>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{label}</span>
+      <span style={{
+        fontSize: bold ? 13 : 12,
+        fontWeight: bold ? 700 : 400,
+        fontFamily: 'monospace',
+        color: muted
+          ? 'var(--text-muted)'
+          : positive === true  ? 'var(--green, #4caf50)'
+          : positive === false ? 'var(--red, #e55)'
+          : 'var(--text)',
+      }}>
+        ${typeof value === 'number' ? value.toFixed(2) : '—'}
+        {note && <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'sans-serif', marginLeft: 5 }}>{note}</span>}
+      </span>
     </div>
   );
 }
 
 // ── Detail Modal ──────────────────────────────────────────
 function ItemDetail({ item: initialItem, recipes, allIngredients, settings, onEdit, onClose }) {
-  const [item, setItem]     = useState(initialItem);
+  const [item, setItem]       = useState(initialItem);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -411,15 +511,14 @@ function ItemDetail({ item: initialItem, recipes, allIngredients, settings, onEd
       .finally(() => setLoading(false));
   }, [initialItem.id]);
 
-  const components = (item.items || []).map(c => ({
-    ...c, type: c.recipe_id ? 'recipe' : 'ingredient',
-  }));
-  const ingredientCost = calcItemCost(components, settings);
-  const packagingCost  = item.include_packaging && settings.packaging_cost ? parseFloat(settings.packaging_cost) : 0;
-  const totalCost      = ingredientCost + packagingCost;
-  const fee            = item.include_fees && item.retail_price ? calcFee(parseFloat(item.retail_price), settings) : 0;
-  const totalWithFees  = totalCost + fee;
-  const margin         = item.retail_price ? parseFloat(item.retail_price) - totalWithFees : null;
+  const components     = (item.items || []).map(c => ({ ...c, type: c.recipe_id ? 'recipe' : 'ingredient' }));
+  const ingredientCost = calcItemCost(components);
+  const packagingCost  = item.include_packaging && item.packaging_cost ? parseFloat(item.packaging_cost) : 0;
+  const feeInPerson    = item.include_fees && item.square_fee ? parseFloat(item.square_fee) : 0;
+  const feeOnline      = item.include_fees && item.square_fee_online ? parseFloat(item.square_fee_online) : 0;
+  const totalInPerson  = ingredientCost + packagingCost + feeInPerson;
+  const totalOnline    = ingredientCost + packagingCost + feeOnline;
+  const retail         = item.retail_price ? parseFloat(item.retail_price) : null;
 
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -452,14 +551,34 @@ function ItemDetail({ item: initialItem, recipes, allIngredients, settings, onEd
                 </div>
               )}
 
+              {/* Dual-channel summary */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                {[
+                  { label: 'In-Person', total: totalInPerson },
+                  { label: 'Online',    total: totalOnline   },
+                ].map(({ label, total }) => (
+                  <div key={label} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
+                    <CostRow label="Total Cost" value={total} bold />
+                    {retail != null && <CostRow label="Retail" value={retail} />}
+                    {retail != null && (
+                      <CostRow
+                        label="Margin"
+                        value={retail - total}
+                        bold
+                        note={`${(((retail - total) / retail) * 100).toFixed(1)}%`}
+                        positive={retail - total > 0}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 24px', marginBottom: 20 }}>
                 <DetailRow label="Retail Price" value={fmtPrice(item.retail_price)} />
-                <DetailRow label="Total Cost" value={totalWithFees > 0 ? `$${totalWithFees.toFixed(4)}` : null} />
-                {margin !== null && <DetailRow label="Margin" value={`$${margin.toFixed(2)} (${((margin / parseFloat(item.retail_price)) * 100).toFixed(1)}%)`} />}
-                <DetailRow label="Packaging" value={item.include_packaging ? (settings.packaging_cost ? `$${parseFloat(settings.packaging_cost).toFixed(2)}` : 'Yes') : 'No'} />
-                <DetailRow label="Square Fees" value={item.include_fees ? (fee > 0 ? `$${fee.toFixed(2)}` : 'Yes') : 'No'} />
-                {item.square_id && <DetailRow label="Square ID" value={item.square_id} />}
-                {item.contains_label && <DetailRow label="Contains" value={item.contains_label} />}
+                <DetailRow label="Packaging"    value={item.include_packaging ? fmtPrice(item.packaging_cost) : 'No'} />
+                {item.square_id      && <DetailRow label="Square ID" value={item.square_id} />}
+                {item.contains_label && <DetailRow label="Contains"  value={item.contains_label} />}
               </div>
 
               {item.ingredient_label && (
@@ -536,7 +655,6 @@ export function ItemBuilderPage() {
       setItems(its);
       setRecipes(recs);
       setAllIngredients(ings);
-      // Convert settings array to map
       const map = {};
       sets.forEach(s => { map[s.key] = s.value; });
       setSettings(map);
@@ -631,6 +749,7 @@ export function ItemBuilderPage() {
                   <th>Retail</th>
                   <th>Packaging</th>
                   <th>Fees</th>
+                  <th>Square</th>
                   <th></th>
                 </tr>
               </thead>
@@ -649,6 +768,11 @@ export function ItemBuilderPage() {
                     <td>{fmtPrice(i.retail_price)}</td>
                     <td style={{ color: 'var(--text-muted)' }}>{i.include_packaging ? '✓' : '—'}</td>
                     <td style={{ color: 'var(--text-muted)' }}>{i.include_fees ? '✓' : '—'}</td>
+                    <td>
+                      {i.square_id
+                        ? <span style={{ fontSize: 11, color: 'var(--green, #4caf50)', fontWeight: 600 }}>✓ Synced</span>
+                        : <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>—</span>}
+                    </td>
                     <td>
                       <div className="actions">
                         <button className="btn btn-secondary btn-sm" onClick={() => setModal({ mode: 'edit', item: i })}>Edit</button>

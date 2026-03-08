@@ -35,9 +35,11 @@ const SETTINGS_SCHEMA = [
   category: 'Costing',
   icon: '💰',
   settings: [
-    { key: 'packaging_cost', label: 'Packaging Cost ($)', description: 'Default packaging cost per item (use your most expensive packaging).', is_encrypted: false },
-    { key: 'square_fee_rate', label: 'Square Fee Rate', description: 'Square processing rate (default 0.029 = 2.9%).', is_encrypted: false },
-    { key: 'square_fee_flat', label: 'Square Flat Fee ($)', description: 'Square flat fee per transaction (default 0.15).', is_encrypted: false },
+    { key: 'packaging_cost',         label: 'Packaging Cost ($)',       description: 'Default packaging cost per item (use your most expensive packaging).', is_encrypted: false },
+    { key: 'square_fee_rate',        label: 'In-Person Fee Rate',       description: 'Square in-person rate (e.g. 0.026 = 2.6%).', is_encrypted: false },
+    { key: 'square_fee_flat',        label: 'In-Person Flat Fee ($)',   description: 'Square in-person flat fee per transaction (e.g. 0.15).', is_encrypted: false },
+    { key: 'square_fee_online_rate', label: 'Online Fee Rate',          description: 'Square online rate (e.g. 0.033 = 3.3%).', is_encrypted: false },
+    { key: 'square_fee_online_flat', label: 'Online Flat Fee ($)',      description: 'Square online flat fee per transaction (e.g. 0.30).', is_encrypted: false },
   ],
 },
 

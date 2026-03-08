@@ -83,12 +83,14 @@ itemBuilderRouter.post('/', async (req, res) => {
   const f = req.body;
   const { rows } = await query(
     `INSERT INTO item_builder (item_name,description,batch_qty,retail_price,
-      include_packaging,include_fees,food_cook_time,ingredient_label,contains_label,
-      image_url,square_id,woo_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      include_packaging,include_fees,packaging_cost,square_fee,square_fee_online,
+      food_cook_time,ingredient_label,contains_label,image_url,square_id,woo_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
     [f.item_name,f.description,f.batch_qty||1,f.retail_price,
-     f.include_packaging||false,f.include_fees||false,f.food_cook_time||null,
-     f.ingredient_label,f.contains_label,f.image_url,f.square_id,f.woo_id]
+     f.include_packaging||false,f.include_fees||false,
+     f.packaging_cost||null,f.square_fee||null,f.square_fee_online||null,
+     f.food_cook_time||null,f.ingredient_label,f.contains_label,
+     f.image_url,f.square_id,f.woo_id]
   );
   res.status(201).json(rows[0]);
 });
@@ -97,13 +99,15 @@ itemBuilderRouter.put('/:id', async (req, res) => {
   const f = req.body;
   const { rows } = await query(
     `UPDATE item_builder SET item_name=$1,description=$2,batch_qty=$3,
-      retail_price=$4,include_packaging=$5,include_fees=$6,food_cook_time=$7,
-      ingredient_label=$8,contains_label=$9,image_url=$10,square_id=$11,
-      woo_id=$12 WHERE id=$13 RETURNING *`,
+      retail_price=$4,include_packaging=$5,include_fees=$6,
+      packaging_cost=$7,square_fee=$8,square_fee_online=$9,
+      food_cook_time=$10,ingredient_label=$11,contains_label=$12,
+      image_url=$13,square_id=$14,woo_id=$15 WHERE id=$16 RETURNING *`,
     [f.item_name,f.description,f.batch_qty,f.retail_price,
-     f.include_packaging,f.include_fees,f.food_cook_time||null,
-     f.ingredient_label,f.contains_label,f.image_url,f.square_id,
-     f.woo_id,req.params.id]
+     f.include_packaging,f.include_fees,
+     f.packaging_cost||null,f.square_fee||null,f.square_fee_online||null,
+     f.food_cook_time||null,f.ingredient_label,f.contains_label,
+     f.image_url,f.square_id,f.woo_id,req.params.id]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Not found' });
   res.json(rows[0]);
