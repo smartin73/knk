@@ -56,47 +56,83 @@ itemBuilderRouter.use(requireAuth);
 
 itemBuilderRouter.get('/', async (req, res) => {
   const { rows } = await query(
-    `SELECT ib.*, r.recipe_name FROM item_builder ib
-     LEFT JOIN recipes r ON ib.recipe_id = r.id
-     ORDER BY ib.item_name`
+    `SELECT ib.* FROM item_builder ib ORDER BY ib.item_name`
   );
   res.json(rows);
 });
+
 itemBuilderRouter.get('/:id', async (req, res) => {
-  const { rows } = await query(
-    `SELECT ib.*, r.recipe_name FROM item_builder ib
-     LEFT JOIN recipes r ON ib.recipe_id = r.id WHERE ib.id=$1`, [req.params.id]
-  );
-  if (!rows[0]) return res.status(404).json({ error: 'Not found' });
-  res.json(rows[0]);
+  const [item, items] = await Promise.all([
+    query('SELECT * FROM item_builder WHERE id=$1', [req.params.id]),
+    query(
+      `SELECT ibi.*,
+        r.recipe_name, r.serving_size,
+        ii.item_name as ingredient_name, ii.cost_per_gram
+       FROM item_builder_items ibi
+       LEFT JOIN recipes r ON ibi.recipe_id = r.id
+       LEFT JOIN ingredient_items ii ON ibi.ingredient_id = ii.id
+       WHERE ibi.item_builder_id=$1 ORDER BY ibi.sort_order`,
+      [req.params.id]
+    ),
+  ]);
+  if (!item.rows[0]) return res.status(404).json({ error: 'Not found' });
+  res.json({ ...item.rows[0], items: items.rows });
 });
+
 itemBuilderRouter.post('/', async (req, res) => {
   const f = req.body;
   const { rows } = await query(
-    `INSERT INTO item_builder (recipe_id,item_name,description,batch_qty,retail_price,
+    `INSERT INTO item_builder (item_name,description,batch_qty,retail_price,
       include_packaging,include_fees,food_cook_time,ingredient_label,contains_label,
       image_url,square_id,woo_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-    [f.recipe_id,f.item_name,f.description,f.batch_qty||1,f.retail_price,
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+    [f.item_name,f.description,f.batch_qty||1,f.retail_price,
      f.include_packaging||false,f.include_fees||false,f.food_cook_time||null,
      f.ingredient_label,f.contains_label,f.image_url,f.square_id,f.woo_id]
   );
   res.status(201).json(rows[0]);
 });
+
 itemBuilderRouter.put('/:id', async (req, res) => {
   const f = req.body;
   const { rows } = await query(
-    `UPDATE item_builder SET recipe_id=$1,item_name=$2,description=$3,batch_qty=$4,
-      retail_price=$5,include_packaging=$6,include_fees=$7,food_cook_time=$8,
-      ingredient_label=$9,contains_label=$10,image_url=$11,square_id=$12,
-      woo_id=$13,is_active=$14 WHERE id=$15 RETURNING *`,
-    [f.recipe_id,f.item_name,f.description,f.batch_qty,f.retail_price,
+    `UPDATE item_builder SET item_name=$1,description=$2,batch_qty=$3,
+      retail_price=$4,include_packaging=$5,include_fees=$6,food_cook_time=$7,
+      ingredient_label=$8,contains_label=$9,image_url=$10,square_id=$11,
+      woo_id=$12 WHERE id=$13 RETURNING *`,
+    [f.item_name,f.description,f.batch_qty,f.retail_price,
      f.include_packaging,f.include_fees,f.food_cook_time||null,
      f.ingredient_label,f.contains_label,f.image_url,f.square_id,
-     f.woo_id,f.is_active,req.params.id]
+     f.woo_id,req.params.id]
   );
+  if (!rows[0]) return res.status(404).json({ error: 'Not found' });
   res.json(rows[0]);
 });
+
+// PUT /items/:id/items  (replace all component items)
+itemBuilderRouter.put('/:id/items', async (req, res) => {
+  const { items } = req.body;
+  await query('DELETE FROM item_builder_items WHERE item_builder_id=$1', [req.params.id]);
+  for (const item of (items || [])) {
+    await query(
+      `INSERT INTO item_builder_items (item_builder_id,recipe_id,ingredient_id,item_name,quantity,unit,sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [req.params.id, item.recipe_id||null, item.ingredient_id||null,
+       item.item_name||null, item.quantity||1, item.unit||null, item.sort_order||0]
+    );
+  }
+  const { rows } = await query(
+    `SELECT ibi.*, r.recipe_name, r.serving_size,
+       ii.item_name as ingredient_name, ii.cost_per_gram
+     FROM item_builder_items ibi
+     LEFT JOIN recipes r ON ibi.recipe_id = r.id
+     LEFT JOIN ingredient_items ii ON ibi.ingredient_id = ii.id
+     WHERE ibi.item_builder_id=$1 ORDER BY ibi.sort_order`,
+    [req.params.id]
+  );
+  res.json(rows);
+});
+
 itemBuilderRouter.delete('/:id', async (req, res) => {
   await query('DELETE FROM item_builder WHERE id=$1', [req.params.id]);
   res.json({ ok: true });
