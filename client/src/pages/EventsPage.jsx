@@ -358,20 +358,34 @@ export function EventsPage() {
       ? row.status.toLowerCase()
       : 'draft';
 
-    // Normalize MM/DD/YYYY → YYYY-MM-DD
-    let event_date = row.event_date || null;
-    if (event_date && event_date.includes('/')) {
-      const [m, d, y] = event_date.split('/');
-      event_date = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    // Normalize date — handles MM/DD/YYYY and MM/DD/YYYY HH:MM:SS
+    function normalizeDate(val) {
+      if (!val) return null;
+      const datePart = val.split(' ')[0]; // strip time if present
+      if (datePart.includes('/')) {
+        const [m, d, y] = datePart.split('/');
+        return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+      }
+      return datePart;
+    }
+
+    // Normalize time — extract HH:MM from HH:MM:SS or datetime strings
+    function normalizeTime(val) {
+      if (!val) return null;
+      const parts = val.trim().split(' ');
+      const timePart = parts.length > 1 ? parts[1] : parts[0];
+      if (!timePart || !timePart.includes(':')) return null;
+      const [h, m] = timePart.split(':');
+      return `${h.padStart(2,'0')}:${m.padStart(2,'0')}`;
     }
 
     await api.post('/events', {
       event_name:    row.event_name,
-      event_date,
+      event_date:    normalizeDate(row.event_date),
       vendor_id,
       status,
-      start_time:    row.start_time   || null,
-      end_time:      row.end_time     || null,
+      start_time:    normalizeTime(row.start_time),
+      end_time:      normalizeTime(row.end_time),
       location:      row.location     || null,
       category:      row.category     || null,
       tags:          row.tags         || null,
