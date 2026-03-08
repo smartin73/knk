@@ -7,6 +7,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
+import settingsRouter from './routes/settings.js';
 
 import pool from './db/pool.js';
 import authRouter from './routes/auth.js';
@@ -78,6 +79,7 @@ app.use('/items',        itemBuilderRouter);
 app.use('/event-menus',  eventMenusRouter);
 app.use('/donations',    donationsRouter);
 app.use('/vendors',      vendorsRouter);
+app.use('/settings', settingsRouter);
 
 // ── Health check ─────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ ok: true, ts: new Date() }));

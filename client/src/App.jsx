@@ -9,6 +9,7 @@ import { EventsPage } from './pages/EventsPage.jsx';
 import { VendorsPage } from './pages/VendorsPage.jsx';
 import { IngredientsPage } from './pages/IngredientsPage.jsx';
 import { RecipesPage } from './pages/RecipesPage.jsx';
+import { SettingsPage } from './pages/SettingsPage.jsx';
 
 const NAV = [
   { to: '/',            label: 'Dashboard',    icon: '▦' },
@@ -19,6 +20,7 @@ const NAV = [
   { to: '/events/vendors', label: 'Vendors', icon: '🏪' },
   { to: '/menus',       label: 'Event Menus',  icon: '🗒' },
   { to: '/donations',   label: 'Donations',    icon: '💛' },
+  { to: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
 function RequireAuth({ children }) {
@@ -64,6 +66,7 @@ function Layout() {
           <Route path="events/vendors" element={<VendorsPage />} />
           <Route path="menus/*"     element={<EventMenusPage />} />
           <Route path="donations"   element={<DonationsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Routes>
       </main>
     </div>
