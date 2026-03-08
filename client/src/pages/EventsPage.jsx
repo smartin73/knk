@@ -346,41 +346,45 @@ export function EventsPage() {
   }
 
   async function handleImport(rows) {
-    // Build vendor name → id lookup (case-insensitive)
-    const vendorMap = {};
-    vendors.forEach(v => { vendorMap[v.vendor_name.toLowerCase()] = v.id; });
+  const vendorMap = {};
+  vendors.forEach(v => { vendorMap[v.vendor_name.toLowerCase()] = v.id; });
 
-    for (const row of rows) {
-      // Resolve vendor name to id
-      const vendor_id = row.vendor_name
-        ? (vendorMap[row.vendor_name.toLowerCase()] || null)
-        : null;
+  for (const row of rows) {
+    const vendor_id = row.vendor_name
+      ? (vendorMap[row.vendor_name.toLowerCase()] || null)
+      : null;
 
-      // Normalize status — default to draft if blank or unrecognized
-      const status = STATUSES.includes((row.status || '').toLowerCase())
-        ? row.status.toLowerCase()
-        : 'draft';
+    const status = STATUSES.includes((row.status || '').toLowerCase())
+      ? row.status.toLowerCase()
+      : 'draft';
 
-      await api.post('/events', {
-        event_name:   row.event_name,
-        event_date:   row.event_date   || null,
-        vendor_id:                        vendor_id,
-        status,
-        start_time:   row.start_time   || null,
-        end_time:     row.end_time     || null,
-        location:     row.location     || null,
-        category:     row.category     || null,
-        tags:         row.tags         || null,
-        price:        row.price        ? parseFloat(row.price) : null,
-        description:  row.description  || null,
-        ticket_url:   row.ticket_url   || null,
-        image_url:    row.image_url    || null,
-        map_embed:    null,
-        posted_to_web: false,
-      });
+    // Normalize MM/DD/YYYY → YYYY-MM-DD
+    let event_date = row.event_date || null;
+    if (event_date && event_date.includes('/')) {
+      const [m, d, y] = event_date.split('/');
+      event_date = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
     }
-    load();
+
+    await api.post('/events', {
+      event_name:    row.event_name,
+      event_date,
+      vendor_id,
+      status,
+      start_time:    row.start_time   || null,
+      end_time:      row.end_time     || null,
+      location:      row.location     || null,
+      category:      row.category     || null,
+      tags:          row.tags         || null,
+      price:         row.price        ? parseFloat(row.price) : null,
+      description:   row.description  || null,
+      ticket_url:    row.ticket_url   || null,
+      image_url:     row.image_url    || null,
+      map_embed:     null,
+      posted_to_web: false,
+    });
   }
+  load();
+}
 
   // Dupe detection by event_name + event_date combo
   const existingNames = new Set(
