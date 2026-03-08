@@ -327,6 +327,17 @@ export function EventsPage() {
     load();
   }
 
+  function handleDuplicate(e) {
+  const clone = {
+    ...e,
+    id: undefined,
+    event_name: `Copy of ${e.event_name}`,
+    event_date: '',
+    start_time: '',
+    end_time: '',
+  };
+  setModal({ mode: 'new', event: clone });
+}
   const counts = STATUSES.reduce((acc, s) => {
     acc[s] = events.filter(e => e.status === s).length;
     return acc;
@@ -425,6 +436,7 @@ export function EventsPage() {
                     <td>
                       <div className="actions">
                         <button className="btn btn-secondary btn-sm" onClick={() => setModal({ mode: 'edit', event: e })}>Edit</button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => handleDuplicate(e)}>Dupe</button>
                         <button className="btn btn-danger btn-sm" onClick={() => setModal({ mode: 'delete', event: e })}>Del</button>
                       </div>
                     </td>
