@@ -83,9 +83,11 @@ router.put('/:id/steps', async (req, res) => {
     // Simpler: insert one by one
     for (const s of steps) {
       await query(
-        `INSERT INTO recipe_steps (recipe_id,step_number,step_description,step_time,requires_notification)
-         VALUES ($1,$2,$3,$4,$5)`,
-        [req.params.id, s.step_number, s.step_description, s.step_time||null, s.requires_notification||false]
+        `INSERT INTO recipe_steps (recipe_id,step_number,step_type,step_description,step_time,requires_notification,fold_type,fold_interval,temp_min,temp_max)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [req.params.id, s.step_number, s.step_type||'regular', s.step_description||'', s.step_time||null,
+        s.requires_notification||false, s.fold_type||null, s.fold_interval||null,
+        s.temp_min||null, s.temp_max||null]
       );
     }
   }

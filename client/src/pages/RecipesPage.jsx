@@ -9,20 +9,29 @@ const EMPTY_FORM = {
   serving_size: '',
   prep_time: '',
   cook_time: '',
-  folds_required: 0,
   image_url: '',
   ingredient_label: '',
   contains_label: '',
   square_id: '',
   woo_id: '',
   notes: '',
-  is_active: true,
 };
 
 const EMPTY_ING  = { ingredient_id: '', ingredient: '', amount: '', measurement: '' };
-const EMPTY_STEP = { step_number: 1, step_description: '', step_time: '', requires_notification: false };
+const EMPTY_STEP = {
+  step_number: 1,
+  step_type: 'regular',
+  step_description: '',
+  step_time: '',
+  requires_notification: false,
+  fold_type: '',
+  fold_interval: '',
+  temp_min: '',
+  temp_max: '',
+};
 
 const MEASUREMENTS = ['g', 'kg', 'ml', 'L', 'tsp', 'tbsp', 'cup', 'oz', 'lb', 'pinch', 'piece', 'slice', 'clove', 'sprig', 'bunch'];
+const FOLD_TYPES   = ['Stretch & Fold', 'Coil', 'Lamination'];
 
 function fmtCurrency(n) {
   if (!n && n !== 0) return '—';
@@ -30,12 +39,12 @@ function fmtCurrency(n) {
 }
 
 function calcCost(ingredients) {
-  let total = 0; let complete = true;
+  let total = 0;
   for (const ing of ingredients) {
-    if (!ing.cost_per_gram || !ing.amount || ing.measurement !== 'g') { complete = false; continue; }
+    if (!ing.cost_per_gram || !ing.amount || ing.measurement !== 'g') continue;
     total += parseFloat(ing.cost_per_gram) * parseFloat(ing.amount);
   }
-  return { total, complete };
+  return total;
 }
 
 // ── Quick Add Ingredient Modal ────────────────────────────
@@ -92,20 +101,140 @@ function QuickAddIngredient({ onSave, onCancel }) {
   );
 }
 
+// ── Step Row ──────────────────────────────────────────────
+function StepRow({ step, idx, total, onChange, onRemove, onMove }) {
+  const isFold = step.step_type === 'fold';
+
+  return (
+    <div style={{ background: 'var(--surface2)', border: `1px solid ${isFold ? 'var(--accent2)' : 'var(--border)'}`, borderRadius: 6, padding: 10, marginBottom: 8 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-muted)', minWidth: 24 }}>{step.step_number}.</div>
+
+        {/* Step type toggle */}
+        <div style={{ display: 'flex', gap: 4 }}>
+          {['regular', 'fold'].map(t => (
+            <button
+              key={t}
+              onClick={() => onChange('step_type', t)}
+              style={{
+                padding: '3px 10px', fontSize: 11, fontWeight: 600, borderRadius: 4, cursor: 'pointer',
+                border: '1px solid var(--border)',
+                background: step.step_type === t ? 'var(--accent2)' : 'var(--surface)',
+                color: step.step_type === t ? '#fff' : 'var(--text-muted)',
+              }}
+            >
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 2 }}>
+          <button onClick={() => onMove(-1)} disabled={idx === 0} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px' }}>↑</button>
+          <button onClick={() => onMove(1)} disabled={idx === total - 1} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px' }}>↓</button>
+          <button onClick={onRemove} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red, #e55)', padding: '2px 4px' }}>✕</button>
+        </div>
+      </div>
+
+      {isFold ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Fold Type</label>
+            <select
+              value={step.fold_type || ''}
+              onChange={e => onChange('fold_type', e.target.value)}
+              style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13 }}
+            >
+              <option value="">— Select —</option>
+              {FOLD_TYPES.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Total Duration</label>
+            <input
+              value={step.step_time || ''}
+              onChange={e => onChange('step_time', e.target.value)}
+              placeholder="e.g. 3 hours"
+              style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13, boxSizing: 'border-box' }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Interval</label>
+            <input
+              value={step.fold_interval || ''}
+              onChange={e => onChange('fold_interval', e.target.value)}
+              placeholder="e.g. every 30 min"
+              style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13, boxSizing: 'border-box' }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Temp Range (°F)</label>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                type="number" step="0.1"
+                value={step.temp_min || ''}
+                onChange={e => onChange('temp_min', e.target.value)}
+                placeholder="Min"
+                style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13 }}
+              />
+              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>–</span>
+              <input
+                type="number" step="0.1"
+                value={step.temp_max || ''}
+                onChange={e => onChange('temp_max', e.target.value)}
+                placeholder="Max"
+                style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13 }}
+              />
+            </div>
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Notes (optional)</label>
+            <input
+              value={step.step_description || ''}
+              onChange={e => onChange('step_description', e.target.value)}
+              placeholder="Any additional fold notes..."
+              style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13, boxSizing: 'border-box' }}
+            />
+          </div>
+        </div>
+      ) : (
+        <div>
+          <textarea
+            value={step.step_description}
+            onChange={e => onChange('step_description', e.target.value)}
+            placeholder="Describe this step..."
+            style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 8px', color: 'var(--text)', fontSize: 13, resize: 'vertical', minHeight: 56, boxSizing: 'border-box' }}
+          />
+          <div style={{ display: 'flex', gap: 10, marginTop: 6, alignItems: 'center' }}>
+            <input
+              placeholder="Time (e.g. 30 min)"
+              value={step.step_time || ''}
+              onChange={e => onChange('step_time', e.target.value)}
+              style={{ width: 140, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 8px', color: 'var(--text)', fontSize: 12 }}
+            />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={!!step.requires_notification} onChange={e => onChange('requires_notification', e.target.checked)} style={{ width: 'auto' }} />
+              Notify
+            </label>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Recipe Form ───────────────────────────────────────────
 function RecipeForm({ initial, allIngredients: initialAllIngredients, onSave, onCancel }) {
-  const [form, setForm]           = useState({ ...EMPTY_FORM, ...initial });
+  const [form, setForm]               = useState({ ...EMPTY_FORM, ...initial });
   const [ingredients, setIngredients] = useState(initial?.ingredients || []);
-  const [steps, setSteps]         = useState(initial?.steps || []);
+  const [steps, setSteps]             = useState(initial?.steps || []);
   const [allIngredients, setAllIngredients] = useState(initialAllIngredients || []);
-  const [saving, setSaving]       = useState(false);
-  const [err, setErr]             = useState('');
-  const [quickAdd, setQuickAdd]   = useState(false); // index of ing row requesting quick add
-  const [tab, setTab]             = useState('details'); // 'details' | 'ingredients' | 'steps'
+  const [saving, setSaving]           = useState(false);
+  const [err, setErr]                 = useState('');
+  const [quickAdd, setQuickAdd]       = useState(false);
+  const [tab, setTab]                 = useState('details');
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  // Ingredients helpers
   function addIngredient() {
     setIngredients(ings => [...ings, { ...EMPTY_ING, sort_order: ings.length }]);
   }
@@ -115,8 +244,7 @@ function RecipeForm({ initial, allIngredients: initialAllIngredients, onSave, on
       const updated = { ...ing, [k]: v };
       if (k === 'ingredient_id') {
         const found = allIngredients.find(a => a.id === v);
-        if (found) updated.ingredient = found.item_name;
-        updated.cost_per_gram = found?.cost_per_gram || null;
+        if (found) { updated.ingredient = found.item_name; updated.cost_per_gram = found.cost_per_gram || null; }
       }
       return updated;
     }));
@@ -126,15 +254,13 @@ function RecipeForm({ initial, allIngredients: initialAllIngredients, onSave, on
   }
   function moveIng(idx, dir) {
     setIngredients(ings => {
-      const next = [...ings];
-      const swap = idx + dir;
+      const next = [...ings]; const swap = idx + dir;
       if (swap < 0 || swap >= next.length) return ings;
       [next[idx], next[swap]] = [next[swap], next[idx]];
       return next.map((ing, i) => ({ ...ing, sort_order: i }));
     });
   }
 
-  // Steps helpers
   function addStep() {
     setSteps(ss => [...ss, { ...EMPTY_STEP, step_number: ss.length + 1 }]);
   }
@@ -146,8 +272,7 @@ function RecipeForm({ initial, allIngredients: initialAllIngredients, onSave, on
   }
   function moveStep(idx, dir) {
     setSteps(ss => {
-      const next = [...ss];
-      const swap = idx + dir;
+      const next = [...ss]; const swap = idx + dir;
       if (swap < 0 || swap >= next.length) return ss;
       [next[idx], next[swap]] = [next[swap], next[idx]];
       return next.map((s, i) => ({ ...s, step_number: i + 1 }));
@@ -174,7 +299,7 @@ function RecipeForm({ initial, allIngredients: initialAllIngredients, onSave, on
     setQuickAdd(false);
   }
 
-  const { total: costTotal } = calcCost(ingredients);
+  const costTotal = calcCost(ingredients);
 
   const tabStyle = (t) => ({
     padding: '7px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none',
@@ -184,226 +309,189 @@ function RecipeForm({ initial, allIngredients: initialAllIngredients, onSave, on
 
   return (
     <>
-    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onCancel()}>
-      <div className="modal" style={{ maxWidth: 740, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div className="modal-title">{initial?.id ? 'Edit Recipe' : 'New Recipe'}</div>
+      <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onCancel()}>
+        <div className="modal" style={{ maxWidth: 740, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div className="modal-title">{initial?.id ? 'Edit Recipe' : 'New Recipe'}</div>
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 20, gap: 4 }}>
-          <button style={tabStyle('details')} onClick={() => setTab('details')}>Details</button>
-          <button style={tabStyle('ingredients')} onClick={() => setTab('ingredients')}>
-            Ingredients {ingredients.length > 0 && `(${ingredients.length})`}
-          </button>
-          <button style={tabStyle('steps')} onClick={() => setTab('steps')}>
-            Steps {steps.length > 0 && `(${steps.length})`}
-          </button>
-        </div>
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 20, gap: 4 }}>
+            <button style={tabStyle('details')} onClick={() => setTab('details')}>Details</button>
+            <button style={tabStyle('ingredients')} onClick={() => setTab('ingredients')}>
+              Ingredients {ingredients.length > 0 && `(${ingredients.length})`}
+            </button>
+            <button style={tabStyle('steps')} onClick={() => setTab('steps')}>
+              Steps {steps.length > 0 && `(${steps.length})`}
+            </button>
+          </div>
 
-        <div style={{ overflowY: 'auto', flex: 1, paddingRight: 4 }}>
+          <div style={{ overflowY: 'auto', flex: 1, paddingRight: 4 }}>
 
-          {/* ── Details Tab ── */}
-          {tab === 'details' && (
-            <div className="form-grid">
-              <div className="field full">
-                <label>Recipe Name</label>
-                <input value={form.recipe_name} onChange={e => set('recipe_name', e.target.value)} placeholder="e.g. Sourdough Boule" />
-              </div>
-              <div className="field">
-                <label>Type</label>
-                <input value={form.recipe_type || ''} onChange={e => set('recipe_type', e.target.value)} placeholder="e.g. Bread, Pastry, Cookie" />
-              </div>
-              <div className="field">
-                <label>Serving Size</label>
-                <input type="number" value={form.serving_size || ''} onChange={e => set('serving_size', e.target.value)} placeholder="e.g. 12" />
-              </div>
-              <div className="field">
-                <label>Prep Time</label>
-                <input value={form.prep_time || ''} onChange={e => set('prep_time', e.target.value)} placeholder="e.g. 30 min" />
-              </div>
-              <div className="field">
-                <label>Cook Time</label>
-                <input value={form.cook_time || ''} onChange={e => set('cook_time', e.target.value)} placeholder="e.g. 45 min" />
-              </div>
-              <div className="field">
-                <label>Folds Required</label>
-                <input type="number" value={form.folds_required ?? 0} onChange={e => set('folds_required', e.target.value)} />
-              </div>
-              <div className="field full">
-                <label>Description</label>
-                <textarea value={form.description || ''} onChange={e => set('description', e.target.value)} placeholder="Brief description..." />
-              </div>
-              <div className="field full">
-                <label>Notes</label>
-                <textarea value={form.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="Internal notes..." />
-              </div>
-              <div className="field">
-                <label>Ingredient Label</label>
-                <input value={form.ingredient_label || ''} onChange={e => set('ingredient_label', e.target.value)} placeholder="For packaging..." />
-              </div>
-              <div className="field">
-                <label>Contains Label</label>
-                <input value={form.contains_label || ''} onChange={e => set('contains_label', e.target.value)} placeholder="e.g. Wheat, Eggs, Dairy" />
-              </div>
-              <div className="field">
-                <label>Image URL</label>
-                <input value={form.image_url || ''} onChange={e => set('image_url', e.target.value)} placeholder="https://..." />
-              </div>
-              <div className="field">
-                <label>Square ID</label>
-                <input value={form.square_id || ''} onChange={e => set('square_id', e.target.value)} />
-              </div>
-              <div className="field full" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <input type="checkbox" id="is_active" checked={!!form.is_active} onChange={e => set('is_active', e.target.checked)} style={{ width: 'auto' }} />
-                <label htmlFor="is_active" style={{ textTransform: 'none', fontSize: 13, color: 'var(--text)' }}>Active</label>
-              </div>
-            </div>
-          )}
-
-          {/* ── Ingredients Tab ── */}
-          {tab === 'ingredients' && (
-            <div>
-              {ingredients.length === 0 ? (
-                <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>No ingredients yet.</div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, padding: '4px 8px 8px 0', textTransform: 'uppercase' }}>Ingredient</th>
-                      <th style={{ textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, padding: '4px 8px 8px 0', textTransform: 'uppercase' }}>Amount</th>
-                      <th style={{ textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, padding: '4px 8px 8px 0', textTransform: 'uppercase' }}>Unit</th>
-                      <th style={{ textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, padding: '4px 8px 8px 0', textTransform: 'uppercase' }}>Cost</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ingredients.map((ing, idx) => {
-                      const ingCost = ing.cost_per_gram && ing.amount && ing.measurement === 'g'
-                        ? parseFloat(ing.cost_per_gram) * parseFloat(ing.amount)
-                        : null;
-                      return (
-                        <tr key={idx}>
-                          <td style={{ padding: '4px 8px 4px 0', minWidth: 180 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <select
-                                value={ing.ingredient_id || ''}
-                                onChange={e => setIng(idx, 'ingredient_id', e.target.value)}
-                                style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13 }}
-                              >
-                                <option value="">— Select —</option>
-                                {allIngredients.map(a => <option key={a.id} value={a.id}>{a.item_name}</option>)}
-                              </select>
-                              <button
-                                title="Quick add ingredient"
-                                onClick={() => setQuickAdd(idx)}
-                                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 7px', cursor: 'pointer', color: 'var(--accent2)', fontSize: 13, lineHeight: 1 }}
-                              >+</button>
-                            </div>
-                          </td>
-                          <td style={{ padding: '4px 8px 4px 0', width: 80 }}>
-                            <input
-                              type="number" step="0.0001"
-                              value={ing.amount || ''}
-                              onChange={e => setIng(idx, 'amount', e.target.value)}
-                              style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13 }}
-                            />
-                          </td>
-                          <td style={{ padding: '4px 8px 4px 0', width: 90 }}>
-                            <select
-                              value={ing.measurement || ''}
-                              onChange={e => setIng(idx, 'measurement', e.target.value)}
-                              style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13 }}
-                            >
-                              <option value="">—</option>
-                              {MEASUREMENTS.map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
-                          </td>
-                          <td style={{ padding: '4px 8px 4px 0', width: 80, fontSize: 12, color: ingCost ? 'var(--text)' : 'var(--text-muted)', fontFamily: 'monospace' }}>
-                            {ingCost ? `$${ingCost.toFixed(4)}` : '—'}
-                          </td>
-                          <td style={{ padding: '4px 0', whiteSpace: 'nowrap' }}>
-                            <button onClick={() => moveIng(idx, -1)} disabled={idx === 0} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px' }}>↑</button>
-                            <button onClick={() => moveIng(idx, 1)} disabled={idx === ingredients.length - 1} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px' }}>↓</button>
-                            <button onClick={() => removeIng(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red, #e55)', padding: '2px 4px' }}>✕</button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <button className="btn btn-secondary btn-sm" onClick={addIngredient}>+ Add Ingredient</button>
-                {ingredients.length > 0 && (
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                    Ingredient cost: <strong style={{ color: 'var(--text)' }}>${costTotal.toFixed(4)}</strong>
-                    <span style={{ fontSize: 11, marginLeft: 6 }}>(grams only)</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── Steps Tab ── */}
-          {tab === 'steps' && (
-            <div>
-              {steps.length === 0 ? (
-                <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>No steps yet.</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
-                  {steps.map((step, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: 10 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-muted)', minWidth: 24, paddingTop: 6 }}>{step.step_number}.</div>
-                      <div style={{ flex: 1 }}>
-                        <textarea
-                          value={step.step_description}
-                          onChange={e => setStep(idx, 'step_description', e.target.value)}
-                          placeholder="Describe this step..."
-                          style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 8px', color: 'var(--text)', fontSize: 13, resize: 'vertical', minHeight: 60, boxSizing: 'border-box' }}
-                        />
-                        <div style={{ display: 'flex', gap: 10, marginTop: 6, alignItems: 'center' }}>
-                          <input
-                            placeholder="Time (e.g. 30 min)"
-                            value={step.step_time || ''}
-                            onChange={e => setStep(idx, 'step_time', e.target.value)}
-                            style={{ width: 130, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 8px', color: 'var(--text)', fontSize: 12 }}
-                          />
-                          <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}>
-                            <input type="checkbox" checked={!!step.requires_notification} onChange={e => setStep(idx, 'requires_notification', e.target.checked)} style={{ width: 'auto' }} />
-                            Notify
-                          </label>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <button onClick={() => moveStep(idx, -1)} disabled={idx === 0} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px' }}>↑</button>
-                        <button onClick={() => moveStep(idx, 1)} disabled={idx === steps.length - 1} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px' }}>↓</button>
-                        <button onClick={() => removeStep(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red, #e55)', padding: '2px 4px' }}>✕</button>
-                      </div>
-                    </div>
-                  ))}
+            {tab === 'details' && (
+              <div className="form-grid">
+                <div className="field full">
+                  <label>Recipe Name</label>
+                  <input value={form.recipe_name} onChange={e => set('recipe_name', e.target.value)} placeholder="e.g. Sourdough Boule" />
                 </div>
-              )}
-              <button className="btn btn-secondary btn-sm" onClick={addStep}>+ Add Step</button>
-            </div>
-          )}
-        </div>
+                <div className="field">
+                  <label>Type</label>
+                  <input value={form.recipe_type || ''} onChange={e => set('recipe_type', e.target.value)} placeholder="e.g. Bread, Pastry, Cookie" />
+                </div>
+                <div className="field">
+                  <label>Serving Size</label>
+                  <input type="number" value={form.serving_size || ''} onChange={e => set('serving_size', e.target.value)} placeholder="e.g. 12" />
+                </div>
+                <div className="field">
+                  <label>Prep Time</label>
+                  <input value={form.prep_time || ''} onChange={e => set('prep_time', e.target.value)} placeholder="e.g. 30 min" />
+                </div>
+                <div className="field">
+                  <label>Cook Time</label>
+                  <input value={form.cook_time || ''} onChange={e => set('cook_time', e.target.value)} placeholder="e.g. 45 min" />
+                </div>
+                <div className="field full">
+                  <label>Description</label>
+                  <textarea value={form.description || ''} onChange={e => set('description', e.target.value)} placeholder="Brief description..." />
+                </div>
+                <div className="field full">
+                  <label>Notes</label>
+                  <textarea value={form.notes || ''} onChange={e => set('notes', e.target.value)} placeholder="Internal notes..." />
+                </div>
+                <div className="field">
+                  <label>Ingredient Label</label>
+                  <input value={form.ingredient_label || ''} onChange={e => set('ingredient_label', e.target.value)} placeholder="For packaging..." />
+                </div>
+                <div className="field">
+                  <label>Contains Label</label>
+                  <input value={form.contains_label || ''} onChange={e => set('contains_label', e.target.value)} placeholder="e.g. Wheat, Eggs, Dairy" />
+                </div>
+                <div className="field">
+                  <label>Image URL</label>
+                  <input value={form.image_url || ''} onChange={e => set('image_url', e.target.value)} placeholder="https://..." />
+                </div>
+                <div className="field">
+                  <label>Square ID</label>
+                  <input value={form.square_id || ''} onChange={e => set('square_id', e.target.value)} />
+                </div>
+              </div>
+            )}
 
-        {err && <div className="error-msg" style={{ marginTop: 12 }}>{err}</div>}
+            {tab === 'ingredients' && (
+              <div>
+                {ingredients.length === 0 ? (
+                  <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>No ingredients yet.</div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
+                    <thead>
+                      <tr>
+                        {['Ingredient', 'Amount', 'Unit', 'Cost', ''].map(h => (
+                          <th key={h} style={{ textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, padding: '4px 8px 8px 0', textTransform: 'uppercase' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ingredients.map((ing, idx) => {
+                        const ingCost = ing.cost_per_gram && ing.amount && ing.measurement === 'g'
+                          ? parseFloat(ing.cost_per_gram) * parseFloat(ing.amount) : null;
+                        return (
+                          <tr key={idx}>
+                            <td style={{ padding: '4px 8px 4px 0', minWidth: 180 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <select
+                                  value={ing.ingredient_id || ''}
+                                  onChange={e => setIng(idx, 'ingredient_id', e.target.value)}
+                                  style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13 }}
+                                >
+                                  <option value="">— Select —</option>
+                                  {allIngredients.map(a => <option key={a.id} value={a.id}>{a.item_name}</option>)}
+                                </select>
+                                <button
+                                  title="Quick add ingredient"
+                                  onClick={() => setQuickAdd(idx)}
+                                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 7px', cursor: 'pointer', color: 'var(--accent2)', fontSize: 13, lineHeight: 1 }}
+                                >+</button>
+                              </div>
+                            </td>
+                            <td style={{ padding: '4px 8px 4px 0', width: 80 }}>
+                              <input
+                                type="number" step="0.0001"
+                                value={ing.amount || ''}
+                                onChange={e => setIng(idx, 'amount', e.target.value)}
+                                style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13 }}
+                              />
+                            </td>
+                            <td style={{ padding: '4px 8px 4px 0', width: 90 }}>
+                              <select
+                                value={ing.measurement || ''}
+                                onChange={e => setIng(idx, 'measurement', e.target.value)}
+                                style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13 }}
+                              >
+                                <option value="">—</option>
+                                {MEASUREMENTS.map(m => <option key={m} value={m}>{m}</option>)}
+                              </select>
+                            </td>
+                            <td style={{ padding: '4px 8px 4px 0', width: 80, fontSize: 12, color: ingCost ? 'var(--text)' : 'var(--text-muted)', fontFamily: 'monospace' }}>
+                              {ingCost ? `$${ingCost.toFixed(4)}` : '—'}
+                            </td>
+                            <td style={{ padding: '4px 0', whiteSpace: 'nowrap' }}>
+                              <button onClick={() => moveIng(idx, -1)} disabled={idx === 0} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px' }}>↑</button>
+                              <button onClick={() => moveIng(idx, 1)} disabled={idx === ingredients.length - 1} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px' }}>↓</button>
+                              <button onClick={() => removeIng(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red, #e55)', padding: '2px 4px' }}>✕</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <button className="btn btn-secondary btn-sm" onClick={addIngredient}>+ Add Ingredient</button>
+                  {costTotal > 0 && (
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                      Ingredient cost: <strong style={{ color: 'var(--text)' }}>${costTotal.toFixed(4)}</strong>
+                      <span style={{ fontSize: 11, marginLeft: 6 }}>(grams only)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
-        <div className="modal-actions" style={{ marginTop: 20 }}>
-          <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
-            {saving ? 'Saving…' : 'Save Recipe'}
-          </button>
+            {tab === 'steps' && (
+              <div>
+                {steps.length === 0 && (
+                  <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>No steps yet.</div>
+                )}
+                {steps.map((step, idx) => (
+                  <StepRow
+                    key={idx}
+                    step={step}
+                    idx={idx}
+                    total={steps.length}
+                    onChange={(k, v) => setStep(idx, k, v)}
+                    onRemove={() => removeStep(idx)}
+                    onMove={(dir) => moveStep(idx, dir)}
+                  />
+                ))}
+                <button className="btn btn-secondary btn-sm" onClick={addStep}>+ Add Step</button>
+              </div>
+            )}
+          </div>
+
+          {err && <div className="error-msg" style={{ marginTop: 12 }}>{err}</div>}
+
+          <div className="modal-actions" style={{ marginTop: 20 }}>
+            <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
+              {saving ? 'Saving…' : 'Save Recipe'}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
-    {quickAdd !== false && (
-      <QuickAddIngredient
-        onSave={(newIng) => handleQuickAdded(newIng, quickAdd)}
-        onCancel={() => setQuickAdd(false)}
-      />
-    )}
+      {quickAdd !== false && (
+        <QuickAddIngredient
+          onSave={(newIng) => handleQuickAdded(newIng, quickAdd)}
+          onCancel={() => setQuickAdd(false)}
+        />
+      )}
     </>
   );
 }
@@ -425,9 +513,20 @@ function RecipeDetail({ recipe: initialRecipe, onEdit, onClose }) {
     const ings = (recipe.ingredients || []).map(i =>
       `<tr><td>${i.ingredient}</td><td>${i.amount || ''} ${i.measurement || ''}</td></tr>`
     ).join('');
-    const steps = (recipe.steps || []).map(s =>
-      `<li style="margin-bottom:8px">${s.step_description}${s.step_time ? ` <em>(${s.step_time})</em>` : ''}</li>`
-    ).join('');
+    const steps = (recipe.steps || []).map(s => {
+      if (s.step_type === 'fold') {
+        const details = [
+          s.fold_type,
+          s.step_time ? `Duration: ${s.step_time}` : null,
+          s.fold_interval ? `Interval: ${s.fold_interval}` : null,
+          (s.temp_min || s.temp_max) ? `Temp: ${s.temp_min || '?'}°–${s.temp_max || '?'}°F` : null,
+          s.step_description || null,
+        ].filter(Boolean).join(' · ');
+        return `<li style="margin-bottom:8px"><strong>Fold: ${details}</strong></li>`;
+      }
+      return `<li style="margin-bottom:8px">${s.step_description}${s.step_time ? ` <em>(${s.step_time})</em>` : ''}</li>`;
+    }).join('');
+
     w.document.write(`
       <html><head><title>${recipe.recipe_name}</title>
       <style>body{font-family:sans-serif;max-width:680px;margin:40px auto;color:#111}
@@ -456,7 +555,7 @@ function RecipeDetail({ recipe: initialRecipe, onEdit, onClose }) {
     w.print();
   }
 
-  const { total: costTotal } = calcCost(recipe.ingredients || []);
+  const costTotal = calcCost(recipe.ingredients || []);
 
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -465,19 +564,15 @@ function RecipeDetail({ recipe: initialRecipe, onEdit, onClose }) {
           <div className="loading">Loading…</div>
         ) : (
           <>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div>
-                <div style={{ fontSize: 20, fontWeight: 700 }}>{recipe.recipe_name}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
-                  {[recipe.recipe_type, recipe.serving_size ? `Serves ${recipe.serving_size}` : null,
-                    recipe.prep_time ? `Prep ${recipe.prep_time}` : null,
-                    recipe.cook_time ? `Cook ${recipe.cook_time}` : null]
-                    .filter(Boolean).join(' · ')}
-                </div>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{recipe.recipe_name}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
+                {[recipe.recipe_type,
+                  recipe.serving_size ? `Serves ${recipe.serving_size}` : null,
+                  recipe.prep_time ? `Prep ${recipe.prep_time}` : null,
+                  recipe.cook_time ? `Cook ${recipe.cook_time}` : null,
+                ].filter(Boolean).join(' · ')}
               </div>
-              <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, background: recipe.is_active ? 'var(--green-bg, #1a3a1a)' : 'var(--surface2)', color: recipe.is_active ? 'var(--green, #4caf50)' : 'var(--text-muted)', fontWeight: 600 }}>
-                {recipe.is_active ? 'Active' : 'Inactive'}
-              </span>
             </div>
 
             <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -493,19 +588,19 @@ function RecipeDetail({ recipe: initialRecipe, onEdit, onClose }) {
                   </div>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <tbody>
-                      {recipe.ingredients.map(i => (
-                        <tr key={i.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '6px 8px 6px 0', fontSize: 13 }}>{i.ingredient}</td>
-                          <td style={{ padding: '6px 0', fontSize: 13, color: 'var(--text-muted)', textAlign: 'right' }}>
-                            {i.amount ? `${i.amount} ${i.measurement || ''}`.trim() : '—'}
-                          </td>
-                          {i.cost_per_gram && i.amount && i.measurement === 'g' && (
-                            <td style={{ padding: '6px 0 6px 12px', fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace', textAlign: 'right' }}>
-                              ${(parseFloat(i.cost_per_gram) * parseFloat(i.amount)).toFixed(4)}
+                      {recipe.ingredients.map(i => {
+                        const c = i.cost_per_gram && i.amount && i.measurement === 'g'
+                          ? parseFloat(i.cost_per_gram) * parseFloat(i.amount) : null;
+                        return (
+                          <tr key={i.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '6px 8px 6px 0', fontSize: 13 }}>{i.ingredient}</td>
+                            <td style={{ padding: '6px 0', fontSize: 13, color: 'var(--text-muted)', textAlign: 'right' }}>
+                              {i.amount ? `${i.amount} ${i.measurement || ''}`.trim() : '—'}
                             </td>
-                          )}
-                        </tr>
-                      ))}
+                            {c && <td style={{ padding: '6px 0 6px 12px', fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace', textAlign: 'right' }}>${c.toFixed(4)}</td>}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -517,9 +612,21 @@ function RecipeDetail({ recipe: initialRecipe, onEdit, onClose }) {
                   <ol style={{ paddingLeft: 20, margin: 0 }}>
                     {recipe.steps.map(s => (
                       <li key={s.id} style={{ fontSize: 13, marginBottom: 10, lineHeight: 1.6 }}>
-                        {s.step_description}
-                        {s.step_time && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> — {s.step_time}</span>}
-                        {s.requires_notification && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--accent2)' }}>⏰</span>}
+                        {s.step_type === 'fold' ? (
+                          <span>
+                            <strong style={{ color: 'var(--accent2)' }}>Fold — {s.fold_type}</strong>
+                            {s.step_time && <span style={{ color: 'var(--text-muted)' }}> · {s.step_time}</span>}
+                            {s.fold_interval && <span style={{ color: 'var(--text-muted)' }}> · {s.fold_interval}</span>}
+                            {(s.temp_min || s.temp_max) && <span style={{ color: 'var(--text-muted)' }}> · {s.temp_min}°–{s.temp_max}°F</span>}
+                            {s.step_description && <span style={{ color: 'var(--text-muted)' }}> · {s.step_description}</span>}
+                          </span>
+                        ) : (
+                          <span>
+                            {s.step_description}
+                            {s.step_time && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> — {s.step_time}</span>}
+                            {s.requires_notification && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--accent2)' }}>⏰</span>}
+                          </span>
+                        )}
                       </li>
                     ))}
                   </ol>
@@ -531,13 +638,13 @@ function RecipeDetail({ recipe: initialRecipe, onEdit, onClose }) {
                   {recipe.ingredient_label && (
                     <div style={{ marginBottom: 8 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>Ingredient Label</div>
-                      <div style={{ fontSize: 12, color: 'var(--text)' }}>{recipe.ingredient_label}</div>
+                      <div style={{ fontSize: 12 }}>{recipe.ingredient_label}</div>
                     </div>
                   )}
                   {recipe.contains_label && (
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>Contains</div>
-                      <div style={{ fontSize: 12, color: 'var(--text)' }}>{recipe.contains_label}</div>
+                      <div style={{ fontSize: 12 }}>{recipe.contains_label}</div>
                     </div>
                   )}
                 </div>
@@ -546,7 +653,7 @@ function RecipeDetail({ recipe: initialRecipe, onEdit, onClose }) {
               {recipe.notes && (
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>Notes</div>
-                  <div style={{ fontSize: 13, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{recipe.notes}</div>
+                  <div style={{ fontSize: 13, whiteSpace: 'pre-wrap' }}>{recipe.notes}</div>
                 </div>
               )}
             </div>
@@ -589,12 +696,12 @@ function DeleteConfirm({ recipe, onConfirm, onCancel }) {
 
 // ── Recipes Page ──────────────────────────────────────────
 export function RecipesPage() {
-  const [recipes, setRecipes]         = useState([]);
+  const [recipes, setRecipes]               = useState([]);
   const [allIngredients, setAllIngredients] = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [search, setSearch]           = useState('');
-  const [typeFilter, setTypeFilter]   = useState('');
-  const [modal, setModal]             = useState(null);
+  const [loading, setLoading]               = useState(true);
+  const [search, setSearch]                 = useState('');
+  const [typeFilter, setTypeFilter]         = useState('');
+  const [modal, setModal]                   = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -701,7 +808,6 @@ export function RecipesPage() {
                   <th>Serves</th>
                   <th>Prep</th>
                   <th>Cook</th>
-                  <th>Status</th>
                   <th></th>
                 </tr>
               </thead>
@@ -720,11 +826,6 @@ export function RecipesPage() {
                     <td style={{ color: 'var(--text-muted)' }}>{r.serving_size || '—'}</td>
                     <td style={{ color: 'var(--text-muted)' }}>{r.prep_time || '—'}</td>
                     <td style={{ color: 'var(--text-muted)' }}>{r.cook_time || '—'}</td>
-                    <td>
-                      <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: r.is_active ? 'var(--green-bg, #1a3a1a)' : 'var(--surface2)', color: r.is_active ? 'var(--green, #4caf50)' : 'var(--text-muted)', fontWeight: 600 }}>
-                        {r.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
                     <td>
                       <div className="actions">
                         <button className="btn btn-secondary btn-sm" onClick={() => setModal({ mode: 'edit', recipe: r })}>Edit</button>
