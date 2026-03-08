@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
+import { ImportModal } from './ImportModal.jsx';
 
 const EMPTY_FORM = {
   item_name: '',
@@ -7,6 +8,14 @@ const EMPTY_FORM = {
   grams: '',
   current_price: '',
 };
+
+// Import field definitions for Ingredients
+const IMPORT_FIELDS = [
+  { key: 'item_name',     label: 'Item Name',          required: true  },
+  { key: 'purchase_from', label: 'Purchase From',       required: false },
+  { key: 'grams',         label: 'Package Size (grams)', required: false },
+  { key: 'current_price', label: 'Current Price ($)',   required: false },
+];
 
 function fmt4(n) {
   if (n === null || n === undefined || n === '') return '—';
@@ -137,22 +146,18 @@ function IngredientForm({ initial, onSave, onCancel }) {
             <label>Item Name</label>
             <input value={form.item_name} onChange={e => set('item_name', e.target.value)} placeholder="e.g. Bread Flour" />
           </div>
-
           <div className="field full">
             <label>Purchase From</label>
             <input value={form.purchase_from || ''} onChange={e => set('purchase_from', e.target.value)} placeholder="e.g. Restaurant Depot, Amazon" />
           </div>
-
           <div className="field">
             <label>Package Size (grams)</label>
             <input type="number" step="0.0001" value={form.grams || ''} onChange={e => set('grams', e.target.value)} placeholder="e.g. 2267" />
           </div>
-
           <div className="field">
             <label>Current Price ($)</label>
             <input type="number" step="0.01" value={form.current_price || ''} onChange={e => set('current_price', e.target.value)} placeholder="0.00" />
           </div>
-
           {costPerGram && (
             <div className="field full">
               <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '9px 12px', fontSize: 13, color: 'var(--text-muted)' }}>
@@ -244,13 +249,23 @@ export function IngredientsPage() {
   function handleDuplicate(ingredient) {
     setModal({
       mode: 'new',
-      ingredient: {
-        ...ingredient,
-        id: undefined,
-        item_name: `Copy of ${ingredient.item_name}`,
-      },
+      ingredient: { ...ingredient, id: undefined, item_name: `Copy of ${ingredient.item_name}` },
     });
   }
+
+  async function handleImport(rows) {
+    for (const row of rows) {
+      await api.post('/ingredients', {
+        item_name:     row.item_name,
+        purchase_from: row.purchase_from || null,
+        grams:         row.grams         ? parseFloat(row.grams)         : null,
+        current_price: row.current_price ? parseFloat(row.current_price) : null,
+      });
+    }
+    load();
+  }
+
+  const existingNames = new Set(ingredients.map(i => i.item_name.toLowerCase()));
 
   return (
     <div>
@@ -259,9 +274,14 @@ export function IngredientsPage() {
           <div className="page-title">🧂 Ingredients</div>
           <div className="page-subtitle">{ingredients.length} ingredient{ingredients.length !== 1 ? 's' : ''}</div>
         </div>
-        <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>
-          + New Ingredient
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={() => setModal({ mode: 'import' })}>
+            ↑ Import CSV
+          </button>
+          <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>
+            + New Ingredient
+          </button>
+        </div>
       </div>
 
       <div className="search-bar">
@@ -345,6 +365,16 @@ export function IngredientsPage() {
           ingredient={modal.ingredient}
           onConfirm={handleDelete}
           onCancel={() => setModal(null)}
+        />
+      )}
+      {modal?.mode === 'import' && (
+        <ImportModal
+          title="Import Ingredients"
+          fields={IMPORT_FIELDS}
+          nameKey="item_name"
+          existingNames={existingNames}
+          onImport={handleImport}
+          onClose={() => { setModal(null); load(); }}
         />
       )}
     </div>
