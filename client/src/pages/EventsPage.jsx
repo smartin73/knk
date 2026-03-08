@@ -31,17 +31,105 @@ const EMPTY_FORM = {
 
 function fmt(dateStr) {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  const [y, m, d] = String(dateStr).slice(0, 10).split('-');
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   });
 }
 
+function fmtTime(t) {
+  if (!t) return null;
+  const [h, m] = t.split(':');
+  const hour = parseInt(h);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  return `${hour % 12 || 12}:${m} ${ampm}`;
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 13, color: value ? 'var(--text)' : 'var(--text-muted)' }}>{value || '—'}</div>
+    </div>
+  );
+}
+
+// ── Detail Modal ──────────────────────────────────────────
+function EventDetail({ event, onEdit, onClose }) {
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 620 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{event.event_name}</div>
+            {event.category && <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 2 }}>{event.category}</div>}
+          </div>
+          <span className={`badge ${STATUS_BADGES[event.status] || 'badge-gray'}`} style={{ marginTop: 4 }}>
+            {event.status}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 24px', marginBottom: 20 }}>
+          <DetailRow label="Date" value={fmt(event.event_date)} />
+          <DetailRow label="Time" value={
+            event.start_time
+              ? `${fmtTime(event.start_time)}${event.end_time ? ` – ${fmtTime(event.end_time)}` : ''}`
+              : null
+          } />
+          <DetailRow label="Location" value={event.location} />
+          <DetailRow label="Vendor" value={event.vendor_name} />
+          <DetailRow label="Price" value={event.price ? `$${parseFloat(event.price).toFixed(2)}` : null} />
+          <DetailRow label="Tags" value={event.tags} />
+          <DetailRow label="Posted to Web" value={event.posted_to_web ? 'Yes' : 'No'} />
+          {event.ticket_url && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>Ticket URL</div>
+              <a href={event.ticket_url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent2)', fontSize: 13 }}>Link</a>
+            </div>
+          )}
+        </div>
+
+        {event.description && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>Description</div>
+            <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{event.description}</div>
+          </div>
+        )}
+
+        {event.map_embed && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>Map</div>
+            <div dangerouslySetInnerHTML={{ __html: event.map_embed }} style={{ borderRadius: 6, overflow: 'hidden' }} />
+          </div>
+        )}
+
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onClose}>Close</button>
+          <button className="btn btn-primary" onClick={onEdit}>Edit</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Event Form ────────────────────────────────────────────
 function EventForm({ initial, vendors, onSave, onCancel }) {
   const [form, setForm] = useState({ ...EMPTY_FORM, ...initial });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  function handleVendorChange(vendorId) {
+    set('vendor_id', vendorId);
+    if (vendorId) {
+      const vendor = vendors.find(v => v.id === vendorId);
+      if (vendor && !form.location) {
+        const parts = [vendor.address, vendor.city, vendor.state, vendor.zip].filter(Boolean);
+        if (parts.length) set('location', parts.join(', '));
+      }
+    }
+  }
 
   async function handleSubmit() {
     if (!form.event_name.trim()) return setErr('Event name is required.');
@@ -69,7 +157,7 @@ function EventForm({ initial, vendors, onSave, onCancel }) {
 
           <div className="field">
             <label>Date</label>
-            <input type="date" value={form.event_date} onChange={e => set('event_date', e.target.value)} />
+            <input type="date" value={form.event_date ? String(form.event_date).slice(0, 10) : ''} onChange={e => set('event_date', e.target.value)} />
           </div>
 
           <div className="field">
@@ -89,14 +177,9 @@ function EventForm({ initial, vendors, onSave, onCancel }) {
             <input type="time" value={form.end_time || ''} onChange={e => set('end_time', e.target.value)} />
           </div>
 
-          <div className="field full">
-            <label>Location</label>
-            <input value={form.location || ''} onChange={e => set('location', e.target.value)} placeholder="Venue name or address" />
-          </div>
-
           <div className="field">
             <label>Vendor</label>
-            <select value={form.vendor_id || ''} onChange={e => set('vendor_id', e.target.value)}>
+            <select value={form.vendor_id || ''} onChange={e => handleVendorChange(e.target.value)}>
               <option value="">— No vendor —</option>
               {vendors.map(v => <option key={v.id} value={v.id}>{v.vendor_name}</option>)}
             </select>
@@ -105,6 +188,11 @@ function EventForm({ initial, vendors, onSave, onCancel }) {
           <div className="field">
             <label>Category</label>
             <input value={form.category || ''} onChange={e => set('category', e.target.value)} placeholder="e.g. Workshop, Pop-up" />
+          </div>
+
+          <div className="field full">
+            <label>Location</label>
+            <input value={form.location || ''} onChange={e => set('location', e.target.value)} placeholder="Venue name or address (auto-fills from vendor)" />
           </div>
 
           <div className="field">
@@ -169,6 +257,7 @@ function EventForm({ initial, vendors, onSave, onCancel }) {
   );
 }
 
+// ── Delete Confirm ────────────────────────────────────────
 function DeleteConfirm({ event, onConfirm, onCancel }) {
   const [deleting, setDeleting] = useState(false);
   return (
@@ -192,13 +281,14 @@ function DeleteConfirm({ event, onConfirm, onCancel }) {
   );
 }
 
+// ── Events Page ───────────────────────────────────────────
 export function EventsPage() {
   const [events, setEvents]     = useState([]);
   const [vendors, setVendors]   = useState([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [modal, setModal]       = useState(null); // null | { mode: 'new'|'edit'|'delete', event? }
+  const [modal, setModal]       = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -273,7 +363,6 @@ export function EventsPage() {
       {/* Search + filter */}
       <div className="search-bar">
         <input
-          className="field"
           style={{ flex: 1, maxWidth: 320, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 14 }}
           placeholder="Search events…"
           value={search}
@@ -316,7 +405,12 @@ export function EventsPage() {
                 {events.map(e => (
                   <tr key={e.id}>
                     <td>
-                      <div style={{ fontWeight: 600 }}>{e.event_name}</div>
+                      <div
+                        style={{ fontWeight: 600, cursor: 'pointer', color: 'var(--accent2)' }}
+                        onClick={() => setModal({ mode: 'detail', event: e })}
+                      >
+                        {e.event_name}
+                      </div>
                       {e.category && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{e.category}</div>}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>{fmt(e.event_date)}</td>
@@ -343,6 +437,13 @@ export function EventsPage() {
       </div>
 
       {/* Modals */}
+      {modal?.mode === 'detail' && (
+        <EventDetail
+          event={modal.event}
+          onEdit={() => setModal({ mode: 'edit', event: modal.event })}
+          onClose={() => setModal(null)}
+        />
+      )}
       {(modal?.mode === 'new' || modal?.mode === 'edit') && (
         <EventForm
           initial={modal.event}
