@@ -30,6 +30,17 @@ const SETTINGS_SCHEMA = [
       { key: 'wordpress_api_key',       label: 'API Key',         description: 'API key for the knk WordPress plugin.', is_encrypted: true },
     ],
   },
+
+{
+  category: 'Costing',
+  icon: '💰',
+  settings: [
+    { key: 'packaging_cost', label: 'Packaging Cost ($)', description: 'Default packaging cost per item (use your most expensive packaging).', is_encrypted: false },
+    { key: 'square_fee_rate', label: 'Square Fee Rate', description: 'Square processing rate (default 0.029 = 2.9%).', is_encrypted: false },
+    { key: 'square_fee_flat', label: 'Square Flat Fee ($)', description: 'Square flat fee per transaction (default 0.15).', is_encrypted: false },
+  ],
+},
+
 ];
 
 // ── Setting Row ───────────────────────────────────────────
