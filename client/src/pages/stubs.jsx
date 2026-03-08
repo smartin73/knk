@@ -19,7 +19,6 @@ function Stub({ title, icon }) {
 }
 
 export function RecipesPage()     { return <Stub title="Recipes"      icon="📖" />; }
-export function IngredientsPage() { return <Stub title="Ingredients"  icon="🧂" />; }
 export function ItemBuilderPage() { return <Stub title="Item Builder" icon="🧁" />; }
 export function EventsPage()      { return <Stub title="Events"       icon="📅" />; }
 export function EventMenusPage()  { return <Stub title="Event Menus"  icon="🗒" />; }
