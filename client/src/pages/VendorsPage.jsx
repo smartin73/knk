@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
+import { ImportModal } from './ImportModal.jsx';
 
 const EMPTY_FORM = {
   vendor_name: '',
@@ -11,6 +12,16 @@ const EMPTY_FORM = {
   logo_url: '',
   map_embed: '',
 };
+
+const IMPORT_FIELDS = [
+  { key: 'vendor_name',  label: 'Vendor Name', required: true  },
+  { key: 'address',      label: 'Address',      required: false },
+  { key: 'city',         label: 'City',         required: false },
+  { key: 'state',        label: 'State',        required: false },
+  { key: 'zip',          label: 'Zip',          required: false },
+  { key: 'website_url',  label: 'Website',      required: false },
+  { key: 'logo_url',     label: 'Logo URL',     required: false },
+];
 
 function VendorForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState({ ...EMPTY_FORM, ...initial });
@@ -41,37 +52,30 @@ function VendorForm({ initial, onSave, onCancel }) {
             <label>Vendor Name</label>
             <input value={form.vendor_name} onChange={e => set('vendor_name', e.target.value)} placeholder="e.g. Green City Market" />
           </div>
-
           <div className="field full">
             <label>Address</label>
             <input value={form.address || ''} onChange={e => set('address', e.target.value)} placeholder="Street address" />
           </div>
-
           <div className="field">
             <label>City</label>
             <input value={form.city || ''} onChange={e => set('city', e.target.value)} placeholder="Chicago" />
           </div>
-
           <div className="field">
             <label>State</label>
             <input value={form.state || ''} onChange={e => set('state', e.target.value)} placeholder="IL" />
           </div>
-
           <div className="field">
             <label>Zip</label>
             <input value={form.zip || ''} onChange={e => set('zip', e.target.value)} placeholder="60601" />
           </div>
-
           <div className="field">
             <label>Website</label>
             <input value={form.website_url || ''} onChange={e => set('website_url', e.target.value)} placeholder="https://..." />
           </div>
-
           <div className="field full">
             <label>Logo URL</label>
             <input value={form.logo_url || ''} onChange={e => set('logo_url', e.target.value)} placeholder="https://..." />
           </div>
-
           <div className="field full">
             <label>Map Embed</label>
             <textarea
@@ -154,6 +158,24 @@ export function VendorsPage() {
     load();
   }
 
+  async function handleImport(rows) {
+    for (const row of rows) {
+      await api.post('/vendors', {
+        vendor_name: row.vendor_name,
+        address:     row.address     || null,
+        city:        row.city        || null,
+        state:       row.state       || null,
+        zip:         row.zip         || null,
+        website_url: row.website_url || null,
+        logo_url:    row.logo_url    || null,
+        map_embed:   null,
+      });
+    }
+    load();
+  }
+
+  const existingNames = new Set(vendors.map(v => v.vendor_name.toLowerCase()));
+
   return (
     <div>
       <div className="page-header">
@@ -161,9 +183,14 @@ export function VendorsPage() {
           <div className="page-title">🏪 Vendors</div>
           <div className="page-subtitle">{vendors.length} vendor{vendors.length !== 1 ? 's' : ''}</div>
         </div>
-        <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>
-          + New Vendor
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={() => setModal({ mode: 'import' })}>
+            ↑ Import CSV
+          </button>
+          <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>
+            + New Vendor
+          </button>
+        </div>
       </div>
 
       <div className="card" style={{ padding: 0 }}>
@@ -195,8 +222,7 @@ export function VendorsPage() {
                     <td>
                       {v.website_url
                         ? <a href={v.website_url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent2)' }}>Link</a>
-                        : <span style={{ color: 'var(--text-muted)' }}>—</span>
-                      }
+                        : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>
                     <td>
                       <div className="actions">
@@ -224,6 +250,16 @@ export function VendorsPage() {
           vendor={modal.vendor}
           onConfirm={handleDelete}
           onCancel={() => setModal(null)}
+        />
+      )}
+      {modal?.mode === 'import' && (
+        <ImportModal
+          title="Import Vendors"
+          fields={IMPORT_FIELDS}
+          nameKey="vendor_name"
+          existingNames={existingNames}
+          onImport={handleImport}
+          onClose={() => { setModal(null); load(); }}
         />
       )}
     </div>

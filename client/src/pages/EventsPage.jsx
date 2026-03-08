@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
+import { ImportModal } from './ImportModal.jsx';
 
 const STATUS_BADGES = {
   draft:     'badge-gray',
@@ -28,6 +29,23 @@ const EMPTY_FORM = {
   status: 'draft',
   posted_to_web: false,
 };
+
+// Import fields — vendor_name is a virtual field resolved to vendor_id on import
+const IMPORT_FIELDS = [
+  { key: 'event_name',   label: 'Event Name',   required: true  },
+  { key: 'event_date',   label: 'Date',         required: true  },
+  { key: 'vendor_name',  label: 'Vendor Name',  required: false },
+  { key: 'status',       label: 'Status',       required: false },
+  { key: 'start_time',   label: 'Start Time',   required: false },
+  { key: 'end_time',     label: 'End Time',     required: false },
+  { key: 'location',     label: 'Location',     required: false },
+  { key: 'category',     label: 'Category',     required: false },
+  { key: 'tags',         label: 'Tags',         required: false },
+  { key: 'price',        label: 'Price',        required: false },
+  { key: 'description',  label: 'Description',  required: false },
+  { key: 'ticket_url',   label: 'Ticket URL',   required: false },
+  { key: 'image_url',    label: 'Image URL',    required: false },
+];
 
 function fmt(dateStr) {
   if (!dateStr) return '—';
@@ -154,29 +172,24 @@ function EventForm({ initial, vendors, onSave, onCancel }) {
             <label>Event Name</label>
             <input value={form.event_name} onChange={e => set('event_name', e.target.value)} placeholder="e.g. Knife Skills Workshop" />
           </div>
-
           <div className="field">
             <label>Date</label>
             <input type="date" value={form.event_date ? String(form.event_date).slice(0, 10) : ''} onChange={e => set('event_date', e.target.value)} />
           </div>
-
           <div className="field">
             <label>Status</label>
             <select value={form.status} onChange={e => set('status', e.target.value)}>
               {STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
             </select>
           </div>
-
           <div className="field">
             <label>Start Time</label>
             <input type="time" value={form.start_time || ''} onChange={e => set('start_time', e.target.value)} />
           </div>
-
           <div className="field">
             <label>End Time</label>
             <input type="time" value={form.end_time || ''} onChange={e => set('end_time', e.target.value)} />
           </div>
-
           <div className="field">
             <label>Vendor</label>
             <select value={form.vendor_id || ''} onChange={e => handleVendorChange(e.target.value)}>
@@ -184,42 +197,34 @@ function EventForm({ initial, vendors, onSave, onCancel }) {
               {vendors.map(v => <option key={v.id} value={v.id}>{v.vendor_name}</option>)}
             </select>
           </div>
-
           <div className="field">
             <label>Category</label>
             <input value={form.category || ''} onChange={e => set('category', e.target.value)} placeholder="e.g. Workshop, Pop-up" />
           </div>
-
           <div className="field full">
             <label>Location</label>
             <input value={form.location || ''} onChange={e => set('location', e.target.value)} placeholder="Venue name or address (auto-fills from vendor)" />
           </div>
-
           <div className="field">
             <label>Price</label>
             <input type="number" step="0.01" value={form.price || ''} onChange={e => set('price', e.target.value)} placeholder="0.00" />
           </div>
-
           <div className="field">
             <label>Tags</label>
             <input value={form.tags || ''} onChange={e => set('tags', e.target.value)} placeholder="comma separated" />
           </div>
-
           <div className="field full">
             <label>Description</label>
             <textarea value={form.description || ''} onChange={e => set('description', e.target.value)} placeholder="Event details..." />
           </div>
-
           <div className="field">
             <label>Image URL</label>
             <input value={form.image_url || ''} onChange={e => set('image_url', e.target.value)} placeholder="https://..." />
           </div>
-
           <div className="field">
             <label>Ticket URL</label>
             <input value={form.ticket_url || ''} onChange={e => set('ticket_url', e.target.value)} placeholder="https://..." />
           </div>
-
           <div className="field full">
             <label>Map Embed</label>
             <textarea
@@ -229,7 +234,6 @@ function EventForm({ initial, vendors, onSave, onCancel }) {
               style={{ minHeight: 70 }}
             />
           </div>
-
           <div className="field full" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <input
               type="checkbox"
@@ -283,12 +287,12 @@ function DeleteConfirm({ event, onConfirm, onCancel }) {
 
 // ── Events Page ───────────────────────────────────────────
 export function EventsPage() {
-  const [events, setEvents]     = useState([]);
-  const [vendors, setVendors]   = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [search, setSearch]     = useState('');
+  const [events, setEvents]             = useState([]);
+  const [vendors, setVendors]           = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [search, setSearch]             = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [modal, setModal]       = useState(null);
+  const [modal, setModal]               = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -328,16 +332,65 @@ export function EventsPage() {
   }
 
   function handleDuplicate(e) {
-  const clone = {
-    ...e,
-    id: undefined,
-    event_name: `Copy of ${e.event_name}`,
-    event_date: '',
-    start_time: '',
-    end_time: '',
-  };
-  setModal({ mode: 'new', event: clone });
-}
+    setModal({
+      mode: 'new',
+      event: {
+        ...e,
+        id: undefined,
+        event_name: `Copy of ${e.event_name}`,
+        event_date: '',
+        start_time: '',
+        end_time: '',
+      },
+    });
+  }
+
+  async function handleImport(rows) {
+    // Build vendor name → id lookup (case-insensitive)
+    const vendorMap = {};
+    vendors.forEach(v => { vendorMap[v.vendor_name.toLowerCase()] = v.id; });
+
+    for (const row of rows) {
+      // Resolve vendor name to id
+      const vendor_id = row.vendor_name
+        ? (vendorMap[row.vendor_name.toLowerCase()] || null)
+        : null;
+
+      // Normalize status — default to draft if blank or unrecognized
+      const status = STATUSES.includes((row.status || '').toLowerCase())
+        ? row.status.toLowerCase()
+        : 'draft';
+
+      await api.post('/events', {
+        event_name:   row.event_name,
+        event_date:   row.event_date   || null,
+        vendor_id:                        vendor_id,
+        status,
+        start_time:   row.start_time   || null,
+        end_time:     row.end_time     || null,
+        location:     row.location     || null,
+        category:     row.category     || null,
+        tags:         row.tags         || null,
+        price:        row.price        ? parseFloat(row.price) : null,
+        description:  row.description  || null,
+        ticket_url:   row.ticket_url   || null,
+        image_url:    row.image_url    || null,
+        map_embed:    null,
+        posted_to_web: false,
+      });
+    }
+    load();
+  }
+
+  // Dupe detection by event_name + event_date combo
+  const existingNames = new Set(
+    events.map(e => `${e.event_name.toLowerCase()}|${String(e.event_date).slice(0, 10)}`)
+  );
+
+  // For ImportModal nameKey we use event_name — dupe check is on name only
+  // (same event name on different dates is allowed, but same name+date is a dupe)
+  const existingEventNames = new Set(events.map(e => e.event_name.toLowerCase()));
+
   const counts = STATUSES.reduce((acc, s) => {
     acc[s] = events.filter(e => e.status === s).length;
     return acc;
@@ -345,15 +398,19 @@ export function EventsPage() {
 
   return (
     <div>
-      {/* Header */}
       <div className="page-header">
         <div>
           <div className="page-title">📅 Events</div>
           <div className="page-subtitle">{events.length} event{events.length !== 1 ? 's' : ''} total</div>
         </div>
-        <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>
-          + New Event
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={() => setModal({ mode: 'import' })}>
+            ↑ Import CSV
+          </button>
+          <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>
+            + New Event
+          </button>
+        </div>
       </div>
 
       {/* Status summary */}
@@ -448,7 +505,6 @@ export function EventsPage() {
         )}
       </div>
 
-      {/* Modals */}
       {modal?.mode === 'detail' && (
         <EventDetail
           event={modal.event}
@@ -469,6 +525,16 @@ export function EventsPage() {
           event={modal.event}
           onConfirm={handleDelete}
           onCancel={() => setModal(null)}
+        />
+      )}
+      {modal?.mode === 'import' && (
+        <ImportModal
+          title="Import Events"
+          fields={IMPORT_FIELDS}
+          nameKey="event_name"
+          existingNames={existingEventNames}
+          onImport={handleImport}
+          onClose={() => { setModal(null); load(); }}
         />
       )}
     </div>
