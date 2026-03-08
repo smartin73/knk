@@ -21,6 +21,8 @@ import {
   vendorsRouter,
 } from './routes/modules.js';
 
+import squareRouter from './routes/square.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.set('trust proxy', 1);
@@ -81,6 +83,7 @@ app.use('/event-menus',  eventMenusRouter);
 app.use('/donations',    donationsRouter);
 app.use('/vendors',      vendorsRouter);
 app.use('/settings', settingsRouter);
+app.use('/square', squareRouter);
 
 // ── Health check ─────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ ok: true, ts: new Date() }));

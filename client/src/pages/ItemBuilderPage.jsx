@@ -571,6 +571,16 @@ export function ItemBuilderPage() {
     load();
   }
 
+  async function handleSquarePush(item) {
+    try {
+      const result = await api.post(`/square/push/${item.id}`, {});
+      alert(`${result.action === 'created' ? 'Created' : 'Updated'} in Square ✓`);
+      load();
+    } catch (e) {
+      alert(`Square error: ${e.message}`);
+    }
+  }
+
   async function handleDuplicate(item) {
     const full = await api.get(`/items/${item.id}`);
     setModal({
@@ -644,6 +654,13 @@ export function ItemBuilderPage() {
                         <button className="btn btn-secondary btn-sm" onClick={() => setModal({ mode: 'edit', item: i })}>Edit</button>
                         <button className="btn btn-secondary btn-sm" onClick={() => handleDuplicate(i)}>Dupe</button>
                         <button className="btn btn-danger btn-sm" onClick={() => setModal({ mode: 'delete', item: i })}>Del</button>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleSquarePush(i)}
+                          title={i.square_id ? 'Update in Square' : 'Push to Square'}
+                        >
+                          {i.square_id ? '↑ Sq' : '→ Sq'}
+                        </button>
                       </div>
                     </td>
                   </tr>
