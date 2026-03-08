@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth.jsx';
 // Pages (stubs — each module fills these in)
 import LoginPage        from './pages/LoginPage.jsx';
 import DashboardPage    from './pages/DashboardPage.jsx';
-import { RecipesPage, IngredientsPage, ItemBuilderPage, EventMenusPage, DonationsPage } from './pages/stubs.jsx';
+import { RecipesPage, ItemBuilderPage, EventMenusPage, DonationsPage } from './pages/stubs.jsx';
 import { EventsPage } from './pages/EventsPage.jsx';
 import { VendorsPage } from './pages/VendorsPage.jsx';
 import { IngredientsPage } from './pages/IngredientsPage.jsx';
