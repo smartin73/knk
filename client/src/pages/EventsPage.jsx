@@ -347,50 +347,42 @@ export function EventsPage() {
 
   async function handleImport(rows) {
   const vendorMap = {};
-  const vendor_id = row.vendor_name
-  ? (vendorMap[row.vendor_name.trim().toLowerCase()] || null)
-  : null;
-  
-  vendors.forEach(v => { vendorMap[v.vendor_name.trim().toLowerCase()] = v.id; });;
+  vendors.forEach(v => { vendorMap[v.vendor_name.trim().toLowerCase()] = v.id; });
+
+  function normalizeDate(val) {
+    if (!val) return null;
+    const datePart = val.split(' ')[0];
+    if (datePart.includes('/')) {
+      const [m, d, y] = datePart.split('/');
+      return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    }
+    return datePart;
+  }
+
+  function normalizeTime(val) {
+    if (!val) return null;
+    const val2 = val.trim();
+    const fm = val2.match(/^(\d+)h\s+(\d+)m/);
+    if (fm) {
+      const h = parseInt(fm[1]);
+      const m = parseInt(fm[2]);
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    }
+    const parts = val2.split(' ');
+    const timePart = parts.length > 1 ? parts[1] : parts[0];
+    if (!timePart || !timePart.includes(':')) return null;
+    const [h, m] = timePart.split(':');
+    return `${h.padStart(2,'0')}:${m.padStart(2,'0')}`;
+  }
 
   for (const row of rows) {
     const vendor_id = row.vendor_name
-      ? (vendorMap[row.vendor_name.toLowerCase()] || null)
+      ? (vendorMap[row.vendor_name.trim().toLowerCase()] || null)
       : null;
 
     const status = STATUSES.includes((row.status || '').toLowerCase())
       ? row.status.toLowerCase()
       : 'draft';
-
-    // Normalize date — handles MM/DD/YYYY and MM/DD/YYYY HH:MM:SS
-    function normalizeDate(val) {
-      if (!val) return null;
-      const datePart = val.split(' ')[0]; // strip time if present
-      if (datePart.includes('/')) {
-        const [m, d, y] = datePart.split('/');
-        return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
-      }
-      return datePart;
-    }
-
-    // Normalize time — extract HH:MM from HH:MM:SS or datetime strings
-function normalizeTime(val) {
-  if (!val) return null;
-  const val2 = val.trim();
-  // FileMaker duration: "10h 30m 0s 0ms"
-  const fm = val2.match(/^(\d+)h\s+(\d+)m/);
-  if (fm) {
-    const h = parseInt(fm[1]);
-    const m = parseInt(fm[2]);
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-  }
-  // Standard time HH:MM or datetime
-  const parts = val2.split(' ');
-  const timePart = parts.length > 1 ? parts[1] : parts[0];
-  if (!timePart || !timePart.includes(':')) return null;
-  const [h, m] = timePart.split(':');
-  return `${h.padStart(2,'0')}:${m.padStart(2,'0')}`;
-}
 
     await api.post('/events', {
       event_name:    row.event_name,
@@ -399,13 +391,13 @@ function normalizeTime(val) {
       status,
       start_time:    normalizeTime(row.start_time),
       end_time:      normalizeTime(row.end_time),
-      location:      row.location     || null,
-      category:      row.category     || null,
-      tags:          row.tags         || null,
-      price:         row.price        ? parseFloat(row.price) : null,
-      description:   row.description  || null,
-      ticket_url:    row.ticket_url   || null,
-      image_url:     row.image_url    || null,
+      location:      row.location    || null,
+      category:      row.category    || null,
+      tags:          row.tags        || null,
+      price:         row.price       ? parseFloat(row.price) : null,
+      description:   row.description || null,
+      ticket_url:    row.ticket_url  || null,
+      image_url:     row.image_url   || null,
       map_embed:     null,
       posted_to_web: false,
     });
