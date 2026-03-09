@@ -370,14 +370,23 @@ export function EventsPage() {
     }
 
     // Normalize time — extract HH:MM from HH:MM:SS or datetime strings
-    function normalizeTime(val) {
-      if (!val) return null;
-      const parts = val.trim().split(' ');
-      const timePart = parts.length > 1 ? parts[1] : parts[0];
-      if (!timePart || !timePart.includes(':')) return null;
-      const [h, m] = timePart.split(':');
-      return `${h.padStart(2,'0')}:${m.padStart(2,'0')}`;
-    }
+function normalizeTime(val) {
+  if (!val) return null;
+  const val2 = val.trim();
+  // FileMaker duration: "10h 30m 0s 0ms"
+  const fm = val2.match(/^(\d+)h\s+(\d+)m/);
+  if (fm) {
+    const h = parseInt(fm[1]);
+    const m = parseInt(fm[2]);
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  }
+  // Standard time HH:MM or datetime
+  const parts = val2.split(' ');
+  const timePart = parts.length > 1 ? parts[1] : parts[0];
+  if (!timePart || !timePart.includes(':')) return null;
+  const [h, m] = timePart.split(':');
+  return `${h.padStart(2,'0')}:${m.padStart(2,'0')}`;
+}
 
     await api.post('/events', {
       event_name:    row.event_name,

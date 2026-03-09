@@ -19,7 +19,7 @@ function parseCSV(text) {
     const row = {};
     headers.forEach((h, i) => { row[h] = fields[i] || ''; });
     return row;
-  }).filter(row => Object.values(row).some(v => v !== ''));
+  }).filter(row => Object.values(row).filter(v => v !== '').length > 2);
   return { headers, rows };
 }
 
