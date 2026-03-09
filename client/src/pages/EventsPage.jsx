@@ -347,7 +347,11 @@ export function EventsPage() {
 
   async function handleImport(rows) {
   const vendorMap = {};
-  vendors.forEach(v => { vendorMap[v.vendor_name.toLowerCase()] = v.id; });
+  const vendor_id = row.vendor_name
+  ? (vendorMap[row.vendor_name.trim().toLowerCase()] || null)
+  : null;
+  
+  vendors.forEach(v => { vendorMap[v.vendor_name.trim().toLowerCase()] = v.id; });;
 
   for (const row of rows) {
     const vendor_id = row.vendor_name
