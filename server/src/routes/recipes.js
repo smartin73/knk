@@ -1,36 +1,9 @@
 import { Router } from 'express';
-import { query } from '../db/pool.js';
+import { query, pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 router.use(requireAuth);
-
-// GET /recipes
-router.get('/', async (req, res) => {
-  const { search, type, active } = req.query;
-  const where = ['1=1']; const params = []; let i = 1;
-  if (search) { where.push(`recipe_name ILIKE $${i++}`); params.push(`%${search}%`); }
-  if (type)   { where.push(`recipe_type = $${i++}`); params.push(type); }
-  if (active !== undefined) { where.push(`is_active = $${i++}`); params.push(active === 'true'); }
-  const { rows } = await query(
-    `SELECT * FROM recipes WHERE ${where.join(' AND ')} ORDER BY recipe_name`, params
-  );
-  res.json(rows);
-});
-
-// GET /recipes/:id  (with steps + ingredients)
-router.get('/:id', async (req, res) => {
-  const [recipe, steps, ingredients] = await Promise.all([
-    query('SELECT * FROM recipes WHERE id = $1', [req.params.id]),
-    query('SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY step_number', [req.params.id]),
-    query(`SELECT ri.*, ii.item_name as ingredient_item_name, ii.cost_per_gram
-           FROM recipe_ingredients ri
-           LEFT JOIN ingredient_items ii ON ri.ingredient_id = ii.id
-           WHERE ri.recipe_id = $1 ORDER BY ri.sort_order`, [req.params.id]),
-  ]);
-  if (!recipe.rows[0]) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...recipe.rows[0], steps: steps.rows, ingredients: ingredients.rows });
-});
 
 // POST /recipes/import
 router.post('/import', requireAuth, async (req, res) => {
@@ -82,6 +55,33 @@ router.post('/import', requireAuth, async (req, res) => {
   } finally {
     client.release();
   }
+});
+
+// GET /recipes
+router.get('/', async (req, res) => {
+  const { search, type, active } = req.query;
+  const where = ['1=1']; const params = []; let i = 1;
+  if (search) { where.push(`recipe_name ILIKE $${i++}`); params.push(`%${search}%`); }
+  if (type)   { where.push(`recipe_type = $${i++}`); params.push(type); }
+  if (active !== undefined) { where.push(`is_active = $${i++}`); params.push(active === 'true'); }
+  const { rows } = await query(
+    `SELECT * FROM recipes WHERE ${where.join(' AND ')} ORDER BY recipe_name`, params
+  );
+  res.json(rows);
+});
+
+// GET /recipes/:id  (with steps + ingredients)
+router.get('/:id', async (req, res) => {
+  const [recipe, steps, ingredients] = await Promise.all([
+    query('SELECT * FROM recipes WHERE id = $1', [req.params.id]),
+    query('SELECT * FROM recipe_steps WHERE recipe_id = $1 ORDER BY step_number', [req.params.id]),
+    query(`SELECT ri.*, ii.item_name as ingredient_item_name, ii.cost_per_gram
+           FROM recipe_ingredients ri
+           LEFT JOIN ingredient_items ii ON ri.ingredient_id = ii.id
+           WHERE ri.recipe_id = $1 ORDER BY ri.sort_order`, [req.params.id]),
+  ]);
+  if (!recipe.rows[0]) return res.status(404).json({ error: 'Not found' });
+  res.json({ ...recipe.rows[0], steps: steps.rows, ingredients: ingredients.rows });
 });
 
 // POST /recipes
