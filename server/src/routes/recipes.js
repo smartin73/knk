@@ -32,6 +32,58 @@ router.get('/:id', async (req, res) => {
   res.json({ ...recipe.rows[0], steps: steps.rows, ingredients: ingredients.rows });
 });
 
+// POST /recipes/import
+router.post('/import', requireAuth, async (req, res) => {
+  const { recipes } = req.body;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const r of recipes) {
+      const { rows } = await client.query(
+        `INSERT INTO recipes 
+          (recipe_name, recipe_type, description, serving_size, prep_time, cook_time,
+           ingredient_label, contains_label, square_id, woo_id, notes, is_active, recipe_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+         RETURNING id`,
+        [
+          r.recipe_name, r.recipe_type || null, r.description || null,
+          r.serving_size || null, r.prep_time || null, r.cook_time || null,
+          r.ingredient_label || null, r.contains_label || null,
+          r.square_id || null, r.woo_id || null, r.notes || null,
+          true, r.recipe_by || null,
+        ]
+      );
+      const recipeId = rows[0].id;
+
+      if (r.steps?.length) {
+        for (const step of r.steps) {
+          await client.query(
+            `INSERT INTO recipe_steps
+              (recipe_id, step_number, step_type, step_description, step_time, requires_notification)
+             VALUES ($1,$2,$3,$4,$5,$6)`,
+            [
+              recipeId,
+              step.step_number,
+              step.step_type || 'regular',
+              step.step_description || null,
+              step.step_time || null,
+              step.requires_notification === 'Yes',
+            ]
+          );
+        }
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
+});
+
 // POST /recipes
 router.post('/', async (req, res) => {
   const f = req.body;
@@ -115,58 +167,6 @@ router.put('/:id/ingredients', async (req, res) => {
      WHERE ri.recipe_id=$1 ORDER BY ri.sort_order`, [req.params.id]
   );
   res.json(rows);
-});
-
-// POST /recipes/import
-router.post('/import', requireAuth, async (req, res) => {
-  const { recipes } = req.body;
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    for (const r of recipes) {
-      const { rows } = await client.query(
-        `INSERT INTO recipes 
-          (recipe_name, recipe_type, description, serving_size, prep_time, cook_time,
-           ingredient_label, contains_label, square_id, woo_id, notes, is_active, recipe_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-         RETURNING id`,
-        [
-          r.recipe_name, r.recipe_type || null, r.description || null,
-          r.serving_size || null, r.prep_time || null, r.cook_time || null,
-          r.ingredient_label || null, r.contains_label || null,
-          r.square_id || null, r.woo_id || null, r.notes || null,
-          true, r.recipe_by || null,
-        ]
-      );
-      const recipeId = rows[0].id;
-
-      if (r.steps?.length) {
-        for (const step of r.steps) {
-          await client.query(
-            `INSERT INTO recipe_steps
-              (recipe_id, step_number, step_type, step_description, step_time, requires_notification)
-             VALUES ($1,$2,$3,$4,$5,$6)`,
-            [
-              recipeId,
-              step.step_number,
-              step.step_type || 'regular',
-              step.step_description || null,
-              step.step_time || null,
-              step.requires_notification === 'Yes',
-            ]
-          );
-        }
-      }
-    }
-    await client.query('COMMIT');
-    res.json({ ok: true });
-  } catch (e) {
-    await client.query('ROLLBACK');
-    console.error(e);
-    res.status(500).json({ error: e.message });
-  } finally {
-    client.release();
-  }
 });
 
 export default router;
