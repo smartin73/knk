@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
+import { RecipesImportModal } from './RecipesImportModal.jsx';
 
 // ── Helpers ───────────────────────────────────────────────
 const EMPTY_FORM = {
@@ -769,6 +770,7 @@ export function RecipesPage() {
           <div className="page-subtitle">{recipes.length} recipe{recipes.length !== 1 ? 's' : ''}</div>
         </div>
         <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>+ New Recipe</button>
+        <button className="btn btn-secondary" onClick={() => setModal({ mode: 'import' })}>↑ Import CSV</button>
       </div>
 
       <div className="search-bar">
@@ -861,6 +863,14 @@ export function RecipesPage() {
           recipe={modal.recipe}
           onConfirm={handleDelete}
           onCancel={() => setModal(null)}
+        />
+      )}
+
+      {modal?.mode === 'import' && (
+        <RecipesImportModal
+          existingNames={new Set(recipes.map(r => r.recipe_name.toLowerCase()))}
+          onClose={() => setModal(null)}
+          onDone={load}
         />
       )}
     </div>
