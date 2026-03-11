@@ -65,7 +65,7 @@ router.get('/', async (req, res) => {
   if (search) { where.push(`recipe_name ILIKE $${i++}`); params.push(`%${search}%`); }
   if (type)   { where.push(`recipe_type = $${i++}`); params.push(type); }
   if (active !== undefined) { where.push(`is_active = $${i++}`); params.push(active === 'true'); }
-  if (stage) { where.push(`stage = $${i++}`); params.push(stage); }
+  if (stage)  { where.push(`stage = $${i++}`); params.push(stage); }
   const { rows } = await query(
     `SELECT * FROM recipes WHERE ${where.join(' AND ')} ORDER BY recipe_name`, params
   );
@@ -74,31 +74,36 @@ router.get('/', async (req, res) => {
 
 // GET /recipes/:id  (with steps + ingredients)
 router.get('/:id', async (req, res) => {
-  const [recipe, steps, ingredients] = await Promise.all([
-    query('SELECT * FROM recipes WHERE id = $1', [req.params.id]),
-    query('SELECT *, step_time::text as step_time FROM recipe_steps WHERE recipe_id = $1 ORDER BY step_number', [req.params.id]),
-    query(`SELECT ri.*, ii.item_name as ingredient_item_name, ii.cost_per_gram
-           FROM recipe_ingredients ri
-           LEFT JOIN ingredient_items ii ON ri.ingredient_id = ii.id
-           WHERE ri.recipe_id = $1 ORDER BY ri.sort_order`, [req.params.id]),
-  ]);
-  if (!recipe.rows[0]) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...recipe.rows[0], steps: steps.rows, ingredients: ingredients.rows });
+  try {
+    const [recipe, steps, ingredients] = await Promise.all([
+      query('SELECT * FROM recipes WHERE id = $1', [req.params.id]),
+      query('SELECT *, step_time::text as step_time FROM recipe_steps WHERE recipe_id = $1 ORDER BY step_number', [req.params.id]),
+      query(`SELECT ri.*, ii.item_name as ingredient_item_name, ii.cost_per_gram
+             FROM recipe_ingredients ri
+             LEFT JOIN ingredient_items ii ON ri.ingredient_id = ii.id
+             WHERE ri.recipe_id = $1 ORDER BY ri.sort_order`, [req.params.id]),
+    ]);
+    if (!recipe.rows[0]) return res.status(404).json({ error: 'Not found' });
+    res.json({ ...recipe.rows[0], steps: steps.rows, ingredients: ingredients.rows });
+  } catch (e) {
+    console.error('GET /recipes/:id error:', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /recipes
 router.post('/', async (req, res) => {
   const f = req.body;
-const { rows } = await query(
-  `INSERT INTO recipes (recipe_name,recipe_type,description,serving_size,
-    prep_time,cook_time,folds_required,image_url,ingredient_label,
-    contains_label,square_id,woo_id,notes,stage,recipe_uuid)
-   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,gen_random_uuid()) RETURNING *`,
-  [f.recipe_name,f.recipe_type,f.description,f.serving_size,
-   f.prep_time,f.cook_time,f.folds_required||0,f.image_url,
-   f.ingredient_label,f.contains_label,f.square_id,f.woo_id,f.notes,
-   f.stage || 'production']
-);
+  const { rows } = await query(
+    `INSERT INTO recipes (recipe_name,recipe_type,description,serving_size,
+      prep_time,cook_time,image_url,ingredient_label,
+      contains_label,square_id,woo_id,notes,stage)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+    [f.recipe_name,f.recipe_type,f.description,f.serving_size,
+     f.prep_time,f.cook_time,f.image_url,
+     f.ingredient_label,f.contains_label,f.square_id,f.woo_id,f.notes,
+     f.stage || 'production']
+  );
   res.status(201).json(rows[0]);
 });
 
@@ -107,12 +112,12 @@ router.put('/:id', async (req, res) => {
   const f = req.body;
   const { rows } = await query(
     `UPDATE recipes SET recipe_name=$1,recipe_type=$2,description=$3,
-      serving_size=$4,prep_time=$5,cook_time=$6,folds_required=$7,
-      image_url=$8,ingredient_label=$9,contains_label=$10,
-      square_id=$11,woo_id=$12,notes=$13,is_active=$14,stage=$15
-     WHERE id=$16 RETURNING *`,
+      serving_size=$4,prep_time=$5,cook_time=$6,
+      image_url=$7,ingredient_label=$8,contains_label=$9,
+      square_id=$10,woo_id=$11,notes=$12,is_active=$13,stage=$14
+     WHERE id=$15 RETURNING *`,
     [f.recipe_name,f.recipe_type,f.description,f.serving_size,
-     f.prep_time,f.cook_time,f.folds_required,f.image_url,
+     f.prep_time,f.cook_time,f.image_url,
      f.ingredient_label,f.contains_label,f.square_id,f.woo_id,
      f.notes,f.is_active,f.stage,req.params.id]
   );
@@ -126,29 +131,24 @@ router.delete('/:id', async (req, res) => {
   res.json({ ok: true });
 });
 
-// ── Steps ────────────────────────────────────────────────
+// PUT /recipes/:id/steps  (replace all steps)
 router.put('/:id/steps', async (req, res) => {
   const { steps } = req.body;
-  
-const { rows } = await query('SELECT id FROM recipes WHERE id = $1', [req.params.id]);
-if (!rows[0]) return res.status(404).json({ error: 'Not found' });
-const recipeUuid = rows[0].id;  // ← id, not recipe_uuid
-
-await query('DELETE FROM recipe_steps WHERE recipe_id = $1', [recipeUuid]);
-if (steps?.length) {
-  for (const s of steps) {
-    await query(
-      `INSERT INTO recipe_steps (recipe_id,step_number,step_type,step_description,step_time,requires_notification,fold_type,fold_interval,temp_min,temp_max)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-      [recipeUuid, s.step_number, s.step_type||'regular', s.step_description||'',
-       s.step_time||null, s.requires_notification||false, s.fold_type||null,
-       s.fold_interval||null, s.temp_min||null, s.temp_max||null]
-    );
+  await query('DELETE FROM recipe_steps WHERE recipe_id = $1', [req.params.id]);
+  if (steps?.length) {
+    for (const s of steps) {
+      await query(
+        `INSERT INTO recipe_steps (recipe_id,step_number,step_type,step_description,step_time,requires_notification,fold_type,fold_interval,temp_min,temp_max)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [req.params.id, s.step_number, s.step_type||'regular', s.step_description||'',
+         s.step_time||null, s.requires_notification||false, s.fold_type||null,
+         s.fold_interval||null, s.temp_min||null, s.temp_max||null]
+      );
+    }
   }
-}
-res.json({ ok: true });  // ← not rows
-  
-// ── Ingredients ──────────────────────────────────────────
+  res.json({ ok: true });
+});
+
 // PUT /recipes/:id/ingredients  (replace all ingredients)
 router.put('/:id/ingredients', async (req, res) => {
   const { ingredients } = req.body;
