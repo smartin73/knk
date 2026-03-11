@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
+import { ItemBuilderImportModal } from './ItemBuilderImportModal.jsx';
 
 // ── Helpers ───────────────────────────────────────────────
 const EMPTY_FORM = {
@@ -720,6 +721,7 @@ export function ItemBuilderPage() {
           <div className="page-title">🧁 ItemBuilder</div>
           <div className="page-subtitle">{items.length} item{items.length !== 1 ? 's' : ''}</div>
         </div>
+        <button className="btn btn-secondary" onClick={() => setModal({ mode: 'import' })}>↑ Import CSV</button>
         <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>+ New Item</button>
       </div>
 
@@ -820,6 +822,13 @@ export function ItemBuilderPage() {
           item={modal.item}
           onConfirm={handleDelete}
           onCancel={() => setModal(null)}
+        />
+      )}
+      {modal?.mode === 'import' && (
+        <ItemBuilderImportModal
+          existingNames={new Set(items.map(i => i.item_name.toLowerCase()))}
+          onClose={() => setModal(null)}
+          onDone={load}
         />
       )}
     </div>

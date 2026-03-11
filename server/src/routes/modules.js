@@ -1,6 +1,6 @@
 // ── Ingredients ──────────────────────────────────────────
 import { Router as IngRouter } from 'express';
-import { query } from '../db/pool.js';
+import pool, { query } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 
 export const ingredientsRouter = IngRouter();
@@ -59,6 +59,36 @@ itemBuilderRouter.get('/', async (req, res) => {
     `SELECT ib.* FROM item_builder ib ORDER BY ib.item_name`
   );
   res.json(rows);
+});
+
+// POST /items/import
+itemBuilderRouter.post('/import', async (req, res) => {
+  const { items } = req.body;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const item of items) {
+      await client.query(
+        `INSERT INTO item_builder (item_name,description,batch_qty,retail_price,
+          include_packaging,include_fees,packaging_cost,square_fee,square_fee_online,
+          food_cook_time,ingredient_label,contains_label,image_url,square_id,woo_id,is_active)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+        [item.item_name, item.description||null, item.batch_qty||1, item.retail_price||null,
+         item.include_packaging||false, item.include_fees||false,
+         item.packaging_cost||null, item.square_fee||null, item.square_fee_online||null,
+         item.food_cook_time||null, item.ingredient_label||null, item.contains_label||null,
+         item.image_url||null, item.square_id||null, item.woo_id||null, true]
+      );
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
 });
 
 itemBuilderRouter.get('/:id', async (req, res) => {
