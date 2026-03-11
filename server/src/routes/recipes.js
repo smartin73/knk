@@ -146,11 +146,6 @@ router.put('/:id/steps', async (req, res) => {
       );
     }
   }
-  res.json({ ok: true });
-});
-  const { rows } = await query(
-    'SELECT *, step_time::text as step_time FROM recipe_steps WHERE recipe_id=$1 ORDER BY step_number', [req.params.id]
-  );
   res.json(rows);
 });
 
