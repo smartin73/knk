@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { ImportModal } from './ImportModal.jsx';
+import { RowMenu } from '../components/RowMenu.jsx';
 
 const STATUS_BADGES = {
   draft:     'badge-gray',
@@ -515,9 +516,11 @@ export function EventsPage() {
                     <td>{e.posted_to_web ? '✓' : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
                     <td>
                       <div className="actions">
-                        <button className="btn btn-secondary btn-sm" onClick={() => setModal({ mode: 'edit', event: e })}>Edit</button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleDuplicate(e)}>Dupe</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => setModal({ mode: 'delete', event: e })}>Del</button>
+                        <RowMenu actions={[
+                          { label: 'Edit',      onClick: () => setModal({ mode: 'edit', event: e }) },
+                          { label: 'Duplicate', onClick: () => handleDuplicate(e) },
+                          { label: 'Delete',    onClick: () => setModal({ mode: 'delete', event: e }), danger: true },
+                        ]} />
                       </div>
                     </td>
                   </tr>

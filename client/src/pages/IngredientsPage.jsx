@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { ImportModal } from './ImportModal.jsx';
+import { RowMenu } from '../components/RowMenu.jsx';
 
 const EMPTY_FORM = {
   item_name: '',
@@ -333,9 +334,11 @@ export function IngredientsPage() {
                     </td>
                     <td>
                       <div className="actions">
-                        <button className="btn btn-secondary btn-sm" onClick={() => setModal({ mode: 'edit', ingredient: i })}>Edit</button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleDuplicate(i)}>Dupe</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => setModal({ mode: 'delete', ingredient: i })}>Del</button>
+                        <RowMenu actions={[
+                          { label: 'Edit',      onClick: () => setModal({ mode: 'edit', ingredient: i }) },
+                          { label: 'Duplicate', onClick: () => handleDuplicate(i) },
+                          { label: 'Delete',    onClick: () => setModal({ mode: 'delete', ingredient: i }), danger: true },
+                        ]} />
                       </div>
                     </td>
                   </tr>

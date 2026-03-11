@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { RecipesImportModal } from './RecipesImportModal.jsx';
+import { RowMenu } from '../components/RowMenu.jsx';
 
 // ── Constants ─────────────────────────────────────────────
 const EMPTY_FORM = {
@@ -762,10 +763,12 @@ export function RecipesPage() {
                     <td style={{color:'var(--text-muted)'}}>{r.cook_time||'—'}</td>
                     <td>
                       <div className="actions">
-                        <button className="btn btn-secondary btn-sm" title="Make" onClick={()=>openMake(r)}>🍞</button>
-                        <button className="btn btn-secondary btn-sm" onClick={()=>openEdit(r)}>Edit</button>
-                        <button className="btn btn-secondary btn-sm" onClick={()=>handleDuplicate(r)}>Dupe</button>
-                        <button className="btn btn-danger btn-sm" onClick={()=>setModal({mode:'delete',recipe:r})}>Del</button>
+                        <RowMenu actions={[
+                          { label: '🍞 Make',   onClick: () => openMake(r) },
+                          { label: 'Edit',      onClick: () => openEdit(r) },
+                          { label: 'Duplicate', onClick: () => handleDuplicate(r) },
+                          { label: 'Delete',    onClick: () => setModal({ mode: 'delete', recipe: r }), danger: true },
+                        ]} />
                       </div>
                     </td>
                   </tr>

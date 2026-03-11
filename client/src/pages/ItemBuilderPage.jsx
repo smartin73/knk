@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { ItemBuilderImportModal } from './ItemBuilderImportModal.jsx';
+import { RowMenu } from '../components/RowMenu.jsx';
 
 // ── Helpers ───────────────────────────────────────────────
 const EMPTY_FORM = {
@@ -777,16 +778,12 @@ export function ItemBuilderPage() {
                     </td>
                     <td>
                       <div className="actions">
-                        <button className="btn btn-secondary btn-sm" onClick={() => setModal({ mode: 'edit', item: i })}>Edit</button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleDuplicate(i)}>Dupe</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => setModal({ mode: 'delete', item: i })}>Del</button>
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => handleSquarePush(i)}
-                          title={i.square_id ? 'Update in Square' : 'Push to Square'}
-                        >
-                          {i.square_id ? '↑ Sq' : '→ Sq'}
-                        </button>
+                        <RowMenu actions={[
+                          { label: 'Edit',      onClick: () => setModal({ mode: 'edit', item: i }) },
+                          { label: 'Duplicate', onClick: () => handleDuplicate(i) },
+                          { label: i.square_id ? '↑ Push to Square' : '→ Push to Square', onClick: () => handleSquarePush(i) },
+                          { label: 'Delete',    onClick: () => setModal({ mode: 'delete', item: i }), danger: true },
+                        ]} />
                       </div>
                     </td>
                   </tr>
