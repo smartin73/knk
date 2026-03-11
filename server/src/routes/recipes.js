@@ -127,25 +127,27 @@ router.delete('/:id', async (req, res) => {
 });
 
 // ── Steps ────────────────────────────────────────────────
-// PUT /recipes/:id/steps  (replace all steps)
 router.put('/:id/steps', async (req, res) => {
   const { steps } = req.body;
-  await query('DELETE FROM recipe_steps WHERE recipe_id = $1', [req.params.id]);
+  
+  const { rows } = await query('SELECT recipe_uuid FROM recipes WHERE id = $1', [req.params.id]);
+  if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+  const recipeUuid = rows[0].recipe_uuid;
+
+  await query('DELETE FROM recipe_steps WHERE recipe_id = $1', [recipeUuid]);
   if (steps?.length) {
-    const vals = steps.map((s, idx) =>
-      `($1, ${idx+2}, ${idx+2+steps.length}, ${idx+2+steps.length*2}, ${idx+2+steps.length*3})`
-    );
-    // Simpler: insert one by one
     for (const s of steps) {
       await query(
         `INSERT INTO recipe_steps (recipe_id,step_number,step_type,step_description,step_time,requires_notification,fold_type,fold_interval,temp_min,temp_max)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [req.params.id, s.step_number, s.step_type||'regular', s.step_description||'', s.step_time||null,
-        s.requires_notification||false, s.fold_type||null, s.fold_interval||null,
-        s.temp_min||null, s.temp_max||null]
+        [recipeUuid, s.step_number, s.step_type||'regular', s.step_description||'',
+         s.step_time||null, s.requires_notification||false, s.fold_type||null,
+         s.fold_interval||null, s.temp_min||null, s.temp_max||null]
       );
     }
   }
+  res.json({ ok: true });
+});
   const { rows } = await query(
     'SELECT *, step_time::text as step_time FROM recipe_steps WHERE recipe_id=$1 ORDER BY step_number', [req.params.id]
   );
