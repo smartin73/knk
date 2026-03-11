@@ -309,16 +309,17 @@ updated_at    timestamptz
 
 ## Pending Work
 
-- [ ] Recipe detail/edit: fetch full recipe (with steps) before opening edit form
-- [ ] ItemBuilder CSV import
-- [ ] Actions overflow menu (hamburger) when 3+ actions
+- [x] Recipe detail/edit: fetch full recipe (with steps) before opening edit form
+- [x] ItemBuilder CSV import
+- [x] Actions overflow menu (hamburger) when 3+ actions
 - [ ] Event Menus module
 - [ ] Donations module
-- [ ] Square production credentials
-- [ ] Pushover notifications
+- [x] Square production credentials
+- [x] Pushover notifications
 - [ ] WordPress integration
 - [ ] User management + per-module permissions + password reset
 - [ ] Recipe test tracking (version history)
 - [ ] Repeating events
+- [ ] Square Sales Webhook
 - [ ] Sales reporting
 - [ ] Mobile nav
