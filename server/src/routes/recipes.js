@@ -76,7 +76,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const [recipe, steps, ingredients] = await Promise.all([
     query('SELECT * FROM recipes WHERE id = $1', [req.params.id]),
-    query('SELECT *, step_time::text as step_time FROM recipe_steps WHERE recipe_id = $1 ORDER BY step_number', [req.params.id]),
+    query('SELECT *, step_time::text as step_time FROM recipe_steps WHERE recipe_id = (SELECT recipe_uuid FROM recipes WHERE id = $1) ORDER BY step_number', [req.params.id]),
     query(`SELECT ri.*, ii.item_name as ingredient_item_name, ii.cost_per_gram
            FROM recipe_ingredients ri
            LEFT JOIN ingredient_items ii ON ri.ingredient_id = ii.id
@@ -89,16 +89,16 @@ router.get('/:id', async (req, res) => {
 // POST /recipes
 router.post('/', async (req, res) => {
   const f = req.body;
-  const { rows } = await query(
-    `INSERT INTO recipes (recipe_name,recipe_type,description,serving_size,
-      prep_time,cook_time,folds_required,image_url,ingredient_label,
-      contains_label,square_id,woo_id,notes,stage)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-    [f.recipe_name,f.recipe_type,f.description,f.serving_size,
-     f.prep_time,f.cook_time,f.folds_required||0,f.image_url,
-     f.ingredient_label,f.contains_label,f.square_id,f.woo_id,f.notes,
-     f.stage || 'production']
-  );
+const { rows } = await query(
+  `INSERT INTO recipes (recipe_name,recipe_type,description,serving_size,
+    prep_time,cook_time,folds_required,image_url,ingredient_label,
+    contains_label,square_id,woo_id,notes,stage,recipe_uuid)
+   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,gen_random_uuid()) RETURNING *`,
+  [f.recipe_name,f.recipe_type,f.description,f.serving_size,
+   f.prep_time,f.cook_time,f.folds_required||0,f.image_url,
+   f.ingredient_label,f.contains_label,f.square_id,f.woo_id,f.notes,
+   f.stage || 'production']
+);
   res.status(201).json(rows[0]);
 });
 
