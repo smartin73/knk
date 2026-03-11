@@ -4,16 +4,14 @@ import { api } from '../lib/api.js';
 // ── Default settings definitions ──────────────────────────
 // These define what settings exist, their labels, and grouping.
 // Values are loaded from the database on top of these.
+const SQUARE_FIELDS = [
+  { env: 'sandbox',    key: 'square_sandbox_token',          label: 'Sandbox Access Token',    description: 'Token from Square Developer dashboard (sandbox app).', is_encrypted: true,  category: 'Square' },
+  { env: 'sandbox',    key: 'square_sandbox_location_id',    label: 'Sandbox Location ID',     description: 'Location ID from your Square sandbox account.',         is_encrypted: false, category: 'Square' },
+  { env: 'production', key: 'square_production_token',       label: 'Production Access Token', description: 'Token from Square Developer dashboard (production app).', is_encrypted: true,  category: 'Square' },
+  { env: 'production', key: 'square_production_location_id', label: 'Production Location ID',  description: 'Location ID from your Square production account.',         is_encrypted: false, category: 'Square' },
+];
+
 const SETTINGS_SCHEMA = [
-  {
-    category: 'Square',
-    icon: '◻️',
-    settings: [
-      { key: 'square_access_token',    label: 'Access Token',      description: 'Square API access token from your Square Developer dashboard.', is_encrypted: true },
-      { key: 'square_location_id',     label: 'Location ID',       description: 'Your Square location ID.', is_encrypted: false },
-      { key: 'square_environment',     label: 'Environment',       description: 'sandbox or production', is_encrypted: false },
-    ],
-  },
   {
     category: 'Pushover',
     icon: '🔔',
@@ -161,6 +159,72 @@ function SettingRow({ def, currentValue, onSave }) {
   );
 }
 
+// ── Square Section ────────────────────────────────────────
+function SquareSection({ settings, onSave }) {
+  const env = settings.square_environment || 'sandbox';
+
+  async function setEnv(val) {
+    await onSave('square_environment', val, {
+      key: 'square_environment', category: 'Square', label: 'Environment',
+      description: 'Active Square environment.', is_encrypted: false,
+    });
+  }
+
+  const groups = [
+    { envKey: 'sandbox',    label: '🧪 Sandbox',    fields: SQUARE_FIELDS.filter(f => f.env === 'sandbox') },
+    { envKey: 'production', label: '⚡ Production',  fields: SQUARE_FIELDS.filter(f => f.env === 'production') },
+  ];
+
+  return (
+    <div className="card">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <span style={{ fontSize: 18 }}>◻️</span>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>Square</div>
+      </div>
+
+      {/* Environment toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--surface2)', borderRadius: 8, marginBottom: 20 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginRight: 4 }}>Active Environment</span>
+        <div style={{ display: 'flex', background: 'var(--bg)', borderRadius: 6, padding: 3, gap: 2 }}>
+          {[
+            { val: 'sandbox',    label: '🧪 Sandbox' },
+            { val: 'production', label: '⚡ Production' },
+          ].map(({ val, label }) => (
+            <button key={val} onClick={() => setEnv(val)} style={{
+              padding: '5px 14px', fontSize: 12, fontWeight: 700, borderRadius: 4, border: 'none', cursor: 'pointer',
+              background: env === val ? (val === 'production' ? 'var(--success, #4caf82)' : 'var(--accent)') : 'transparent',
+              color: env === val ? '#fff' : 'var(--text-muted)',
+              textTransform: 'uppercase', letterSpacing: '0.5px', transition: 'background 0.15s',
+            }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {env === 'production' && (
+          <span style={{ fontSize: 11, color: 'var(--warning, #e8a13a)', fontWeight: 700, letterSpacing: '0.5px' }}>● LIVE</span>
+        )}
+      </div>
+
+      {/* Credential groups */}
+      {groups.map(group => (
+        <div key={group.envKey} style={{ marginBottom: 8, opacity: env === group.envKey ? 1 : 0.45, transition: 'opacity 0.2s' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4, borderTop: '1px solid var(--border)', marginBottom: 2 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '6px 0 2px' }}>
+              {group.label}
+            </div>
+            {env === group.envKey && (
+              <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 3, background: 'var(--accent)', color: '#fff', fontWeight: 700, textTransform: 'uppercase' }}>active</span>
+            )}
+          </div>
+          {group.fields.map(def => (
+            <SettingRow key={def.key} def={def} currentValue={settings[def.key]} onSave={onSave} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Settings Page ─────────────────────────────────────────
 export function SettingsPage() {
   const [settings, setSettings] = useState({});
@@ -206,6 +270,7 @@ export function SettingsPage() {
         <div className="loading">Loading…</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <SquareSection settings={settings} onSave={handleSave} />
           {SETTINGS_SCHEMA.map(group => (
             <div key={group.category} className="card">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -214,12 +279,7 @@ export function SettingsPage() {
               </div>
               <div>
                 {group.settings.map(def => (
-                  <SettingRow
-                    key={def.key}
-                    def={def}
-                    currentValue={settings[def.key]}
-                    onSave={handleSave}
-                  />
+                  <SettingRow key={def.key} def={def} currentValue={settings[def.key]} onSave={handleSave} />
                 ))}
               </div>
             </div>

@@ -7,11 +7,20 @@ router.use(requireAuth);
 
 async function getSquareSettings() {
   const { rows } = await query(
-    `SELECT key, value FROM settings WHERE key IN ('square_access_token','square_location_id','square_environment')`
+    `SELECT key, value FROM settings WHERE key IN (
+      'square_environment',
+      'square_sandbox_token', 'square_sandbox_location_id',
+      'square_production_token', 'square_production_location_id'
+    )`
   );
   const map = {};
   rows.forEach(r => { map[r.key] = r.value; });
-  return map;
+  const env = map.square_environment || 'sandbox';
+  return {
+    square_environment:  env,
+    square_access_token: env === 'production' ? map.square_production_token       : map.square_sandbox_token,
+    square_location_id:  env === 'production' ? map.square_production_location_id : map.square_sandbox_location_id,
+  };
 }
 
 function squareBaseUrl(env) {
