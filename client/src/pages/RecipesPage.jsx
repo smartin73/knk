@@ -6,6 +6,7 @@ import { RecipesImportModal } from './RecipesImportModal.jsx';
 const EMPTY_FORM = {
   recipe_name: '',
   recipe_type: '',
+  stage: 'production',
   description: '',
   serving_size: '',
   prep_time: '',
@@ -33,11 +34,13 @@ const EMPTY_STEP = {
 
 const MEASUREMENTS = ['g', 'kg', 'ml', 'L', 'tsp', 'tbsp', 'cup', 'oz', 'lb', 'pinch', 'piece', 'slice', 'clove', 'sprig', 'bunch'];
 const FOLD_TYPES   = ['Stretch & Fold', 'Coil', 'Lamination'];
+const STAGES       = ['development', 'testing', 'production'];
 
-function fmtCurrency(n) {
-  if (!n && n !== 0) return '—';
-  return `$${parseFloat(n).toFixed(4)}`;
-}
+const STAGE_BADGE = {
+  development: 'badge-gray',
+  testing:     'badge-blue',
+  production:  'badge-green',
+};
 
 function calcCost(ingredients) {
   let total = 0;
@@ -111,7 +114,6 @@ function StepRow({ step, idx, total, onChange, onRemove, onMove }) {
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
         <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-muted)', minWidth: 24 }}>{step.step_number}.</div>
 
-        {/* Step type toggle */}
         <div style={{ display: 'flex', gap: 4 }}>
           {['regular', 'fold'].map(t => (
             <button
@@ -337,6 +339,12 @@ function RecipeForm({ initial, allIngredients: initialAllIngredients, onSave, on
                   <input value={form.recipe_type || ''} onChange={e => set('recipe_type', e.target.value)} placeholder="e.g. Bread, Pastry, Cookie" />
                 </div>
                 <div className="field">
+                  <label>Stage</label>
+                  <select value={form.stage || 'production'} onChange={e => set('stage', e.target.value)}>
+                    {STAGES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                  </select>
+                </div>
+                <div className="field">
                   <label>Serving Size</label>
                   <input type="number" value={form.serving_size || ''} onChange={e => set('serving_size', e.target.value)} placeholder="e.g. 12" />
                 </div>
@@ -542,6 +550,7 @@ function RecipeDetail({ recipe: initialRecipe, onEdit, onClose }) {
       <h1>${recipe.recipe_name}</h1>
       <div class="meta">
         ${recipe.recipe_type ? `Type: ${recipe.recipe_type} &nbsp;|&nbsp; ` : ''}
+        ${recipe.stage ? `Stage: ${recipe.stage} &nbsp;|&nbsp; ` : ''}
         ${recipe.serving_size ? `Serves: ${recipe.serving_size} &nbsp;|&nbsp; ` : ''}
         ${recipe.prep_time ? `Prep: ${recipe.prep_time} &nbsp;|&nbsp; ` : ''}
         ${recipe.cook_time ? `Cook: ${recipe.cook_time}` : ''}
@@ -566,7 +575,12 @@ function RecipeDetail({ recipe: initialRecipe, onEdit, onClose }) {
         ) : (
           <>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 20, fontWeight: 700 }}>{recipe.recipe_name}</div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 20, fontWeight: 700 }}>{recipe.recipe_name}</div>
+                <span className={`badge ${STAGE_BADGE[recipe.stage] || 'badge-gray'}`}>
+                  {recipe.stage || 'production'}
+                </span>
+              </div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
                 {[recipe.recipe_type,
                   recipe.serving_size ? `Serves ${recipe.serving_size}` : null,
@@ -702,14 +716,16 @@ export function RecipesPage() {
   const [loading, setLoading]               = useState(true);
   const [search, setSearch]                 = useState('');
   const [typeFilter, setTypeFilter]         = useState('');
+  const [stageFilter, setStageFilter]       = useState('');
   const [modal, setModal]                   = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (search)     params.set('search', search);
-      if (typeFilter) params.set('type', typeFilter);
+      if (search)       params.set('search', search);
+      if (typeFilter)   params.set('type', typeFilter);
+      if (stageFilter)  params.set('stage', stageFilter);
       const [recs, ings] = await Promise.all([
         api.get(`/recipes?${params}`),
         api.get('/ingredients'),
@@ -721,7 +737,7 @@ export function RecipesPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, typeFilter]);
+  }, [search, typeFilter, stageFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -769,8 +785,10 @@ export function RecipesPage() {
           <div className="page-title">📖 Recipes</div>
           <div className="page-subtitle">{recipes.length} recipe{recipes.length !== 1 ? 's' : ''}</div>
         </div>
-        <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>+ New Recipe</button>
-        <button className="btn btn-secondary" onClick={() => setModal({ mode: 'import' })}>↑ Import CSV</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={() => setModal({ mode: 'import' })}>↑ Import CSV</button>
+          <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>+ New Recipe</button>
+        </div>
       </div>
 
       <div className="search-bar">
@@ -790,6 +808,14 @@ export function RecipesPage() {
             {types.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         )}
+        <select
+          style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 14 }}
+          value={stageFilter}
+          onChange={e => setStageFilter(e.target.value)}
+        >
+          <option value="">All stages</option>
+          {STAGES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+        </select>
       </div>
 
       <div className="card" style={{ padding: 0 }}>
@@ -798,7 +824,7 @@ export function RecipesPage() {
         ) : recipes.length === 0 ? (
           <div className="empty-state">
             <div style={{ fontSize: 48 }}>📖</div>
-            <p>{search || typeFilter ? 'No recipes match your search.' : 'No recipes yet. Add your first recipe to get started.'}</p>
+            <p>{search || typeFilter || stageFilter ? 'No recipes match your search.' : 'No recipes yet. Add your first recipe to get started.'}</p>
           </div>
         ) : (
           <div className="table-wrap">
@@ -807,6 +833,7 @@ export function RecipesPage() {
                 <tr>
                   <th>Recipe</th>
                   <th>Type</th>
+                  <th>Stage</th>
                   <th>Serves</th>
                   <th>Prep</th>
                   <th>Cook</th>
@@ -825,6 +852,11 @@ export function RecipesPage() {
                       </div>
                     </td>
                     <td style={{ color: 'var(--text-muted)' }}>{r.recipe_type || '—'}</td>
+                    <td>
+                      <span className={`badge ${STAGE_BADGE[r.stage] || 'badge-gray'}`}>
+                        {r.stage || 'production'}
+                      </span>
+                    </td>
                     <td style={{ color: 'var(--text-muted)' }}>{r.serving_size || '—'}</td>
                     <td style={{ color: 'var(--text-muted)' }}>{r.prep_time || '—'}</td>
                     <td style={{ color: 'var(--text-muted)' }}>{r.cook_time || '—'}</td>
@@ -865,7 +897,6 @@ export function RecipesPage() {
           onCancel={() => setModal(null)}
         />
       )}
-
       {modal?.mode === 'import' && (
         <RecipesImportModal
           existingNames={new Set(recipes.map(r => r.recipe_name.toLowerCase()))}
