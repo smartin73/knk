@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api.js';
 import { RecipesImportModal } from './RecipesImportModal.jsx';
 import { RowMenu } from '../components/RowMenu.jsx';
@@ -62,12 +62,51 @@ function FoldRow({ fold, onUpdate, onRemove }) {
   );
 }
 
+// ── Step time parser ──────────────────────────────────────
+function parseStepTimeMs(val) {
+  if (!val) return null;
+  const s = String(val).trim();
+  const hms = s.match(/^(\d+):(\d+):(\d+)$/);
+  if (hms) return (parseInt(hms[1]) * 3600 + parseInt(hms[2]) * 60 + parseInt(hms[3])) * 1000;
+  const hm = s.match(/^(\d+):(\d+)$/);
+  if (hm) return (parseInt(hm[1]) * 60 + parseInt(hm[2])) * 1000;
+  let ms = 0;
+  const h  = s.match(/(\d+(?:\.\d+)?)\s*h/i);  if (h)  ms += parseFloat(h[1])  * 3600000;
+  const m  = s.match(/(\d+(?:\.\d+)?)\s*m/i);  if (m)  ms += parseFloat(m[1])  * 60000;
+  const sc = s.match(/(\d+(?:\.\d+)?)\s*s(?![a-z])/i); if (sc) ms += parseFloat(sc[1]) * 1000;
+  if (ms > 0) return ms;
+  const n = parseFloat(s); if (!isNaN(n)) return n * 60000;
+  return null;
+}
+function fmtCountdown(ms) {
+  if (ms <= 0) return '00:00';
+  const totalSec = Math.ceil(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
 // ── Make View ─────────────────────────────────────────────
 function MakeView({ recipe, onClose }) {
   const [multiplier, setMultiplier]   = useState(1);
   const [customYield, setCustomYield] = useState('');
   const [folds, setFolds]             = useState([]);
   const [nextFoldNum, setNextFoldNum] = useState(1);
+  const [stepTimers, setStepTimers]   = useState({}); // { [stepId]: { startedAt, duration, notified } }
+  const timeoutRefs = useRef({});
+
+  // Tick every second while any timer is active
+  useEffect(() => {
+    const hasActive = Object.values(stepTimers).some(t => !t.notified);
+    if (!hasActive) return;
+    const iv = setInterval(() => setStepTimers(t => ({ ...t })), 1000);
+    return () => clearInterval(iv);
+  }, [stepTimers]);
+
+  // Cleanup on unmount
+  useEffect(() => () => Object.values(timeoutRefs.current).forEach(clearTimeout), []);
 
   const servingSize = parseFloat(recipe.serving_size) || 1;
   const hasFolds    = recipe.steps?.some(s => s.step_type === 'fold');
@@ -90,6 +129,53 @@ function MakeView({ recipe, onClose }) {
   function removeFold(id) {
     setFolds(f => f.filter(fold => fold.id !== id).map((fold, i) => ({ ...fold, number: i + 1 })));
     setNextFoldNum(n => Math.max(1, n - 1));
+  }
+
+  async function startStep(step) {
+    const duration = parseStepTimeMs(step.step_time);
+    const startedAt = Date.now();
+    setStepTimers(t => ({ ...t, [step.id]: { startedAt, duration, notified: false } }));
+
+    async function notifyAndMark() {
+      try {
+        await api.post('/notifications/send', {
+          title:   recipe.recipe_name,
+          message: `⏰ Timer done: ${step.step_description || step.fold_type || 'Step complete'}`,
+        });
+      } catch (e) { console.error('Notification failed:', e); }
+      setStepTimers(t => ({ ...t, [step.id]: { ...t[step.id], notified: true } }));
+      delete timeoutRefs.current[step.id];
+    }
+
+    if (duration) {
+      timeoutRefs.current[step.id] = setTimeout(notifyAndMark, duration);
+    } else {
+      await notifyAndMark();
+    }
+  }
+
+  function renderNotifyControl(step) {
+    const timer = stepTimers[step.id];
+    if (!timer) {
+      return (
+        <button onClick={() => startStep(step)} style={{
+          marginLeft: 8, background: 'var(--surface2)', border: '1px solid var(--border)',
+          borderRadius: 4, padding: '2px 8px', fontSize: 11, cursor: 'pointer',
+          color: 'var(--accent2)', fontWeight: 600, whiteSpace: 'nowrap',
+        }}>
+          ⏱ Start
+        </button>
+      );
+    }
+    if (timer.notified) {
+      return <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--success, #4caf82)', fontWeight: 600 }}>✓ Notified</span>;
+    }
+    const remaining = timer.duration ? timer.duration - (Date.now() - timer.startedAt) : 0;
+    return (
+      <span style={{ marginLeft: 8, fontSize: 12, fontFamily: 'monospace', color: 'var(--accent2)', fontWeight: 700 }}>
+        ⏱ {fmtCountdown(remaining)}
+      </span>
+    );
   }
 
   return (
@@ -183,12 +269,13 @@ function MakeView({ recipe, onClose }) {
                           {s.fold_interval && <span style={{ color:'var(--text-muted)' }}> · every {s.fold_interval}</span>}
                           {(s.temp_min || s.temp_max) && <span style={{ color:'var(--text-muted)' }}> · {s.temp_min}°–{s.temp_max}°F</span>}
                           {s.step_description && <div style={{ color:'var(--text-muted)', fontSize:12, marginTop:2 }}>{s.step_description}</div>}
+                          {s.requires_notification && renderNotifyControl(s)}
                         </span>
                       ) : (
                         <span>
                           {s.step_description}
                           {s.step_time && <span style={{ color:'var(--text-muted)', fontSize:12 }}> — {s.step_time}</span>}
-                          {s.requires_notification && <span style={{ marginLeft:6, fontSize:11, color:'var(--accent2)' }}>⏰</span>}
+                          {s.requires_notification && renderNotifyControl(s)}
                         </span>
                       )}
                     </li>

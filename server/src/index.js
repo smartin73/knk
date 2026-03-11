@@ -22,6 +22,7 @@ import {
 } from './routes/modules.js';
 
 import squareRouter from './routes/square.js';
+import notificationsRouter from './routes/notifications.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -83,7 +84,8 @@ app.use('/event-menus',  eventMenusRouter);
 app.use('/donations',    donationsRouter);
 app.use('/vendors',      vendorsRouter);
 app.use('/settings', settingsRouter);
-app.use('/square', squareRouter);
+app.use('/square',        squareRouter);
+app.use('/notifications', notificationsRouter);
 
 // ── Health check ─────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ ok: true, ts: new Date() }));
