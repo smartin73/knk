@@ -76,7 +76,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const [recipe, steps, ingredients] = await Promise.all([
     query('SELECT * FROM recipes WHERE id = $1', [req.params.id]),
-    query('SELECT *, step_time::text as step_time FROM recipe_steps WHERE recipe_id = (SELECT recipe_uuid FROM recipes WHERE id = $1) ORDER BY step_number', [req.params.id]),
+    qquery('SELECT *, step_time::text as step_time FROM recipe_steps WHERE recipe_id = $1 ORDER BY step_number', [req.params.id]),
     query(`SELECT ri.*, ii.item_name as ingredient_item_name, ii.cost_per_gram
            FROM recipe_ingredients ri
            LEFT JOIN ingredient_items ii ON ri.ingredient_id = ii.id
@@ -130,25 +130,24 @@ router.delete('/:id', async (req, res) => {
 router.put('/:id/steps', async (req, res) => {
   const { steps } = req.body;
   
-  const { rows } = await query('SELECT recipe_uuid FROM recipes WHERE id = $1', [req.params.id]);
-  if (!rows[0]) return res.status(404).json({ error: 'Not found' });
-  const recipeUuid = rows[0].recipe_uuid;
+const { rows } = await query('SELECT id FROM recipes WHERE id = $1', [req.params.id]);
+if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+const recipeUuid = rows[0].id;  // ← id, not recipe_uuid
 
-  await query('DELETE FROM recipe_steps WHERE recipe_id = $1', [recipeUuid]);
-  if (steps?.length) {
-    for (const s of steps) {
-      await query(
-        `INSERT INTO recipe_steps (recipe_id,step_number,step_type,step_description,step_time,requires_notification,fold_type,fold_interval,temp_min,temp_max)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [recipeUuid, s.step_number, s.step_type||'regular', s.step_description||'',
-         s.step_time||null, s.requires_notification||false, s.fold_type||null,
-         s.fold_interval||null, s.temp_min||null, s.temp_max||null]
-      );
-    }
+await query('DELETE FROM recipe_steps WHERE recipe_id = $1', [recipeUuid]);
+if (steps?.length) {
+  for (const s of steps) {
+    await query(
+      `INSERT INTO recipe_steps (recipe_id,step_number,step_type,step_description,step_time,requires_notification,fold_type,fold_interval,temp_min,temp_max)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [recipeUuid, s.step_number, s.step_type||'regular', s.step_description||'',
+       s.step_time||null, s.requires_notification||false, s.fold_type||null,
+       s.fold_interval||null, s.temp_min||null, s.temp_max||null]
+    );
   }
-  res.json(rows);
-});
-
+}
+res.json({ ok: true });  // ← not rows
+  
 // ── Ingredients ──────────────────────────────────────────
 // PUT /recipes/:id/ingredients  (replace all ingredients)
 router.put('/:id/ingredients', async (req, res) => {
