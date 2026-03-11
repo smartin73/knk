@@ -59,9 +59,8 @@ router.post('/import', requireAuth, async (req, res) => {
 
 // GET /recipes
 router.get('/', async (req, res) => {
-  const { search, type, active } = req.query;
-  const where = ['1=1']; const params = []; let i = 1;
   const { search, type, active, stage } = req.query;
+  const where = ['1=1']; const params = []; let i = 1;
 
   if (search) { where.push(`recipe_name ILIKE $${i++}`); params.push(`%${search}%`); }
   if (type)   { where.push(`recipe_type = $${i++}`); params.push(type); }
