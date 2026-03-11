@@ -11,7 +11,7 @@ import { IngredientsPage } from './pages/IngredientsPage.jsx';
 import { RecipesPage } from './pages/RecipesPage.jsx';
 import { SettingsPage } from './pages/SettingsPage.jsx';
 import { ItemBuilderPage } from './pages/ItemBuilderPage.jsx';
-
+import { MakePage } from './pages/MakePage.jsx';
 
 const NAV = [
   { to: '/',            label: 'Dashboard',    icon: '▦' },
