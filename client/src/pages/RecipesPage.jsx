@@ -626,7 +626,7 @@ function RecipeDetail({ recipe: initialRecipe, onEdit, onMake, onClose }) {
             <button className="btn btn-secondary" onClick={onClose}>Close</button>
             <button className="btn btn-secondary" onClick={handlePrint}>Print</button>
             <button className="btn btn-secondary" onClick={() => onMake(recipe)}>🍞 Make</button>
-            <button className="btn btn-primary" onClick={onEdit}>Edit</button>
+            <button className="btn btn-primary" onClick={() => onEdit(recipe)}>Edit</button>
           </div>
         </>}
       </div>
@@ -691,6 +691,11 @@ export function RecipesPage() {
   }
 
   async function handleDelete() { await api.delete(`/recipes/${modal.recipe.id}`); setModal(null); load(); }
+
+  async function openEdit(recipe) {
+    const full = await api.get(`/recipes/${recipe.id}`);
+    setModal({ mode:'edit', recipe: full });
+  }
 
   async function handleDuplicate(recipe) {
     const full = await api.get(`/recipes/${recipe.id}`);
@@ -758,7 +763,7 @@ export function RecipesPage() {
                     <td>
                       <div className="actions">
                         <button className="btn btn-secondary btn-sm" title="Make" onClick={()=>openMake(r)}>🍞</button>
-                        <button className="btn btn-secondary btn-sm" onClick={()=>setModal({mode:'edit',recipe:r})}>Edit</button>
+                        <button className="btn btn-secondary btn-sm" onClick={()=>openEdit(r)}>Edit</button>
                         <button className="btn btn-secondary btn-sm" onClick={()=>handleDuplicate(r)}>Dupe</button>
                         <button className="btn btn-danger btn-sm" onClick={()=>setModal({mode:'delete',recipe:r})}>Del</button>
                       </div>
@@ -773,7 +778,7 @@ export function RecipesPage() {
 
       {modal?.mode==='detail' && (
         <RecipeDetail recipe={modal.recipe}
-          onEdit={()=>setModal({mode:'edit',recipe:modal.recipe})}
+          onEdit={r=>setModal({mode:'edit',recipe:r})}
           onMake={r=>{ setModal(null); setMakeRecipe(r); }}
           onClose={()=>setModal(null)} />
       )}
