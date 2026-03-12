@@ -1,1 +1,21 @@
-server/src/routes/.DS_Store
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build output
+client/dist/
+client/dist-ssr/
+
+# Lock files (optional — remove these lines if you want to track them)
+client/package-lock.json
+server/package-lock.json
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
