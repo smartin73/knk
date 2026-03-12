@@ -61,21 +61,24 @@ function StepIndicator({ current }) {
 
 export function RecipesImportModal({ existingNames, onClose, onDone }) {
   const [step, setStep]           = useState(0);
-  const [recipesFile, setRecipesFile] = useState(null);
-  const [stepsFile, setStepsFile]     = useState(null);
+  const [recipesFile, setRecipesFile]         = useState(null);
+  const [stepsFile, setStepsFile]             = useState(null);
+  const [ingredientsFile, setIngredientsFile] = useState(null);
   const [preview, setPreview]     = useState(null); // { toImport, dupes, invalid }
   const [importing, setImporting] = useState(false);
   const [imported, setImported]   = useState(0);
   const [err, setErr]             = useState('');
-  const recipesRef = useRef();
-  const stepsRef   = useRef();
+  const recipesRef     = useRef();
+  const stepsRef       = useRef();
+  const ingredientsRef = useRef();
 
   async function handlePreview() {
     if (!recipesFile) return setErr('Please upload the Recipes CSV.');
     setErr('');
     try {
-      const recipeRows = await parseCsv(recipesFile);
-      const stepRows   = stepsFile ? await parseCsv(stepsFile) : [];
+      const recipeRows     = await parseCsv(recipesFile);
+      const stepRows       = stepsFile        ? await parseCsv(stepsFile)       : [];
+      const ingredientRows = ingredientsFile  ? await parseCsv(ingredientsFile) : [];
 
       // Build step lookup: recipe_fk_uuid → steps[]
       const stepsByRecipe = {};
@@ -89,6 +92,20 @@ export function RecipesImportModal({ existingNames, onClose, onDone }) {
           step_time:             fmDuration(s.StepTime),
           requires_notification: s.StepsRequireNotification === 'Yes',
           step_type:             'regular',
+        });
+      }
+
+      // Build ingredient lookup: recipe_fk_uuid → ingredients[]
+      const ingredientsByRecipe = {};
+      for (const ing of ingredientRows) {
+        const fk = ing.recipe_fk_uuid;
+        if (!fk) continue;
+        if (!ingredientsByRecipe[fk]) ingredientsByRecipe[fk] = [];
+        ingredientsByRecipe[fk].push({
+          ingredient:  ing.Ingredient || ing.ingredient || '',
+          amount:      ing.Amount     || ing.amount     || null,
+          measurement: ing.Measurement || ing.measurement || null,
+          sort_order:  parseInt(ing.SortOrder || ing.sort_order) || 0,
         });
       }
 
@@ -121,6 +138,7 @@ export function RecipesImportModal({ existingNames, onClose, onDone }) {
           notes:             null,
           is_active:         true,
           steps:             (stepsByRecipe[uuid] || []).sort((a, b) => a.step_number - b.step_number),
+          ingredients:       (ingredientsByRecipe[uuid] || []).sort((a, b) => a.sort_order - b.sort_order),
         });
       }
 
@@ -189,6 +207,23 @@ export function RecipesImportModal({ existingNames, onClose, onDone }) {
                 onChange={e => { setStepsFile(e.target.files[0]); e.target.value = ''; }} />
             </div>
 
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>
+                Ingredients CSV <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span>
+              </label>
+              <div
+                style={{ border: '2px dashed var(--border)', borderRadius: 8, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', background: ingredientsFile ? 'var(--surface2)' : undefined }}
+                onClick={() => ingredientsRef.current.click()}
+              >
+                {ingredientsFile
+                  ? <span style={{ color: 'var(--accent)', fontWeight: 600 }}>✓ {ingredientsFile.name}</span>
+                  : <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Click to upload ingredients CSV (optional)</span>
+                }
+              </div>
+              <input ref={ingredientsRef} type="file" accept=".csv" style={{ display: 'none' }}
+                onChange={e => { setIngredientsFile(e.target.files[0]); e.target.value = ''; }} />
+            </div>
+
             {err && <div className="error-msg" style={{ marginBottom: 12 }}>{err}</div>}
 
             <div className="modal-actions">
@@ -215,6 +250,7 @@ export function RecipesImportModal({ existingNames, onClose, onDone }) {
                     <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase' }}>By</th>
                     <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase' }}>Type</th>
                     <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase' }}>Steps</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase' }}>Ingr.</th>
                     <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase' }}>Status</th>
                   </tr>
                 </thead>
@@ -225,20 +261,21 @@ export function RecipesImportModal({ existingNames, onClose, onDone }) {
                       <td style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>{r.recipe_by || '—'}</td>
                       <td style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>{r.recipe_type || '—'}</td>
                       <td style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>{r.steps.length}</td>
+                      <td style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>{r.ingredients.length}</td>
                       <td style={{ padding: '8px 12px' }}><span style={{ color: 'var(--accent)', fontSize: 12 }}>Ready</span></td>
                     </tr>
                   ))}
                   {preview.dupes.map((name, i) => (
                     <tr key={`dupe-${i}`} style={{ borderTop: '1px solid var(--border)', background: 'rgba(245,158,11,0.06)' }}>
                       <td style={{ padding: '8px 12px', color: '#f59e0b' }}>{name}</td>
-                      <td colSpan={3} />
+                      <td colSpan={4} />
                       <td style={{ padding: '8px 12px' }}><span style={{ color: '#f59e0b', fontSize: 12 }}>Duplicate</span></td>
                     </tr>
                   ))}
                   {preview.invalid.map((r, i) => (
                     <tr key={`inv-${i}`} style={{ borderTop: '1px solid var(--border)', background: 'rgba(239,68,68,0.06)' }}>
                       <td style={{ padding: '8px 12px', color: 'var(--danger)' }}>{r.recipeName || '(blank)'}</td>
-                      <td colSpan={3} />
+                      <td colSpan={4} />
                       <td style={{ padding: '8px 12px' }}><span style={{ color: 'var(--danger)', fontSize: 12 }}>{r._reason}</span></td>
                     </tr>
                   ))}
@@ -265,7 +302,7 @@ export function RecipesImportModal({ existingNames, onClose, onDone }) {
               {imported} recipe{imported !== 1 ? 's' : ''} imported
             </div>
             <div style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>
-              Steps have been linked to each recipe.
+              Steps and ingredients have been linked to each recipe.
             </div>
             <button className="btn btn-primary" onClick={() => { onDone(); onClose(); }}>Done</button>
           </div>

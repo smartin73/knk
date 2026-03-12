@@ -45,6 +45,26 @@ router.post('/import', requireAuth, async (req, res) => {
           );
         }
       }
+
+      if (r.ingredients?.length) {
+        // Build name→id map for matching
+        const names = r.ingredients.map(i => i.ingredient).filter(Boolean);
+        const { rows: ingItems } = await client.query(
+          `SELECT id, item_name FROM ingredient_items WHERE item_name = ANY($1)`,
+          [names]
+        );
+        const nameToId = Object.fromEntries(ingItems.map(i => [i.item_name.toLowerCase(), i.id]));
+
+        for (const ing of r.ingredients) {
+          const ingredientId = nameToId[ing.ingredient?.toLowerCase()] || null;
+          await client.query(
+            `INSERT INTO recipe_ingredients
+              (recipe_id, ingredient_id, ingredient, amount, measurement, sort_order)
+             VALUES ($1,$2,$3,$4,$5,$6)`,
+            [recipeId, ingredientId, ing.ingredient || null, ing.amount || null, ing.measurement || null, ing.sort_order || 0]
+          );
+        }
+      }
     }
     await client.query('COMMIT');
     res.json({ ok: true });
