@@ -4,12 +4,14 @@ import { createPortal } from 'react-dom';
 export function RowMenu({ actions }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos]   = useState({ top: 0, right: 0 });
-  const btnRef = useRef();
+  const btnRef      = useRef();
+  const dropdownRef = useRef();
 
   useEffect(() => {
     if (!open) return;
     function handleClick(e) {
-      if (!btnRef.current?.contains(e.target)) setOpen(false);
+      if (!btnRef.current?.contains(e.target) && !dropdownRef.current?.contains(e.target))
+        setOpen(false);
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -34,7 +36,7 @@ export function RowMenu({ actions }) {
         ···
       </button>
       {open && createPortal(
-        <div style={{
+        <div ref={dropdownRef} style={{
           position: 'fixed', top: pos.top, right: pos.right,
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
