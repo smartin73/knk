@@ -21,6 +21,13 @@ const SETTINGS_SCHEMA = [
     ],
   },
   {
+    category: 'Gemini',
+    icon: '✨',
+    settings: [
+      { key: 'gemini_api_key', label: 'API Key', description: 'Google Gemini API key for recipe card image import. Get a free key at aistudio.google.com.', is_encrypted: true },
+    ],
+  },
+  {
     category: 'WordPress',
     icon: '🌐',
     settings: [

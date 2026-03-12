@@ -309,9 +309,9 @@ updated_at    timestamptz
 
 ## Pending Work
 
-- [ ] Recipe detail/edit: fetch full recipe (with steps) before opening edit form
-- [ ] ItemBuilder CSV import
-- [ ] Actions overflow menu (hamburger) when 3+ actions
+- [x] Recipe detail/edit: fetch full recipe (with steps) before opening edit form
+- [x] ItemBuilder CSV import
+- [x] Actions overflow menu (hamburger) when 3+ actions
 - [ ] Event Menus module
 - [ ] Donations module
 - [ ] Square production credentials

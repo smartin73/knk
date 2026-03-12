@@ -1,9 +1,139 @@
 import { Router } from 'express';
 import pool, { query } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
+import multer from 'multer';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+function parseDuration(iso) {
+  if (!iso) return null;
+  const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  if (!m) return iso;
+  const h = parseInt(m[1] || 0);
+  const min = parseInt(m[2] || 0);
+  if (h === 0 && min === 0) return null;
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+}
+
+function extractRecipeJsonLd(html) {
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = re.exec(html)) !== null) {
+    try {
+      const data = JSON.parse(match[1]);
+      const items = Array.isArray(data) ? data : data['@graph'] ? data['@graph'] : [data];
+      const recipe = items.find(item => {
+        const t = item['@type'];
+        return t === 'Recipe' || (Array.isArray(t) && t.includes('Recipe'));
+      });
+      if (recipe) return recipe;
+    } catch { /* skip */ }
+  }
+  return null;
+}
+
+function mapSchemaRecipe(s) {
+  const steps = [];
+  let n = 1;
+  for (const inst of (s.recipeInstructions || [])) {
+    if (typeof inst === 'string') {
+      steps.push({ step_number: n++, step_description: inst, step_type: 'regular', step_time: null, requires_notification: false });
+    } else if (inst['@type'] === 'HowToStep') {
+      steps.push({ step_number: n++, step_description: inst.text || inst.name || '', step_type: 'regular', step_time: null, requires_notification: false });
+    } else if (inst['@type'] === 'HowToSection') {
+      for (const sub of (inst.itemListElement || [])) {
+        steps.push({ step_number: n++, step_description: sub.text || sub.name || '', step_type: 'regular', step_time: null, requires_notification: false });
+      }
+    }
+  }
+  const ingredients = (s.recipeIngredient || []).map((ing, i) => ({
+    ingredient: ing, amount: null, measurement: null, sort_order: i,
+  }));
+  let servingSize = null;
+  const y = s.recipeYield;
+  if (y) {
+    const first = Array.isArray(y) ? y[0] : y;
+    const nm = String(first).match(/\d+/);
+    if (nm) servingSize = parseInt(nm[0]);
+  }
+  return {
+    recipe_name: s.name || 'Untitled Recipe',
+    recipe_type: Array.isArray(s.recipeCategory) ? s.recipeCategory[0] : (s.recipeCategory || null),
+    description: s.description || null,
+    serving_size: servingSize,
+    prep_time: parseDuration(s.prepTime),
+    cook_time: parseDuration(s.cookTime),
+    ingredient_label: null,
+    contains_label: null,
+    notes: null,
+    steps,
+    ingredients,
+  };
+}
+
+function extractJSON(text) {
+  const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  return JSON.parse(clean);
+}
+
+const IMAGE_PROMPT = `Extract the recipe from this image and return ONLY a JSON object with this exact structure, no markdown, no explanation:
+{
+  "recipe_name": "string",
+  "recipe_type": "string or null",
+  "description": "string or null",
+  "serving_size": number or null,
+  "prep_time": "HH:MM string or null",
+  "cook_time": "HH:MM string or null",
+  "ingredient_label": "string or null",
+  "contains_label": "string or null",
+  "steps": [{ "step_number": 1, "step_description": "string", "step_time": "string or null", "step_type": "regular", "requires_notification": false }],
+  "ingredients": [{ "ingredient": "name only", "amount": number or null, "measurement": "unit or null", "sort_order": 0 }]
+}`;
 
 const router = Router();
 router.use(requireAuth);
+
+// POST /recipes/import/from-url
+router.post('/import/from-url', async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'URL required' });
+  try {
+    const pageRes = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!pageRes.ok) return res.status(400).json({ error: `Could not fetch URL: ${pageRes.statusText}` });
+    const html = await pageRes.text();
+    const schema = extractRecipeJsonLd(html);
+    if (!schema) return res.status(422).json({ error: 'No recipe data found on this page. The site may not support structured recipe data.' });
+    const recipe = mapSchemaRecipe(schema);
+    res.json({ recipe });
+  } catch (e) {
+    console.error('import/from-url error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /recipes/import/from-image
+router.post('/import/from-image', upload.single('image'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Image required' });
+  try {
+    const { rows: keyRows } = await query(`SELECT value FROM settings WHERE key = 'gemini_api_key'`);
+    const apiKey = keyRows[0]?.value;
+    if (!apiKey) return res.status(400).json({ error: 'Gemini API key not set. Add it in Settings.' });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const result = await model.generateContent([
+      IMAGE_PROMPT,
+      { inlineData: { mimeType: req.file.mimetype, data: req.file.buffer.toString('base64') } },
+    ]);
+    const recipe = extractJSON(result.response.text());
+    recipe.steps = (recipe.steps || []).map((s, i) => ({ ...s, step_number: s.step_number ?? i + 1, step_type: s.step_type || 'regular', requires_notification: false }));
+    recipe.ingredients = (recipe.ingredients || []).map((ing, i) => ({ ...ing, sort_order: ing.sort_order ?? i }));
+    res.json({ recipe });
+  } catch (e) {
+    console.error('import/from-image error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // POST /recipes/import
 router.post('/import', requireAuth, async (req, res) => {

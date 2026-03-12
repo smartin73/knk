@@ -29,6 +29,14 @@ export const api = {
   logout: ()      => request('POST', '/auth/logout'),
   me: () => request('GET', '/auth/me', null, { silent: true }),
 
+  // Multipart form POST (no Content-Type header — browser sets boundary)
+  formPost: async (path, formData) => {
+    const res = await fetch(`${BASE}${path}`, { method: 'POST', credentials: 'include', body: formData });
+    if (res.status === 401) { window.location.href = '/login'; return; }
+    if (!res.ok) { const err = await res.json().catch(() => ({ error: res.statusText })); throw new Error(err.error || 'Request failed'); }
+    return res.json();
+  },
+
   // Upload
   upload: async (file) => {
     const fd = new FormData();
