@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api.js';
 import { RecipesImportModal } from './RecipesImportModal.jsx';
+import { RecipeTestLogModal } from './RecipeTestLogModal.jsx';
 import { RowMenu } from '../components/RowMenu.jsx';
 
 // ── Constants ─────────────────────────────────────────────
@@ -851,10 +852,11 @@ export function RecipesPage() {
                     <td>
                       <div className="actions">
                         <RowMenu actions={[
-                          { label: '🍞 Make',   onClick: () => openMake(r) },
-                          { label: 'Edit',      onClick: () => openEdit(r) },
-                          { label: 'Duplicate', onClick: () => handleDuplicate(r) },
-                          { label: 'Delete',    onClick: () => setModal({ mode: 'delete', recipe: r }), danger: true },
+                          { label: '🍞 Make',     onClick: () => openMake(r) },
+                          { label: 'Edit',        onClick: () => openEdit(r) },
+                          { label: '🧪 Test Log', onClick: () => setModal({ mode: 'tests', recipe: r }) },
+                          { label: 'Duplicate',   onClick: () => handleDuplicate(r) },
+                          { label: 'Delete',      onClick: () => setModal({ mode: 'delete', recipe: r }), danger: true },
                         ]} />
                       </div>
                     </td>
@@ -877,6 +879,9 @@ export function RecipesPage() {
       )}
       {modal?.mode==='delete' && (
         <DeleteConfirm recipe={modal.recipe} onConfirm={handleDelete} onCancel={()=>setModal(null)} />
+      )}
+      {modal?.mode==='tests' && (
+        <RecipeTestLogModal recipe={modal.recipe} onClose={()=>setModal(null)} onPromoted={load} />
       )}
       {modal?.mode==='import' && (
         <RecipesImportModal existingNames={new Set(recipes.map(r=>r.recipe_name.toLowerCase()))} onClose={()=>setModal(null)} onDone={load} />

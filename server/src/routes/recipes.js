@@ -318,4 +318,244 @@ router.put('/:id/ingredients', async (req, res) => {
   res.json(rows);
 });
 
+// ── Recipe Tests ──────────────────────────────────────────
+
+// GET /recipes/:id/tests
+router.get('/:id/tests', async (req, res) => {
+  try {
+    const { rows: tests } = await query(
+      `SELECT * FROM recipe_tests WHERE recipe_id = $1 ORDER BY test_number DESC`,
+      [req.params.id]
+    );
+    const testIds = tests.map(t => t.id);
+    if (testIds.length === 0) return res.json([]);
+
+    const [{ rows: steps }, { rows: ingredients }] = await Promise.all([
+      query(`SELECT * FROM recipe_test_steps WHERE test_id = ANY($1) ORDER BY step_number`, [testIds]),
+      query(
+        `SELECT rts.*, ii.cost_per_gram FROM recipe_test_ingredients rts
+         LEFT JOIN ingredient_items ii ON rts.ingredient_id = ii.id
+         WHERE rts.test_id = ANY($1) ORDER BY sort_order`,
+        [testIds]
+      ),
+    ]);
+
+    const stepsByTest = {};
+    const ingsByTest  = {};
+    for (const s of steps)   { if (!stepsByTest[s.test_id]) stepsByTest[s.test_id] = []; stepsByTest[s.test_id].push(s); }
+    for (const i of ingredients) { if (!ingsByTest[i.test_id]) ingsByTest[i.test_id] = []; ingsByTest[i.test_id].push(i); }
+
+    res.json(tests.map(t => ({ ...t, steps: stepsByTest[t.id] || [], ingredients: ingsByTest[t.id] || [] })));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /recipes/:id/tests  — snapshot current recipe state
+router.post('/:id/tests', async (req, res) => {
+  const { label, tested_at, stage } = req.body;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // next test number for this recipe
+    const { rows: [{ max }] } = await client.query(
+      `SELECT COALESCE(MAX(test_number), 0) AS max FROM recipe_tests WHERE recipe_id = $1`,
+      [req.params.id]
+    );
+    const testNumber = max + 1;
+
+    const { rows: [test] } = await client.query(
+      `INSERT INTO recipe_tests (recipe_id, test_number, label, stage, tested_at)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [req.params.id, testNumber, label || null, stage || 'testing', tested_at || new Date().toISOString().slice(0, 10)]
+    );
+
+    // snapshot current steps
+    const { rows: srcSteps } = await client.query(
+      `SELECT *, step_time::text as step_time FROM recipe_steps WHERE recipe_id = $1 ORDER BY step_number`,
+      [req.params.id]
+    );
+    for (const s of srcSteps) {
+      await client.query(
+        `INSERT INTO recipe_test_steps (test_id, step_number, step_type, step_description, step_time, requires_notification, fold_type, fold_interval, temp_min, temp_max)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [test.id, s.step_number, s.step_type, s.step_description, s.step_time, s.requires_notification, s.fold_type, s.fold_interval, s.temp_min, s.temp_max]
+      );
+    }
+
+    // snapshot current ingredients
+    const { rows: srcIngs } = await client.query(
+      `SELECT * FROM recipe_ingredients WHERE recipe_id = $1 ORDER BY sort_order`,
+      [req.params.id]
+    );
+    for (const i of srcIngs) {
+      await client.query(
+        `INSERT INTO recipe_test_ingredients (test_id, ingredient_id, ingredient, amount, measurement, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [test.id, i.ingredient_id, i.ingredient, i.amount, i.measurement, i.sort_order]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    const [{ rows: steps }, { rows: ingredients }] = await Promise.all([
+      query(`SELECT * FROM recipe_test_steps WHERE test_id = $1 ORDER BY step_number`, [test.id]),
+      query(`SELECT rts.*, ii.cost_per_gram FROM recipe_test_ingredients rts LEFT JOIN ingredient_items ii ON rts.ingredient_id = ii.id WHERE rts.test_id = $1 ORDER BY sort_order`, [test.id]),
+    ]);
+    res.status(201).json({ ...test, steps, ingredients });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
+});
+
+// PUT /recipes/:id/tests/:tid  — update header fields
+router.put('/:id/tests/:tid', async (req, res) => {
+  const { label, stage, tested_at, outcome, rating, tasting_notes, crumb_notes, crust_notes, observations } = req.body;
+  try {
+    const { rows: [test] } = await query(
+      `UPDATE recipe_tests SET label=$1, stage=$2, tested_at=$3, outcome=$4, rating=$5,
+        tasting_notes=$6, crumb_notes=$7, crust_notes=$8, observations=$9, updated_at=now()
+       WHERE id=$10 AND recipe_id=$11 RETURNING *`,
+      [label||null, stage||'testing', tested_at, outcome||'pending', rating||null,
+       tasting_notes||null, crumb_notes||null, crust_notes||null, observations||null,
+       req.params.tid, req.params.id]
+    );
+    if (!test) return res.status(404).json({ error: 'Not found' });
+    res.json(test);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT /recipes/:id/tests/:tid/steps
+router.put('/:id/tests/:tid/steps', async (req, res) => {
+  const { steps } = req.body;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`DELETE FROM recipe_test_steps WHERE test_id = $1`, [req.params.tid]);
+    for (const s of (steps || [])) {
+      await client.query(
+        `INSERT INTO recipe_test_steps (test_id, step_number, step_type, step_description, step_time, requires_notification, fold_type, fold_interval, temp_min, temp_max)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [req.params.tid, s.step_number, s.step_type||'regular', s.step_description||'',
+         s.step_time||null, s.requires_notification||false, s.fold_type||null,
+         s.fold_interval||null, s.temp_min||null, s.temp_max||null]
+      );
+    }
+    await client.query('COMMIT');
+    const { rows } = await query(`SELECT * FROM recipe_test_steps WHERE test_id = $1 ORDER BY step_number`, [req.params.tid]);
+    res.json(rows);
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
+});
+
+// PUT /recipes/:id/tests/:tid/ingredients
+router.put('/:id/tests/:tid/ingredients', async (req, res) => {
+  const { ingredients } = req.body;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`DELETE FROM recipe_test_ingredients WHERE test_id = $1`, [req.params.tid]);
+    for (const i of (ingredients || [])) {
+      await client.query(
+        `INSERT INTO recipe_test_ingredients (test_id, ingredient_id, ingredient, amount, measurement, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [req.params.tid, i.ingredient_id||null, i.ingredient, i.amount||null, i.measurement, i.sort_order||0]
+      );
+    }
+    await client.query('COMMIT');
+    const { rows } = await query(
+      `SELECT rts.*, ii.cost_per_gram FROM recipe_test_ingredients rts
+       LEFT JOIN ingredient_items ii ON rts.ingredient_id = ii.id
+       WHERE rts.test_id = $1 ORDER BY sort_order`,
+      [req.params.tid]
+    );
+    res.json(rows);
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
+});
+
+// POST /recipes/:id/tests/:tid/promote
+router.post('/:id/tests/:tid/promote', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: [test] } = await client.query(
+      `SELECT * FROM recipe_tests WHERE id = $1 AND recipe_id = $2`,
+      [req.params.tid, req.params.id]
+    );
+    if (!test) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Test not found' }); }
+
+    // replace recipe steps with test steps
+    await client.query(`DELETE FROM recipe_steps WHERE recipe_id = $1`, [req.params.id]);
+    const { rows: testSteps } = await client.query(
+      `SELECT * FROM recipe_test_steps WHERE test_id = $1 ORDER BY step_number`, [req.params.tid]
+    );
+    for (const s of testSteps) {
+      await client.query(
+        `INSERT INTO recipe_steps (recipe_id, step_number, step_type, step_description, step_time, requires_notification, fold_type, fold_interval, temp_min, temp_max)
+         VALUES ($1,$2,$3,$4,$5::interval,$6,$7,$8,$9,$10)`,
+        [req.params.id, s.step_number, s.step_type, s.step_description, s.step_time||null,
+         s.requires_notification, s.fold_type, s.fold_interval, s.temp_min, s.temp_max]
+      );
+    }
+
+    // replace recipe ingredients with test ingredients
+    await client.query(`DELETE FROM recipe_ingredients WHERE recipe_id = $1`, [req.params.id]);
+    const { rows: testIngs } = await client.query(
+      `SELECT * FROM recipe_test_ingredients WHERE test_id = $1 ORDER BY sort_order`, [req.params.tid]
+    );
+    for (const i of testIngs) {
+      await client.query(
+        `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, ingredient, amount, measurement, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [req.params.id, i.ingredient_id, i.ingredient, i.amount, i.measurement, i.sort_order]
+      );
+    }
+
+    // mark this test as promoted, clear is_promoted on others for this recipe
+    await client.query(
+      `UPDATE recipe_tests SET is_promoted = false WHERE recipe_id = $1`, [req.params.id]
+    );
+    await client.query(
+      `UPDATE recipe_tests SET is_promoted = true, promoted_at = now(), updated_at = now() WHERE id = $1 RETURNING *`,
+      [req.params.tid]
+    );
+
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
+});
+
+// DELETE /recipes/:id/tests/:tid
+router.delete('/:id/tests/:tid', async (req, res) => {
+  await query(`DELETE FROM recipe_tests WHERE id = $1 AND recipe_id = $2`, [req.params.tid, req.params.id]);
+  res.json({ ok: true });
+});
+
 export default router;
