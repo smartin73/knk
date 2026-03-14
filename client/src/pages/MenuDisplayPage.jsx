@@ -137,7 +137,7 @@ export function MenuDisplayPage() {
   );
 
   const fmtDate = menu.event_date
-    ? new Date(menu.event_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+    ? new Date(menu.event_date.split('T')[0] + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
     : null;
 
   const startTime = fmtTime(menu.start_time);
@@ -149,11 +149,16 @@ export function MenuDisplayPage() {
       {/* Header */}
       <div style={{ background: '#1a1a1a', padding: isMobile ? '12px 16px' : '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: isMobile ? 22 : 28 }}>🔪</span>
-          <div>
-            <div style={{ color: '#fff', fontWeight: 800, fontSize: isMobile ? 15 : 18, letterSpacing: '-0.3px' }}>Knife & Knead</div>
-            {menu.location && <div style={{ color: '#999', fontSize: isMobile ? 11 : 12 }}>{menu.location}</div>}
-          </div>
+          {menu.logo_url
+            ? <img src={menu.logo_url} alt="Knife & Knead" style={{ height: isMobile ? 36 : 48, width: 'auto', objectFit: 'contain' }} />
+            : (
+              <>
+                <span style={{ fontSize: isMobile ? 22 : 28 }}>🔪</span>
+                <div style={{ color: '#fff', fontWeight: 800, fontSize: isMobile ? 15 : 18, letterSpacing: '-0.3px' }}>Knife & Knead</div>
+              </>
+            )
+          }
+          {menu.location && <div style={{ color: '#999', fontSize: isMobile ? 11 : 12, marginLeft: menu.logo_url ? 4 : 0 }}>{menu.location}</div>}
         </div>
         <div style={{ textAlign: 'right' }}>
           {fmtDate && <div style={{ color: '#fff', fontWeight: 600, fontSize: isMobile ? 12 : 14 }}>{fmtDate}</div>}

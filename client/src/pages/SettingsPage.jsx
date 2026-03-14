@@ -39,6 +39,13 @@ const SETTINGS_SCHEMA = [
   },
 
 {
+  category: 'Branding',
+  icon: '🎨',
+  settings: [
+    { key: 'logo_url', label: 'Logo URL', description: 'URL of the KnK logo shown in the header of the public menu display page.', is_encrypted: false },
+  ],
+},
+{
   category: 'Event Menus',
   icon: '🗒',
   settings: [

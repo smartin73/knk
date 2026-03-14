@@ -107,7 +107,7 @@ app.get('/public/menu/:id', async (req, res) => {
          WHERE emi.menu_id=$1 ORDER BY emi.sort_order, ib.item_name`,
         [req.params.id]
       ),
-      pool.query(`SELECT value FROM settings WHERE key='menu_refresh_interval'`),
+      pool.query(`SELECT key, value FROM settings WHERE key IN ('menu_refresh_interval', 'logo_url')`),
     ]);
     if (!menuRes.rows[0]) return res.status(404).json({ error: 'Not found' });
 
@@ -118,8 +118,11 @@ app.get('/public/menu/:id', async (req, res) => {
       return { ...item, status };
     });
 
-    const refresh_interval = parseInt(settingRes.rows[0]?.value || '30');
-    res.json({ ...menuRes.rows[0], items, refresh_interval });
+    const settingsMap = {};
+    settingRes.rows.forEach(r => { settingsMap[r.key] = r.value; });
+    const refresh_interval = parseInt(settingsMap.menu_refresh_interval || '30');
+    const logo_url = settingsMap.logo_url || null;
+    res.json({ ...menuRes.rows[0], items, refresh_interval, logo_url });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Server error' });
