@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { ImportModal } from './ImportModal.jsx';
 import { RowMenu } from '../components/RowMenu.jsx';
+import { ImageUpload } from '../components/ImageUpload.jsx';
 
 const STATUS_BADGES = {
   draft:     'badge-gray',
@@ -218,9 +219,9 @@ function EventForm({ initial, vendors, onSave, onCancel }) {
             <label>Description</label>
             <textarea value={form.description || ''} onChange={e => set('description', e.target.value)} placeholder="Event details..." />
           </div>
-          <div className="field">
-            <label>Image URL</label>
-            <input value={form.image_url || ''} onChange={e => set('image_url', e.target.value)} placeholder="https://..." />
+          <div className="field full">
+            <label>Image</label>
+            <ImageUpload value={form.image_url || ''} onChange={v => set('image_url', v)} />
           </div>
           <div className="field">
             <label>Ticket URL</label>

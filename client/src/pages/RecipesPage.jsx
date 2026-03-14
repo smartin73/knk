@@ -3,6 +3,7 @@ import { api } from '../lib/api.js';
 import { RecipesImportModal } from './RecipesImportModal.jsx';
 import { RecipeTestLogModal } from './RecipeTestLogModal.jsx';
 import { RowMenu } from '../components/RowMenu.jsx';
+import { ImageUpload } from '../components/ImageUpload.jsx';
 
 // ── Constants ─────────────────────────────────────────────
 const EMPTY_FORM = {
@@ -536,7 +537,7 @@ function RecipeForm({ initial, allIngredients: initialAllIngredients, onSave, on
                 <div className="field full"><label>Notes</label><textarea value={form.notes||''} onChange={e=>set('notes',e.target.value)} placeholder="Internal notes..." /></div>
                 <div className="field"><label>Ingredient Label</label><input value={form.ingredient_label||''} onChange={e=>set('ingredient_label',e.target.value)} placeholder="For packaging..." /></div>
                 <div className="field"><label>Contains Label</label><input value={form.contains_label||''} onChange={e=>set('contains_label',e.target.value)} placeholder="e.g. Wheat, Eggs, Dairy" /></div>
-                <div className="field"><label>Image URL</label><input value={form.image_url||''} onChange={e=>set('image_url',e.target.value)} placeholder="https://..." /></div>
+                <div className="field full"><label>Image</label><ImageUpload value={form.image_url||''} onChange={v=>set('image_url',v)} /></div>
                 <div className="field"><label>Square ID</label><input value={form.square_id||''} onChange={e=>set('square_id',e.target.value)} /></div>
               </div>
             )}

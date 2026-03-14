@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { ItemBuilderImportModal } from './ItemBuilderImportModal.jsx';
 import { RowMenu } from '../components/RowMenu.jsx';
+import { ImageUpload } from '../components/ImageUpload.jsx';
 
 // ── Helpers ───────────────────────────────────────────────
 const EMPTY_FORM = {
@@ -279,9 +280,9 @@ function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel
                 <label>Food Cook Time</label>
                 <input value={form.food_cook_time || ''} onChange={e => set('food_cook_time', e.target.value)} placeholder="e.g. 25 min" />
               </div>
-              <div className="field">
-                <label>Image URL</label>
-                <input value={form.image_url || ''} onChange={e => set('image_url', e.target.value)} placeholder="https://..." />
+              <div className="field full">
+                <label>Image</label>
+                <ImageUpload value={form.image_url || ''} onChange={v => set('image_url', v)} />
               </div>
               <div className="field">
                 <label>Ingredient Label</label>

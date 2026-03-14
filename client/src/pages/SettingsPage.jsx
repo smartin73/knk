@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
+import { ImageUpload } from '../components/ImageUpload.jsx';
 
 // ── Default settings definitions ──────────────────────────
 // These define what settings exist, their labels, and grouping.
@@ -39,10 +40,18 @@ const SETTINGS_SCHEMA = [
   },
 
 {
+  category: 'Cloudinary',
+  icon: '☁️',
+  settings: [
+    { key: 'cloudinary_cloud_name',    label: 'Cloud Name',    description: 'Your Cloudinary cloud name (found in the Cloudinary dashboard).', is_encrypted: false },
+    { key: 'cloudinary_upload_preset', label: 'Upload Preset', description: 'Unsigned upload preset name from Cloudinary Settings → Upload → Upload presets.', is_encrypted: false },
+  ],
+},
+{
   category: 'Branding',
   icon: '🎨',
   settings: [
-    { key: 'logo_url', label: 'Logo URL', description: 'URL of the KnK logo shown in the header of the public menu display page.', is_encrypted: false },
+    { key: 'logo_url', label: 'Logo', description: 'Logo shown in the header of the public menu display page.', is_encrypted: false, type: 'image' },
   ],
 },
 {
@@ -126,34 +135,48 @@ function SettingRow({ def, currentValue, onSave }) {
           </div>
 
           {editing && (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-              <div style={{ position: 'relative', flex: 1, maxWidth: 420 }}>
-                <input
-                  autoFocus
-                  type={isEncrypted && !show ? 'password' : 'text'}
-                  value={value}
-                  onChange={e => setValue(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') handleCancel(); }}
-                  placeholder={`Enter ${def.label}…`}
-                  style={{
-                    width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
-                    borderRadius: 6, padding: '7px 36px 7px 10px', color: 'var(--text)', fontSize: 13,
-                    boxSizing: 'border-box',
-                  }}
-                />
-                {isEncrypted && (
-                  <button
-                    onClick={() => setShow(s => !s)}
-                    style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 13 }}
-                  >
-                    {show ? '🙈' : '👁'}
+            <div style={{ marginTop: 8 }}>
+              {def.type === 'image' ? (
+                <div>
+                  <ImageUpload value={value} onChange={v => setValue(v)} />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                    <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
+                      {saving ? 'Saving…' : 'Save'}
+                    </button>
+                    <button className="btn btn-secondary btn-sm" onClick={handleCancel}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ position: 'relative', flex: 1, maxWidth: 420 }}>
+                    <input
+                      autoFocus
+                      type={isEncrypted && !show ? 'password' : 'text'}
+                      value={value}
+                      onChange={e => setValue(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') handleCancel(); }}
+                      placeholder={`Enter ${def.label}…`}
+                      style={{
+                        width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
+                        borderRadius: 6, padding: '7px 36px 7px 10px', color: 'var(--text)', fontSize: 13,
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                    {isEncrypted && (
+                      <button
+                        onClick={() => setShow(s => !s)}
+                        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 13 }}
+                      >
+                        {show ? '🙈' : '👁'}
+                      </button>
+                    )}
+                  </div>
+                  <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
+                    {saving ? 'Saving…' : 'Save'}
                   </button>
-                )}
-              </div>
-              <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-              <button className="btn btn-secondary btn-sm" onClick={handleCancel}>Cancel</button>
+                  <button className="btn btn-secondary btn-sm" onClick={handleCancel}>Cancel</button>
+                </div>
+              )}
             </div>
           )}
 

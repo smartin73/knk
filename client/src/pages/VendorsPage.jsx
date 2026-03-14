@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { ImportModal } from './ImportModal.jsx';
+import { ImageUpload } from '../components/ImageUpload.jsx';
 
 const EMPTY_FORM = {
   vendor_name: '',
@@ -73,8 +74,8 @@ function VendorForm({ initial, onSave, onCancel }) {
             <input value={form.website_url || ''} onChange={e => set('website_url', e.target.value)} placeholder="https://..." />
           </div>
           <div className="field full">
-            <label>Logo URL</label>
-            <input value={form.logo_url || ''} onChange={e => set('logo_url', e.target.value)} placeholder="https://..." />
+            <label>Logo</label>
+            <ImageUpload value={form.logo_url || ''} onChange={v => set('logo_url', v)} />
           </div>
           <div className="field full">
             <label>Map Embed</label>
