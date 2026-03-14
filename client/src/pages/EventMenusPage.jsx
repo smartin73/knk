@@ -27,19 +27,16 @@ function publicUrl(id) {
 // ── Menu Form Modal ───────────────────────────────────────
 function MenuFormModal({ menu, events, onSave, onClose }) {
   const [form, setForm] = useState({
-    event_id:     menu?.event_id     || '',
-    menu_name:    menu?.menu_name    || '',
-    tagline:      menu?.tagline      || '',
-    tagline_color: menu?.tagline_color || '#e85d26',
-    is_active:    menu?.is_active    !== false,
+    event_id:  menu?.event_id  || '',
+    menu_name: menu?.menu_name || '',
+    is_active: menu?.is_active !== false,
   });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function handleSubmit() {
     if (!form.menu_name.trim()) { setErr('Menu name is required.'); return; }
     setSaving(true);
     try {
@@ -58,16 +55,14 @@ function MenuFormModal({ menu, events, onSave, onClose }) {
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ maxWidth: 480 }}>
-        <div className="modal-header">
-          <h2 className="modal-title">{menu ? 'Edit Menu' : 'New Menu'}</h2>
-          <button className="modal-close" onClick={onClose}>✕</button>
-        </div>
-        <form onSubmit={handleSubmit} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {err && <div className="error-msg">{err}</div>}
+        <div className="modal-title">{menu ? 'Edit Menu' : 'New Menu'}</div>
 
-          <div>
-            <label className="form-label">Event (optional)</label>
-            <select className="form-input" value={form.event_id} onChange={e => set('event_id', e.target.value)}>
+        {err && <div className="error-msg" style={{ marginBottom: 12 }}>{err}</div>}
+
+        <div className="form-grid">
+          <div className="field full">
+            <label>Event (optional)</label>
+            <select value={form.event_id} onChange={e => set('event_id', e.target.value)}>
               <option value="">— No Event —</option>
               {events.map(ev => (
                 <option key={ev.id} value={ev.id}>{ev.event_name}</option>
@@ -75,37 +70,25 @@ function MenuFormModal({ menu, events, onSave, onClose }) {
             </select>
           </div>
 
-          <div>
-            <label className="form-label">Menu Name *</label>
-            <input className="form-input" value={form.menu_name} onChange={e => set('menu_name', e.target.value)} placeholder="e.g. Saturday Market Menu" />
+          <div className="field full">
+            <label>Menu Name</label>
+            <input value={form.menu_name} onChange={e => set('menu_name', e.target.value)} placeholder="e.g. Saturday Market Menu" autoFocus />
           </div>
 
-          <div>
-            <label className="form-label">Tagline</label>
-            <input className="form-input" value={form.tagline} onChange={e => set('tagline', e.target.value)} placeholder="e.g. Fresh-baked sourdough and pastries" />
+          <div className="field full">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.is_active} onChange={e => set('is_active', e.target.checked)} />
+              Active (visible on display page)
+            </label>
           </div>
+        </div>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-            <div style={{ flex: 1 }}>
-              <label className="form-label">Tagline Color</label>
-              <input className="form-input" value={form.tagline_color} onChange={e => set('tagline_color', e.target.value)} placeholder="#e85d26" />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-              <input type="color" value={form.tagline_color} onChange={e => set('tagline_color', e.target.value)}
-                style={{ width: 36, height: 36, padding: 2, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', background: 'var(--surface2)' }} />
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input type="checkbox" id="is_active" checked={form.is_active} onChange={e => set('is_active', e.target.checked)} />
-            <label htmlFor="is_active" style={{ fontSize: 13 }}>Active (visible on display page)</label>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
-          </div>
-        </form>
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" disabled={saving} onClick={handleSubmit}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -145,45 +128,44 @@ function ItemPickerModal({ menuId, existingIds, onAdd, onClose }) {
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ maxWidth: 500 }}>
-        <div className="modal-header">
-          <h2 className="modal-title">Add Item from Item Builder</h2>
-          <button className="modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div style={{ padding: '16px 24px 24px' }}>
+        <div className="modal-title">Add Item from Item Builder</div>
+        <div style={{ marginBottom: 12 }}>
           <input
-            className="form-input"
             placeholder="Search items…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             autoFocus
-            style={{ marginBottom: 12 }}
+            style={{ width: '100%', boxSizing: 'border-box' }}
           />
-          <div style={{ maxHeight: 360, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {filtered.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13 }}>
-                {items.length === 0 ? 'Loading…' : 'No items match'}
+        </div>
+        <div style={{ maxHeight: 360, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {filtered.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13 }}>
+              {items.length === 0 ? 'Loading…' : 'No items match'}
+            </div>
+          )}
+          {filtered.map(item => (
+            <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)' }}>
+              {item.image_url
+                ? <img src={item.image_url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                : <div style={{ width: 44, height: 44, borderRadius: 6, background: 'var(--bg)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🧁</div>
+              }
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.item_name}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtPrice(item.retail_price)}</div>
               </div>
-            )}
-            {filtered.map(item => (
-              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)' }}>
-                {item.image_url
-                  ? <img src={item.image_url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
-                  : <div style={{ width: 44, height: 44, borderRadius: 6, background: 'var(--surface3)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🧁</div>
-                }
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.item_name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtPrice(item.retail_price)}</div>
-                </div>
-                <button
-                  className="btn btn-primary btn-sm"
-                  disabled={adding === item.id}
-                  onClick={() => handleAdd(item)}
-                >
-                  {adding === item.id ? '…' : 'Add'}
-                </button>
-              </div>
-            ))}
-          </div>
+              <button
+                className="btn btn-primary btn-sm"
+                disabled={adding === item.id}
+                onClick={() => handleAdd(item)}
+              >
+                {adding === item.id ? '…' : 'Add'}
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onClose}>Done</button>
         </div>
       </div>
     </div>
@@ -194,9 +176,10 @@ function ItemPickerModal({ menuId, existingIds, onAdd, onClose }) {
 function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
   const [menu, setMenu] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
   const [editing, setEditing] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
-  const [editingItem, setEditingItem] = useState(null); // { id, qty_on_hand, limited_threshold }
+  const [editingItem, setEditingItem] = useState(null);
   const [savingItem, setSavingItem] = useState(null);
   const [copied, setCopied] = useState(false);
 
@@ -204,7 +187,7 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
     setLoading(true);
     api.get(`/event-menus/${menuId}`)
       .then(setMenu)
-      .catch(console.error)
+      .catch(e => setErr(e.message))
       .finally(() => setLoading(false));
   }, [menuId]);
 
@@ -247,13 +230,13 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
   }
 
   if (loading) return <div className="loading">Loading…</div>;
-  if (!menu) return null;
+  if (err)     return <div className="error-msg" style={{ margin: 24 }}>{err}</div>;
+  if (!menu)   return null;
 
   const existingIds = new Set((menu.items || []).map(i => i.item_builder_id).filter(Boolean));
 
   return (
     <div>
-      {/* Header */}
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button className="btn btn-secondary btn-sm" onClick={onBack}>← Back</button>
@@ -272,24 +255,17 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
           <button className="btn btn-secondary btn-sm" onClick={copyUrl}>
             {copied ? '✓ Copied!' : '🔗 Copy Display URL'}
           </button>
-          <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>Edit Menu</button>
+          <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>Edit</button>
           <button className="btn btn-primary btn-sm" onClick={() => setShowPicker(true)}>+ Add Item</button>
         </div>
       </div>
 
-      {/* Tagline preview */}
-      {menu.tagline && (
-        <div style={{ background: menu.tagline_color || '#e85d26', color: '#fff', padding: '8px 20px', borderRadius: 8, marginBottom: 20, fontSize: 14, fontWeight: 600 }}>
-          {menu.tagline}
-        </div>
-      )}
-
-      {/* Items table */}
       {(!menu.items || menu.items.length === 0) ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🍞</div>
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>No items yet</div>
-          <div style={{ fontSize: 13 }}>Click "Add Item" to add items from the Item Builder.</div>
+        <div className="card">
+          <div className="empty-state">
+            <div style={{ fontSize: 40 }}>🍞</div>
+            <p>No items yet. Click "Add Item" to add from Item Builder.</p>
+          </div>
         </div>
       ) : (
         <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
@@ -309,18 +285,14 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
 
                 return (
                   <tr key={item.id} style={{ borderTop: idx > 0 ? '1px solid var(--border)' : 'none' }}>
-                    {/* Photo */}
                     <td style={{ padding: '10px 14px', width: 52 }}>
                       {item.image_url
                         ? <img src={item.image_url} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }} />
                         : <div style={{ width: 40, height: 40, borderRadius: 6, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🧁</div>
                       }
                     </td>
-                    {/* Name */}
                     <td style={{ padding: '10px 14px', fontWeight: 600 }}>{item.item_name}</td>
-                    {/* Price */}
                     <td style={{ padding: '10px 14px', color: 'var(--text-muted)' }}>{fmtPrice(item.retail_price)}</td>
-                    {/* Qty */}
                     <td style={{ padding: '10px 14px' }}>
                       {isEditing
                         ? <input type="number" min="0" value={editingItem.qty_on_hand}
@@ -329,7 +301,6 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
                         : item.qty_on_hand
                       }
                     </td>
-                    {/* Limited threshold */}
                     <td style={{ padding: '10px 14px' }}>
                       {isEditing
                         ? <input type="number" min="0" value={editingItem.limited_threshold}
@@ -338,13 +309,11 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
                         : item.limited_threshold
                       }
                     </td>
-                    {/* Status */}
                     <td style={{ padding: '10px 14px' }}>
                       <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 3, fontWeight: 600, background: `${style.color}22`, color: style.color }}>
                         {style.label}
                       </span>
                     </td>
-                    {/* Actions */}
                     <td style={{ padding: '10px 14px' }}>
                       {isEditing ? (
                         <div style={{ display: 'flex', gap: 6 }}>
@@ -373,7 +342,7 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
         <MenuFormModal menu={menu} events={events} onSave={handleMenuSaved} onClose={() => setEditing(false)} />
       )}
       {showPicker && (
-        <ItemPickerModal menuId={menuId} existingIds={existingIds} onAdd={item => { handleItemAdded(item); }} onClose={() => setShowPicker(false)} />
+        <ItemPickerModal menuId={menuId} existingIds={existingIds} onAdd={handleItemAdded} onClose={() => setShowPicker(false)} />
       )}
     </div>
   );
@@ -384,18 +353,24 @@ export function EventMenusPage() {
   const [menus, setMenus]       = useState([]);
   const [events, setEvents]     = useState([]);
   const [loading, setLoading]   = useState(true);
+  const [err, setErr]           = useState('');
   const [creating, setCreating] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [m, e] = await Promise.all([
-      api.get('/event-menus'),
-      api.get('/events'),
-    ]);
-    setMenus(m);
-    setEvents(e);
-    setLoading(false);
+    try {
+      const [m, e] = await Promise.all([
+        api.get('/event-menus'),
+        api.get('/events'),
+      ]);
+      setMenus(m);
+      setEvents(e);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -436,6 +411,8 @@ export function EventMenusPage() {
         <button className="btn btn-primary" onClick={() => setCreating(true)}>+ New Menu</button>
       </div>
 
+      {err && <div className="error-msg" style={{ marginBottom: 16 }}>{err}</div>}
+
       {loading ? (
         <div className="loading">Loading…</div>
       ) : menus.length === 0 ? (
@@ -451,7 +428,7 @@ export function EventMenusPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: 'var(--surface2)' }}>
-                {['Menu', 'Event', 'Tagline', 'Items', 'Status', ''].map(h => (
+                {['Menu', 'Event', 'Items', 'Status', ''].map(h => (
                   <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
                 ))}
               </tr>
@@ -465,24 +442,19 @@ export function EventMenusPage() {
                   <td style={{ padding: '12px 14px', color: 'var(--text-muted)' }} onClick={() => setSelectedId(m.id)}>
                     {m.event_name || '—'}
                   </td>
-                  <td style={{ padding: '12px 14px', color: 'var(--text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={() => setSelectedId(m.id)}>
-                    {m.tagline
-                      ? <span style={{ color: m.tagline_color || '#e85d26', fontWeight: 600 }}>{m.tagline}</span>
-                      : '—'}
-                  </td>
                   <td style={{ padding: '12px 14px', color: 'var(--text-muted)' }} onClick={() => setSelectedId(m.id)}>
                     {m.item_count ?? 0}
                   </td>
                   <td style={{ padding: '12px 14px' }} onClick={() => setSelectedId(m.id)}>
                     {m.is_active
-                      ? <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 3, background: 'var(--accent)', color: '#fff', fontWeight: 700 }}>Active</span>
-                      : <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 3, background: 'var(--surface2)', color: 'var(--text-muted)', fontWeight: 700 }}>Inactive</span>
+                      ? <span className="badge badge-green">Active</span>
+                      : <span className="badge badge-gray">Inactive</span>
                     }
                   </td>
                   <td style={{ padding: '12px 14px' }}>
                     <RowMenu items={[
                       { label: 'Manage', onClick: () => setSelectedId(m.id) },
-                      { label: 'Copy Display URL', onClick: () => { navigator.clipboard.writeText(publicUrl(m.id)); } },
+                      { label: 'Copy Display URL', onClick: () => navigator.clipboard.writeText(publicUrl(m.id)) },
                       { label: 'Delete', danger: true, onClick: () => handleDelete(m.id) },
                     ]} />
                   </td>
