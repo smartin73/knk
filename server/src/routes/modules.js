@@ -179,18 +179,23 @@ eventMenusRouter.use(requireAuth);
 
 // GET /event-menus — list all menus with event name + item count
 eventMenusRouter.get('/', async (req, res) => {
-  const { event_id } = req.query;
-  const where = event_id ? 'WHERE em.event_id=$1' : '';
-  const params = event_id ? [event_id] : [];
-  const { rows } = await query(
-    `SELECT em.*, e.event_name,
-       COUNT(emi.id)::int as item_count
-     FROM event_menus em
-     LEFT JOIN events e ON em.event_id = e.id
-     LEFT JOIN event_menu_items emi ON emi.menu_id = em.id
-     ${where} GROUP BY em.id, e.event_name ORDER BY em.created_at DESC`, params
-  );
-  res.json(rows);
+  try {
+    const { event_id } = req.query;
+    const where = event_id ? 'WHERE em.event_id=$1' : '';
+    const params = event_id ? [event_id] : [];
+    const { rows } = await query(
+      `SELECT em.*, e.event_name,
+         COUNT(emi.id)::int as item_count
+       FROM event_menus em
+       LEFT JOIN events e ON em.event_id = e.id
+       LEFT JOIN event_menu_items emi ON emi.menu_id = em.id
+       ${where} GROUP BY em.id, e.event_name ORDER BY em.created_at DESC`, params
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error('GET /event-menus error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // GET /event-menus/:id — menu + items joined with item_builder
