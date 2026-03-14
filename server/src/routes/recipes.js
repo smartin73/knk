@@ -243,6 +243,22 @@ router.get('/', async (req, res) => {
   res.json(rows);
 });
 
+// GET /recipes/tests  — all tests across all recipes (must be before /:id)
+router.get('/tests', async (_req, res) => {
+  try {
+    const { rows } = await query(`
+      SELECT rt.*, r.recipe_name
+      FROM recipe_tests rt
+      JOIN recipes r ON rt.recipe_id = r.id
+      ORDER BY rt.tested_at DESC NULLS LAST, rt.id DESC
+    `);
+    res.json(rows);
+  } catch (e) {
+    console.error('GET /recipes/tests error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /recipes/:id  (with steps + ingredients)
 router.get('/:id', async (req, res) => {
   try {
@@ -340,22 +356,6 @@ router.put('/:id/ingredients', async (req, res) => {
 });
 
 // ── Recipe Tests ──────────────────────────────────────────
-
-// GET /recipes/tests  — all tests across all recipes
-router.get('/tests', async (_req, res) => {
-  try {
-    const { rows } = await query(`
-      SELECT rt.*, r.recipe_name
-      FROM recipe_tests rt
-      JOIN recipes r ON rt.recipe_id = r.id
-      ORDER BY rt.tested_at DESC NULLS LAST, rt.id DESC
-    `);
-    res.json(rows);
-  } catch (e) {
-    console.error('GET /recipes/tests error:', e);
-    res.status(500).json({ error: e.message });
-  }
-});
 
 // GET /recipes/:id/tests
 router.get('/:id/tests', async (req, res) => {
