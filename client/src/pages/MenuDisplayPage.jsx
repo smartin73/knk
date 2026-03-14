@@ -147,23 +147,30 @@ export function MenuDisplayPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f5f0eb', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {/* Header */}
-      <div style={{ background: '#1a1a1a', padding: isMobile ? '12px 16px' : '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {menu.logo_url
-            ? <img src={menu.logo_url} alt="Knife & Knead" style={{ height: isMobile ? 36 : 48, width: 'auto', objectFit: 'contain' }} />
-            : (
-              <>
-                <span style={{ fontSize: isMobile ? 22 : 28 }}>🔪</span>
-                <div style={{ color: '#fff', fontWeight: 800, fontSize: isMobile ? 15 : 18, letterSpacing: '-0.3px' }}>Knife & Knead</div>
-              </>
-            )
-          }
-          {menu.location && <div style={{ color: '#999', fontSize: isMobile ? 11 : 12, marginLeft: menu.logo_url ? 4 : 0 }}>{menu.location}</div>}
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          {fmtDate && <div style={{ color: '#fff', fontWeight: 600, fontSize: isMobile ? 12 : 14 }}>{fmtDate}</div>}
-          {timeStr && <div style={{ color: '#999', fontSize: isMobile ? 11 : 13 }}>{timeStr}</div>}
-        </div>
+      <div style={{
+        background: '#1a1a1a',
+        padding: isMobile ? '16px 20px 14px' : '22px 32px 18px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 10,
+      }}>
+        {menu.logo_url
+          ? <img src={menu.logo_url} alt="Knife & Knead" style={{
+              maxWidth: isMobile ? '82%' : '72%',
+              maxHeight: isMobile ? 64 : 90,
+              width: 'auto',
+              objectFit: 'contain',
+            }} />
+          : <div style={{ color: '#fff', fontWeight: 800, fontSize: isMobile ? 26 : 36, letterSpacing: '-0.5px' }}>Knife & Knead</div>
+        }
+        {(fmtDate || timeStr) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {fmtDate && <span style={{ color: '#ccc', fontSize: isMobile ? 12 : 14, fontWeight: 500 }}>{fmtDate}</span>}
+            {fmtDate && timeStr && <span style={{ color: '#555', fontSize: 14 }}>·</span>}
+            {timeStr && <span style={{ color: '#999', fontSize: isMobile ? 12 : 13 }}>{timeStr}</span>}
+          </div>
+        )}
       </div>
 
       {/* Tagline banner */}
