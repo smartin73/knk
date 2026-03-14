@@ -12,12 +12,14 @@ import { RecipesPage } from './pages/RecipesPage.jsx';
 import { SettingsPage } from './pages/SettingsPage.jsx';
 import { ItemBuilderPage } from './pages/ItemBuilderPage.jsx';
 import { MakePage } from './pages/MakePage.jsx';
+import { TestLogPage } from './pages/TestLogPage.jsx';
 
 const NAV = [
   { to: '/',            label: 'Dashboard',    icon: '▦' },
   { to: '/recipes',     label: 'Recipes',      icon: '📖' },
   { to: '/ingredients', label: 'Ingredients',  icon: '🧂' },
   { to: '/items',       label: 'Item Builder', icon: '🧁' },
+  { to: '/test-log',    label: 'Test Log',     icon: '🧪' },
   { to: '/events',      label: 'Events',       icon: '📅' },
   { to: '/events/vendors', label: 'Vendors', icon: '🏪' },
   { to: '/menus',       label: 'Event Menus',  icon: '🗒' },
@@ -64,6 +66,7 @@ function Layout() {
           <Route path="recipes/*"   element={<RecipesPage />} />
           <Route path="ingredients" element={<IngredientsPage />} />
           <Route path="items"       element={<ItemBuilderPage />} />
+          <Route path="test-log"    element={<TestLogPage />} />
           <Route path="events/*"    element={<EventsPage />} />
           <Route path="events/vendors" element={<VendorsPage />} />
           <Route path="menus/*"     element={<EventMenusPage />} />
