@@ -22,6 +22,7 @@ import {
 } from './routes/modules.js';
 
 import squareRouter from './routes/square.js';
+import webhooksRouter from './routes/webhooks.js';
 import notificationsRouter from './routes/notifications.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,7 +39,9 @@ app.use(cors({
   origin: process.env.CLIENT_ORIGIN,
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => { req.rawBody = buf; },
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
   store: new PgSession({ pool, tableName: 'user_sessions' }),
@@ -85,6 +88,7 @@ app.use('/donations',    donationsRouter);
 app.use('/vendors',      vendorsRouter);
 app.use('/settings', settingsRouter);
 app.use('/square',        squareRouter);
+app.use('/webhooks',      webhooksRouter);
 app.use('/notifications', notificationsRouter);
 
 // ── Public: event menu display (no auth) ─────────────────

@@ -10,6 +10,7 @@ const SQUARE_FIELDS = [
   { env: 'production', key: 'square_production_token',       label: 'Production Access Token', description: 'Token from Square Developer dashboard (production app).', is_encrypted: true,  category: 'Square' },
   { env: 'production', key: 'square_production_location_id', label: 'Production Location ID',  description: 'Location ID from your Square production account.',         is_encrypted: false, category: 'Square' },
   { env: 'production', key: 'square_production_app_id',      label: 'Production Application ID', description: 'Application ID from your Square production app (for webhooks).', is_encrypted: false, category: 'Square' },
+  { env: 'production', key: 'square_webhook_key',            label: 'Webhook Signature Key',     description: 'Signature key from Square Developer → Webhooks (used to verify incoming webhook events).', is_encrypted: true, category: 'Square' },
 ];
 
 const SETTINGS_SCHEMA = [

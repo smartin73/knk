@@ -103,8 +103,9 @@ router.post('/push/:itemId', async (req, res) => {
 
       const result = await squareFetch('/v2/catalog/object', 'PUT', payload, settings);
       const squareId = result.catalog_object?.id;
+      const variationId = result.catalog_object?.item_data?.variations?.[0]?.id;
 
-      await query('UPDATE item_builder SET square_id=$1, updated_at=now() WHERE id=$2', [squareId, item.id]);
+      await query('UPDATE item_builder SET square_id=$1, square_variation_id=$2, updated_at=now() WHERE id=$3', [squareId, variationId, item.id]);
       return res.json({ ok: true, action: 'updated', square_id: squareId });
 
     } else {
@@ -137,8 +138,9 @@ router.post('/push/:itemId', async (req, res) => {
 
       const result = await squareFetch('/v2/catalog/object', 'POST', payload, settings);
       const squareId = result.catalog_object?.id;
+      const variationId = result.catalog_object?.item_data?.variations?.[0]?.id;
 
-      await query('UPDATE item_builder SET square_id=$1, updated_at=now() WHERE id=$2', [squareId, item.id]);
+      await query('UPDATE item_builder SET square_id=$1, square_variation_id=$2, updated_at=now() WHERE id=$3', [squareId, variationId, item.id]);
       return res.json({ ok: true, action: 'created', square_id: squareId });
     }
 
