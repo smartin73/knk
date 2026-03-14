@@ -1,5 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+
+function useWindowWidth() {
+  const [w, setW] = useState(window.innerWidth);
+  useEffect(() => {
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return w;
+}
 
 const BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -81,6 +91,8 @@ function ItemCard({ item }) {
 
 export function MenuDisplayPage() {
   const { id } = useParams();
+  const width = useWindowWidth();
+  const isMobile = width < 520;
   const [menu, setMenu] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
@@ -135,17 +147,17 @@ export function MenuDisplayPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f5f0eb', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {/* Header */}
-      <div style={{ background: '#1a1a1a', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+      <div style={{ background: '#1a1a1a', padding: isMobile ? '12px 16px' : '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 28 }}>🔪</span>
+          <span style={{ fontSize: isMobile ? 22 : 28 }}>🔪</span>
           <div>
-            <div style={{ color: '#fff', fontWeight: 800, fontSize: 18, letterSpacing: '-0.3px' }}>Knife & Knead</div>
-            {menu.location && <div style={{ color: '#999', fontSize: 12 }}>{menu.location}</div>}
+            <div style={{ color: '#fff', fontWeight: 800, fontSize: isMobile ? 15 : 18, letterSpacing: '-0.3px' }}>Knife & Knead</div>
+            {menu.location && <div style={{ color: '#999', fontSize: isMobile ? 11 : 12 }}>{menu.location}</div>}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          {fmtDate && <div style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>{fmtDate}</div>}
-          {timeStr && <div style={{ color: '#999', fontSize: 13 }}>{timeStr}</div>}
+          {fmtDate && <div style={{ color: '#fff', fontWeight: 600, fontSize: isMobile ? 12 : 14 }}>{fmtDate}</div>}
+          {timeStr && <div style={{ color: '#999', fontSize: isMobile ? 11 : 13 }}>{timeStr}</div>}
         </div>
       </div>
 
@@ -165,7 +177,7 @@ export function MenuDisplayPage() {
       )}
 
       {/* Menu name */}
-      <div style={{ padding: '20px 24px 8px', fontSize: 22, fontWeight: 800, color: '#1a1a1a', letterSpacing: '-0.4px' }}>
+      <div style={{ padding: isMobile ? '16px 16px 6px' : '20px 24px 8px', fontSize: isMobile ? 18 : 22, fontWeight: 800, color: '#1a1a1a', letterSpacing: '-0.4px' }}>
         {menu.menu_name}
       </div>
 
@@ -178,9 +190,9 @@ export function MenuDisplayPage() {
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: 16,
-          padding: '16px 24px 40px',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+          gap: isMobile ? 12 : 16,
+          padding: isMobile ? '12px 16px 40px' : '16px 24px 40px',
           maxWidth: 960,
           margin: '0 auto',
         }}>
