@@ -9,6 +9,7 @@ const SQUARE_FIELDS = [
   { env: 'sandbox',    key: 'square_sandbox_location_id',    label: 'Sandbox Location ID',     description: 'Location ID from your Square sandbox account.',         is_encrypted: false, category: 'Square' },
   { env: 'production', key: 'square_production_token',       label: 'Production Access Token', description: 'Token from Square Developer dashboard (production app).', is_encrypted: true,  category: 'Square' },
   { env: 'production', key: 'square_production_location_id', label: 'Production Location ID',  description: 'Location ID from your Square production account.',         is_encrypted: false, category: 'Square' },
+  { env: 'production', key: 'square_production_app_id',      label: 'Production Application ID', description: 'Application ID from your Square production app (for webhooks).', is_encrypted: false, category: 'Square' },
 ];
 
 const SETTINGS_SCHEMA = [
@@ -35,6 +36,14 @@ const SETTINGS_SCHEMA = [
       { key: 'wordpress_api_key',       label: 'API Key',         description: 'API key for the knk WordPress plugin.', is_encrypted: true },
     ],
   },
+
+{
+  category: 'Event Menus',
+  icon: '🗒',
+  settings: [
+    { key: 'menu_refresh_interval', label: 'Display Refresh Interval (seconds)', description: 'How often the public menu display page auto-refreshes. Default: 30.', is_encrypted: false },
+  ],
+},
 
 {
   category: 'Costing',

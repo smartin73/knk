@@ -177,50 +177,58 @@ import { Router as EmRouter } from 'express';
 export const eventMenusRouter = EmRouter();
 eventMenusRouter.use(requireAuth);
 
+// GET /event-menus — list all menus with event name + item count
 eventMenusRouter.get('/', async (req, res) => {
   const { event_id } = req.query;
   const where = event_id ? 'WHERE em.event_id=$1' : '';
   const params = event_id ? [event_id] : [];
   const { rows } = await query(
     `SELECT em.*, e.event_name,
-       COUNT(emi.id) as item_count,
-       SUM(emi.qty_sold) as total_sold
+       COUNT(emi.id)::int as item_count
      FROM event_menus em
      LEFT JOIN events e ON em.event_id = e.id
      LEFT JOIN event_menu_items emi ON emi.menu_id = em.id
-     ${where} GROUP BY em.id, e.event_name ORDER BY em.event_date DESC`, params
+     ${where} GROUP BY em.id, e.event_name ORDER BY em.created_at DESC`, params
   );
   res.json(rows);
 });
+
+// GET /event-menus/:id — menu + items joined with item_builder
 eventMenusRouter.get('/:id', async (req, res) => {
   const [menu, items] = await Promise.all([
     query(`SELECT em.*, e.event_name FROM event_menus em
            LEFT JOIN events e ON em.event_id=e.id WHERE em.id=$1`, [req.params.id]),
-    query(`SELECT emi.*, ib.item_name as catalog_name FROM event_menu_items emi
+    query(`SELECT emi.*,
+             ib.item_name, ib.description, ib.retail_price, ib.image_url
+           FROM event_menu_items emi
            LEFT JOIN item_builder ib ON emi.item_builder_id=ib.id
-           WHERE emi.menu_id=$1 ORDER BY emi.item_name`, [req.params.id]),
+           WHERE emi.menu_id=$1 ORDER BY emi.sort_order, ib.item_name`, [req.params.id]),
   ]);
   if (!menu.rows[0]) return res.status(404).json({ error: 'Not found' });
   res.json({ ...menu.rows[0], items: items.rows });
 });
+
 eventMenusRouter.post('/', async (req, res) => {
   const f = req.body;
   const { rows } = await query(
-    `INSERT INTO event_menus (event_id,event_date,start_time,end_time,gluten_free_avail,notes)
-     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-    [f.event_id,f.event_date,f.start_time,f.end_time,f.gluten_free_avail||false,f.notes]
+    `INSERT INTO event_menus (event_id,menu_name,tagline,tagline_color,is_active)
+     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+    [f.event_id||null, f.menu_name, f.tagline||null, f.tagline_color||'#e85d26', f.is_active !== false]
   );
   res.status(201).json(rows[0]);
 });
+
 eventMenusRouter.put('/:id', async (req, res) => {
   const f = req.body;
   const { rows } = await query(
-    `UPDATE event_menus SET event_date=$1,start_time=$2,end_time=$3,
-      gluten_free_avail=$4,notes=$5,is_processed=$6 WHERE id=$7 RETURNING *`,
-    [f.event_date,f.start_time,f.end_time,f.gluten_free_avail,f.notes,f.is_processed,req.params.id]
+    `UPDATE event_menus SET event_id=$1,menu_name=$2,tagline=$3,tagline_color=$4,is_active=$5
+     WHERE id=$6 RETURNING *`,
+    [f.event_id||null, f.menu_name, f.tagline||null, f.tagline_color||'#e85d26', f.is_active !== false, req.params.id]
   );
+  if (!rows[0]) return res.status(404).json({ error: 'Not found' });
   res.json(rows[0]);
 });
+
 eventMenusRouter.delete('/:id', async (req, res) => {
   await query('DELETE FROM event_menus WHERE id=$1', [req.params.id]);
   res.json({ ok: true });
@@ -229,28 +237,29 @@ eventMenusRouter.delete('/:id', async (req, res) => {
 // Menu items
 eventMenusRouter.post('/:id/items', async (req, res) => {
   const f = req.body;
+  const { rows: [{ max }] } = await query(
+    'SELECT COALESCE(MAX(sort_order),0) as max FROM event_menu_items WHERE menu_id=$1',
+    [req.params.id]
+  );
   const { rows } = await query(
-    `INSERT INTO event_menu_items (menu_id,item_builder_id,item_name,item_description,
-      price,qty_made,qty_sold,is_limited,is_sold_out,is_special,fee,packaging,image_url)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-    [req.params.id,f.item_builder_id||null,f.item_name,f.item_description,
-     f.price,f.qty_made||0,f.qty_sold||0,f.is_limited||false,
-     f.is_sold_out||false,f.is_special||false,f.fee||0,f.packaging||0,f.image_url]
+    `INSERT INTO event_menu_items (menu_id,item_builder_id,sort_order,qty_on_hand,limited_threshold)
+     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+    [req.params.id, f.item_builder_id, parseInt(max)+1, f.qty_on_hand ?? 0, f.limited_threshold ?? 3]
   );
   res.status(201).json(rows[0]);
 });
+
 eventMenusRouter.put('/:id/items/:itemId', async (req, res) => {
   const f = req.body;
   const { rows } = await query(
-    `UPDATE event_menu_items SET item_name=$1,item_description=$2,price=$3,
-      qty_made=$4,qty_sold=$5,is_limited=$6,is_sold_out=$7,is_special=$8,
-      fee=$9,packaging=$10 WHERE id=$11 AND menu_id=$12 RETURNING *`,
-    [f.item_name,f.item_description,f.price,f.qty_made,f.qty_sold,
-     f.is_limited,f.is_sold_out,f.is_special,f.fee,f.packaging,
-     req.params.itemId,req.params.id]
+    `UPDATE event_menu_items SET qty_on_hand=$1,limited_threshold=$2,sort_order=$3
+     WHERE id=$4 AND menu_id=$5 RETURNING *`,
+    [f.qty_on_hand, f.limited_threshold, f.sort_order, req.params.itemId, req.params.id]
   );
+  if (!rows[0]) return res.status(404).json({ error: 'Not found' });
   res.json(rows[0]);
 });
+
 eventMenusRouter.delete('/:id/items/:itemId', async (req, res) => {
   await query('DELETE FROM event_menu_items WHERE id=$1 AND menu_id=$2',
     [req.params.itemId, req.params.id]);

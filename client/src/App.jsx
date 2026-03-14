@@ -4,7 +4,9 @@ import { AuthProvider, useAuth } from './hooks/useAuth.jsx';
 // Pages (stubs — each module fills these in)
 import LoginPage        from './pages/LoginPage.jsx';
 import DashboardPage    from './pages/DashboardPage.jsx';
-import { EventMenusPage, DonationsPage } from './pages/stubs.jsx';
+import { DonationsPage } from './pages/stubs.jsx';
+import { EventMenusPage } from './pages/EventMenusPage.jsx';
+import { MenuDisplayPage } from './pages/MenuDisplayPage.jsx';
 import { EventsPage } from './pages/EventsPage.jsx';
 import { VendorsPage } from './pages/VendorsPage.jsx';
 import { IngredientsPage } from './pages/IngredientsPage.jsx';
@@ -84,6 +86,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/menu/:id" element={<MenuDisplayPage />} />
           <Route path="/*" element={
             <RequireAuth><Layout /></RequireAuth>
           } />

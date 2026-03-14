@@ -87,6 +87,41 @@ app.use('/settings', settingsRouter);
 app.use('/square',        squareRouter);
 app.use('/notifications', notificationsRouter);
 
+// ── Public: event menu display (no auth) ─────────────────
+app.get('/public/menu/:id', async (req, res) => {
+  try {
+    const [menuRes, itemsRes, settingRes] = await Promise.all([
+      pool.query(
+        `SELECT em.*, e.event_name, e.event_date, e.start_time, e.end_time, e.location
+         FROM event_menus em LEFT JOIN events e ON em.event_id=e.id WHERE em.id=$1`,
+        [req.params.id]
+      ),
+      pool.query(
+        `SELECT emi.*, ib.item_name, ib.description, ib.retail_price, ib.image_url
+         FROM event_menu_items emi
+         LEFT JOIN item_builder ib ON emi.item_builder_id=ib.id
+         WHERE emi.menu_id=$1 ORDER BY emi.sort_order, ib.item_name`,
+        [req.params.id]
+      ),
+      pool.query(`SELECT value FROM settings WHERE key='menu_refresh_interval'`),
+    ]);
+    if (!menuRes.rows[0]) return res.status(404).json({ error: 'Not found' });
+
+    const items = itemsRes.rows.map(item => {
+      let status = 'available';
+      if (item.qty_on_hand === 0) status = 'sold_out';
+      else if (item.qty_on_hand <= item.limited_threshold) status = 'limited';
+      return { ...item, status };
+    });
+
+    const refresh_interval = parseInt(settingRes.rows[0]?.value || '30');
+    res.json({ ...menuRes.rows[0], items, refresh_interval });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // ── Health check ─────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ ok: true, ts: new Date() }));
 
