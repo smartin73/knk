@@ -25,25 +25,41 @@ function publicUrl(id) {
 }
 
 // ── Menu Form Modal ───────────────────────────────────────
-function MenuFormModal({ menu, events, onSave, onClose }) {
+function MenuFormModal({ menu, events, usedEventIds, onSave, onClose }) {
   const [form, setForm] = useState({
     event_id:  menu?.event_id  || '',
     menu_name: menu?.menu_name || '',
     is_active: menu?.is_active !== false,
   });
+  const [nameEdited, setNameEdited] = useState(!!menu?.id);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  // Events available: when creating, exclude events that already have a menu
+  const availableEvents = menu
+    ? events
+    : events.filter(ev => !usedEventIds.has(ev.id));
+
+  function handleEventChange(eventId) {
+    setForm(f => {
+      const ev = events.find(e => e.id === eventId);
+      return {
+        ...f,
+        event_id: eventId,
+        // Auto-fill name if user hasn't typed one yet
+        menu_name: (!nameEdited && ev) ? ev.event_name : f.menu_name,
+      };
+    });
+  }
 
   async function handleSubmit() {
+    if (!form.event_id)         { setErr('Event is required.'); return; }
     if (!form.menu_name.trim()) { setErr('Menu name is required.'); return; }
     setSaving(true);
     try {
-      const payload = { ...form, event_id: form.event_id || null };
       const result = menu
-        ? await api.put(`/event-menus/${menu.id}`, payload)
-        : await api.post('/event-menus', payload);
+        ? await api.put(`/event-menus/${menu.id}`, form)
+        : await api.post('/event-menus', form);
       onSave(result);
     } catch (ex) {
       setErr(ex.message);
@@ -61,10 +77,10 @@ function MenuFormModal({ menu, events, onSave, onClose }) {
 
         <div className="form-grid">
           <div className="field full">
-            <label>Event (optional)</label>
-            <select value={form.event_id} onChange={e => set('event_id', e.target.value)}>
-              <option value="">— No Event —</option>
-              {events.map(ev => (
+            <label>Event</label>
+            <select value={form.event_id} onChange={e => handleEventChange(e.target.value)} autoFocus>
+              <option value="">— Select an Event —</option>
+              {availableEvents.map(ev => (
                 <option key={ev.id} value={ev.id}>{ev.event_name}</option>
               ))}
             </select>
@@ -72,12 +88,16 @@ function MenuFormModal({ menu, events, onSave, onClose }) {
 
           <div className="field full">
             <label>Menu Name</label>
-            <input value={form.menu_name} onChange={e => set('menu_name', e.target.value)} placeholder="e.g. Saturday Market Menu" autoFocus />
+            <input
+              value={form.menu_name}
+              onChange={e => { setNameEdited(true); setForm(f => ({ ...f, menu_name: e.target.value })); }}
+              placeholder="e.g. Saturday Market Menu"
+            />
           </div>
 
           <div className="field full">
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.is_active} onChange={e => set('is_active', e.target.checked)} />
+              <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
               Active (visible on display page)
             </label>
           </div>
@@ -339,7 +359,13 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
       )}
 
       {editing && (
-        <MenuFormModal menu={menu} events={events} onSave={handleMenuSaved} onClose={() => setEditing(false)} />
+        <MenuFormModal
+          menu={menu}
+          events={events}
+          usedEventIds={new Set()}
+          onSave={handleMenuSaved}
+          onClose={() => setEditing(false)}
+        />
       )}
       {showPicker && (
         <ItemPickerModal menuId={menuId} existingIds={existingIds} onAdd={handleItemAdded} onClose={() => setShowPicker(false)} />
@@ -466,7 +492,13 @@ export function EventMenusPage() {
       )}
 
       {creating && (
-        <MenuFormModal menu={null} events={events} onSave={handleMenuCreated} onClose={() => setCreating(false)} />
+        <MenuFormModal
+          menu={null}
+          events={events}
+          usedEventIds={new Set(menus.map(m => m.event_id).filter(Boolean))}
+          onSave={handleMenuCreated}
+          onClose={() => setCreating(false)}
+        />
       )}
     </div>
   );
