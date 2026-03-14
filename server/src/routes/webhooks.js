@@ -42,13 +42,13 @@ router.post('/square', async (req, res) => {
     }
 
     const eventType = req.body.type;
+    const payment = req.body.data?.object?.payment;
 
-    // Only process completed payments
-    if (eventType !== 'payment.completed') {
+    // Only process payments that have reached COMPLETED status
+    if (eventType !== 'payment.updated' || payment?.status !== 'COMPLETED') {
       return res.json({ ok: true, skipped: true });
     }
 
-    const payment = req.body.data?.object?.payment;
     const orderId = payment?.order_id;
     if (!orderId) return res.json({ ok: true, skipped: true });
 
