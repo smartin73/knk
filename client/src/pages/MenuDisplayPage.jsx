@@ -147,25 +147,13 @@ export function MenuDisplayPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f5f0eb', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {/* Header */}
-      <div style={{
-        background: '#1a1a1a',
-        padding: isMobile ? '16px 20px 14px' : '22px 32px 18px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 10,
-      }}>
+      <div style={{ background: '#1a1a1a' }}>
         {menu.logo_url
-          ? <img src={menu.logo_url} alt="Knife & Knead" style={{
-              maxWidth: isMobile ? '82%' : '72%',
-              maxHeight: isMobile ? 64 : 90,
-              width: 'auto',
-              objectFit: 'contain',
-            }} />
-          : <div style={{ color: '#fff', fontWeight: 800, fontSize: isMobile ? 26 : 36, letterSpacing: '-0.5px' }}>Knife & Knead</div>
+          ? <img src={menu.logo_url} alt="Knife & Knead" style={{ width: '100%', height: 'auto', display: 'block' }} />
+          : <div style={{ padding: isMobile ? '20px 24px' : '28px 40px', color: '#fff', fontWeight: 800, fontSize: isMobile ? 26 : 36, letterSpacing: '-0.5px', textAlign: 'center' }}>Knife & Knead</div>
         }
         {(fmtDate || timeStr) && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, padding: '8px 24px 12px' }}>
             {fmtDate && <span style={{ color: '#ccc', fontSize: isMobile ? 12 : 14, fontWeight: 500 }}>{fmtDate}</span>}
             {fmtDate && timeStr && <span style={{ color: '#555', fontSize: 14 }}>·</span>}
             {timeStr && <span style={{ color: '#999', fontSize: isMobile ? 12 : 13 }}>{timeStr}</span>}
