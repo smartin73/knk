@@ -93,6 +93,7 @@ export function MenuDisplayPage() {
   const { id } = useParams();
   const width = useWindowWidth();
   const isMobile = width < 520;
+  const isWide = width >= 900;
   const [menu, setMenu] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
@@ -190,7 +191,7 @@ export function MenuDisplayPage() {
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+          gridTemplateColumns: isMobile ? '1fr' : isWide ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
           gap: isMobile ? 12 : 16,
           padding: isMobile ? '12px 16px 40px' : '16px 24px 40px',
           maxWidth: 960,

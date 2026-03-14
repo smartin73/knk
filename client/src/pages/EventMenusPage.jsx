@@ -344,7 +344,7 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
                           <button className="btn btn-secondary btn-sm" onClick={() => setEditingItem(null)}>Cancel</button>
                         </div>
                       ) : (
-                        <RowMenu items={[
+                        <RowMenu actions={[
                           { label: 'Edit Qty', onClick: () => setEditingItem({ id: item.id, qty_on_hand: item.qty_on_hand, limited_threshold: item.limited_threshold, sort_order: item.sort_order }) },
                           { label: 'Remove', danger: true, onClick: () => handleRemoveItem(item.id) },
                         ]} />
@@ -478,7 +478,7 @@ export function EventMenusPage() {
                     }
                   </td>
                   <td style={{ padding: '12px 14px' }}>
-                    <RowMenu items={[
+                    <RowMenu actions={[
                       { label: 'Manage', onClick: () => setSelectedId(m.id) },
                       { label: 'Copy Display URL', onClick: () => navigator.clipboard.writeText(publicUrl(m.id)) },
                       { label: 'Delete', danger: true, onClick: () => handleDelete(m.id) },
