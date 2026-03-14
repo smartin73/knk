@@ -722,7 +722,7 @@ export function ItemBuilderPage() {
           <div className="page-title">🧁 ItemBuilder</div>
           <div className="page-subtitle">{items.length} item{items.length !== 1 ? 's' : ''}</div>
         </div>
-        <button className="btn btn-secondary" onClick={() => setModal({ mode: 'import' })}>↑ Import CSV</button>
+        <button className="btn btn-secondary" onClick={() => setModal({ mode: 'import' })}>↑ Import</button>
         <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>+ New Item</button>
       </div>
 

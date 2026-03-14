@@ -804,7 +804,7 @@ export function RecipesPage() {
           <div className="page-subtitle">{recipes.length} recipe{recipes.length!==1?'s':''}</div>
         </div>
         <div style={{display:'flex',gap:8}}>
-          <button className="btn btn-secondary" onClick={()=>setModal({mode:'import'})}>↑ Import CSV</button>
+          <button className="btn btn-secondary" onClick={()=>setModal({mode:'import'})}>↑ Import</button>
           <button className="btn btn-primary" onClick={()=>setModal({mode:'new'})}>+ New Recipe</button>
         </div>
       </div>

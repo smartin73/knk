@@ -429,7 +429,7 @@ export function EventsPage() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-secondary" onClick={() => setModal({ mode: 'import' })}>
-            ↑ Import CSV
+            ↑ Import
           </button>
           <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>
             + New Event
