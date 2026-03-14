@@ -112,6 +112,27 @@ router.post('/import/from-url', async (req, res) => {
   }
 });
 
+// POST /recipes/import/from-text
+router.post('/import/from-text', async (req, res) => {
+  const { text } = req.body;
+  if (!text?.trim()) return res.status(400).json({ error: 'Recipe text required' });
+  try {
+    const { rows: keyRows } = await query(`SELECT value FROM settings WHERE key = 'gemini_api_key'`);
+    const apiKey = keyRows[0]?.value;
+    if (!apiKey) return res.status(400).json({ error: 'Gemini API key not set. Add it in Settings.' });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const result = await model.generateContent([IMAGE_PROMPT + '\n\nRecipe text:\n' + text.trim()]);
+    const recipe = extractJSON(result.response.text());
+    recipe.steps = (recipe.steps || []).map((s, i) => ({ ...s, step_number: s.step_number ?? i + 1, step_type: s.step_type || 'regular', requires_notification: false }));
+    recipe.ingredients = (recipe.ingredients || []).map((ing, i) => ({ ...ing, sort_order: ing.sort_order ?? i }));
+    res.json({ recipe });
+  } catch (e) {
+    console.error('import/from-text error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /recipes/import/from-image
 router.post('/import/from-image', upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Image required' });

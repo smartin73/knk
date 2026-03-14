@@ -59,6 +59,7 @@ function MethodTabs({ method, onChange }) {
     { key: 'csv',   label: 'CSV' },
     { key: 'image', label: 'Recipe Card Image' },
     { key: 'url',   label: 'Web URL' },
+    { key: 'text',  label: 'Paste Text' },
   ];
   return (
     <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
@@ -118,6 +119,9 @@ export function RecipesImportModal({ existingNames, onClose, onDone }) {
   // URL state
   const [urlInput, setUrlInput] = useState('');
 
+  // Text state
+  const [textInput, setTextInput] = useState('');
+
   const [preview, setPreview]     = useState(null);
   const [processing, setProcessing] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -141,6 +145,7 @@ export function RecipesImportModal({ existingNames, onClose, onDone }) {
     setRecipesFile(null); setStepsFile(null); setIngredientsFile(null);
     setImageFile(null);
     setUrlInput('');
+    setTextInput('');
   }
 
   async function handleSetup() {
@@ -242,6 +247,21 @@ export function RecipesImportModal({ existingNames, onClose, onDone }) {
       }
       return;
     }
+
+    if (method === 'text') {
+      if (!textInput.trim()) return setErr('Please paste some recipe text.');
+      setProcessing(true);
+      try {
+        const data = await api.post('/recipes/import/from-text', { text: textInput.trim() });
+        setPreview(normalizeToPreview(data.recipe));
+        setStep(1);
+      } catch (e) {
+        setErr(e.message || 'Failed to extract recipe from text.');
+      } finally {
+        setProcessing(false);
+      }
+      return;
+    }
   }
 
   async function handleImport() {
@@ -311,6 +331,27 @@ export function RecipesImportModal({ existingNames, onClose, onDone }) {
                     onChange={e => setUrlInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSetup()}
                     style={{ width: '100%' }}
+                  />
+                </div>
+              </>
+            )}
+
+            {method === 'text' && (
+              <>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 0, marginBottom: 16 }}>
+                  Paste any recipe text — from an email, a website, or your own notes. Gemini AI will extract the details.
+                </p>
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>
+                    Recipe Text
+                  </label>
+                  <textarea
+                    className="form-input"
+                    placeholder="Paste recipe text here…"
+                    value={textInput}
+                    onChange={e => setTextInput(e.target.value)}
+                    rows={10}
+                    style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
                   />
                 </div>
               </>
