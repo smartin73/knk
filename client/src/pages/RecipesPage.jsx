@@ -754,6 +754,7 @@ export function RecipesPage() {
   const [stageFilter, setStageFilter]       = useState('');
   const [modal, setModal]                   = useState(null);
   const [makeRecipe, setMakeRecipe]         = useState(null);
+  const [selected, setSelected]             = useState(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -771,6 +772,13 @@ export function RecipesPage() {
   useEffect(() => { load(); }, [load]);
 
   const types = [...new Set(recipes.map(r=>r.recipe_type).filter(Boolean))].sort();
+
+  async function handleBulkDelete() {
+    if (!confirm(`Delete ${selected.size} recipe${selected.size !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+    await api.post('/recipes/bulk-delete', { ids: [...selected] });
+    setSelected(new Set());
+    load();
+  }
 
   async function handleSave(form, ingredients, steps) {
     let saved;
@@ -808,6 +816,9 @@ export function RecipesPage() {
           <div className="page-subtitle">{recipes.length} recipe{recipes.length!==1?'s':''}</div>
         </div>
         <div style={{display:'flex',gap:8}}>
+          {selected.size > 0 && (
+            <button className="btn btn-danger" onClick={handleBulkDelete}>Delete {selected.size} selected</button>
+          )}
           <button className="btn btn-secondary" onClick={()=>setModal({mode:'import'})}>↑ Import</button>
           <button className="btn btn-primary" onClick={()=>setModal({mode:'new'})}>+ New Recipe</button>
         </div>
@@ -840,10 +851,22 @@ export function RecipesPage() {
         ) : (
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Recipe</th><th>Type</th><th>Stage</th><th>Serves</th><th>Prep</th><th>Cook</th><th></th></tr></thead>
+              <thead><tr>
+                <th style={{width:32}}>
+                  <input type="checkbox" style={{width:'auto'}}
+                    checked={recipes.length > 0 && recipes.every(r => selected.has(r.id))}
+                    onChange={e => setSelected(e.target.checked ? new Set(recipes.map(r=>r.id)) : new Set())} />
+                </th>
+                <th>Recipe</th><th>Type</th><th>Stage</th><th>Serves</th><th>Prep</th><th>Cook</th><th></th>
+              </tr></thead>
               <tbody>
                 {recipes.map(r=>(
                   <tr key={r.id}>
+                    <td style={{width:32}}>
+                      <input type="checkbox" style={{width:'auto'}}
+                        checked={selected.has(r.id)}
+                        onChange={e => setSelected(prev => { const s = new Set(prev); e.target.checked ? s.add(r.id) : s.delete(r.id); return s; })} />
+                    </td>
                     <td>
                       <div style={{fontWeight:600,cursor:'pointer',color:'var(--accent2)'}} onClick={()=>setModal({mode:'detail',recipe:r})}>{r.recipe_name}</div>
                       {r.recipe_by&&<div style={{fontSize:12,color:'var(--text-muted)'}}>by {r.recipe_by}</div>}

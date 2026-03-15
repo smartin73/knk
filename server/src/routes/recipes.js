@@ -320,6 +320,14 @@ router.put('/:id', async (req, res) => {
   res.json(rows[0]);
 });
 
+// POST /recipes/bulk-delete
+router.post('/bulk-delete', requireAuth, async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids required' });
+  await query('DELETE FROM recipes WHERE id = ANY($1)', [ids]);
+  res.json({ ok: true, deleted: ids.length });
+});
+
 // DELETE /recipes/:id
 router.delete('/:id', async (req, res) => {
   await query('DELETE FROM recipes WHERE id = $1', [req.params.id]);
