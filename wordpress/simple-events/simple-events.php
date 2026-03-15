@@ -28,6 +28,7 @@ function se_activate() {
         description LONGTEXT,
         event_date  DATE,
         event_time  TIME,
+        end_time    TIME,
         location    VARCHAR(255),
         image_url   VARCHAR(500),
         ticket_url  VARCHAR(500),
@@ -42,6 +43,19 @@ function se_activate() {
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
     dbDelta( $sql );
     update_option( 'se_db_version', SE_VERSION );
+}
+
+/* ─────────────────────────────────────────
+   1b. DB UPGRADE — add columns to existing installs
+───────────────────────────────────────── */
+add_action( 'plugins_loaded', 'se_maybe_upgrade_db' );
+function se_maybe_upgrade_db() {
+    global $wpdb;
+    $table = $wpdb->prefix . 'simple_events';
+    $cols  = $wpdb->get_col( "DESCRIBE $table", 0 );
+    if ( ! in_array( 'end_time', $cols ) ) {
+        $wpdb->query( "ALTER TABLE $table ADD COLUMN end_time TIME DEFAULT NULL AFTER event_time" );
+    }
 }
 
 /* ─────────────────────────────────────────
@@ -513,11 +527,22 @@ function se_shortcode_list( $atts ) {
                     $detail_url = add_query_arg( 'se_event', $e->id );
                 ?>
                 <article class="se-event-card">
+                    <?php if ( $e->event_date ) :
+                        $ts = strtotime( $e->event_date );
+                    ?>
+                    <div class="se-card-date-badge">
+                        <div class="se-badge-month"><?php echo esc_html( date( 'M', $ts ) ); ?></div>
+                        <div class="se-badge-day"><?php echo esc_html( date( 'j', $ts ) ); ?></div>
+                        <div class="se-badge-dow"><?php echo esc_html( date( 'D', $ts ) ); ?></div>
+                    </div>
+                    <?php endif; ?>
+
                     <?php if ( $e->image_url ) : ?>
                         <a href="<?php echo esc_url( $detail_url ); ?>" class="se-card-image">
                             <img src="<?php echo esc_url( $e->image_url ); ?>" alt="<?php echo esc_attr( $e->title ); ?>">
                         </a>
                     <?php endif; ?>
+
                     <div class="se-card-body">
                         <?php if ( $e->category ) : ?>
                             <span class="se-tag"><?php echo esc_html( $e->category ); ?></span>
@@ -526,11 +551,15 @@ function se_shortcode_list( $atts ) {
                             <a href="<?php echo esc_url( $detail_url ); ?>"><?php echo esc_html( $e->title ); ?></a>
                         </h2>
                         <div class="se-card-meta">
-                            <?php if ( $e->event_date ) : ?>
+                            <?php if ( $e->event_time ) : ?>
                                 <span class="se-meta-item">
-                                    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5h8v1H6V7z"/></svg>
-                                    <?php echo esc_html( date( 'D, M j, Y', strtotime( $e->event_date ) ) );
-                                    if ( $e->event_time ) echo ' &middot; ' . esc_html( date( 'g:i A', strtotime( $e->event_time ) ) ); ?>
+                                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                                    <?php
+                                    echo esc_html( date( 'g:i A', strtotime( $e->event_time ) ) );
+                                    if ( ! empty( $e->end_time ) ) {
+                                        echo ' &ndash; ' . esc_html( date( 'g:i A', strtotime( $e->end_time ) ) );
+                                    }
+                                    ?>
                                 </span>
                             <?php endif; ?>
                             <?php if ( $e->location ) : ?>
@@ -541,13 +570,13 @@ function se_shortcode_list( $atts ) {
                             <?php endif; ?>
                             <?php if ( $e->price ) : ?>
                                 <span class="se-meta-item">
-                                    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/></svg>
+                                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/></svg>
                                     <?php echo esc_html( $e->price ); ?>
                                 </span>
                             <?php endif; ?>
                         </div>
                         <?php if ( $e->ticket_url ) : ?>
-                            <a href="<?php echo esc_url( $e->ticket_url ); ?>" class="se-btn se-btn-sm" target="_blank" rel="noopener">Tickets / Info</a>
+                            <a href="<?php echo esc_url( $e->ticket_url ); ?>" class="se-btn se-btn-sm" target="_blank" rel="noopener">Tickets / More Info</a>
                         <?php endif; ?>
                     </div>
                 </article>
@@ -591,21 +620,41 @@ function se_render_detail( $id ) {
                 <div class="se-meta-item">
                     <svg viewBox="0 0 20 20" fill="currentColor"><path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5h8v1H6V7z"/></svg>
                     <div>
-                        <strong><?php echo esc_html( date( 'l, F j, Y', strtotime( $e->event_date ) ) ); ?></strong>
-                        <?php if ( $e->event_time ) echo '<br>' . esc_html( date( 'g:i A', strtotime( $e->event_time ) ) ); ?>
+                        <div class="se-meta-label">Date</div>
+                        <div class="se-meta-value"><?php echo esc_html( date( 'l, F j, Y', strtotime( $e->event_date ) ) ); ?></div>
+                    </div>
+                </div>
+            <?php endif; ?>
+            <?php if ( $e->event_time ) : ?>
+                <div class="se-meta-item">
+                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                    <div>
+                        <div class="se-meta-label">Time</div>
+                        <div class="se-meta-value"><?php
+                            echo esc_html( date( 'g:i A', strtotime( $e->event_time ) ) );
+                            if ( ! empty( $e->end_time ) ) {
+                                echo ' &ndash; ' . esc_html( date( 'g:i A', strtotime( $e->end_time ) ) );
+                            }
+                        ?></div>
                     </div>
                 </div>
             <?php endif; ?>
             <?php if ( $e->location ) : ?>
                 <div class="se-meta-item">
                     <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
-                    <div><strong><?php echo esc_html( $e->location ); ?></strong></div>
+                    <div>
+                        <div class="se-meta-label">Location</div>
+                        <div class="se-meta-value"><?php echo esc_html( $e->location ); ?></div>
+                    </div>
                 </div>
             <?php endif; ?>
             <?php if ( $e->price ) : ?>
                 <div class="se-meta-item">
-                    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/></svg>
-                    <div><strong><?php echo esc_html( $e->price ); ?></strong></div>
+                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/></svg>
+                    <div>
+                        <div class="se-meta-label">Price</div>
+                        <div class="se-meta-value"><?php echo esc_html( $e->price ); ?></div>
+                    </div>
                 </div>
             <?php endif; ?>
         </div>
@@ -641,82 +690,112 @@ function se_enqueue_frontend_styles() {
     $done = true;
     ?>
     <style>
-    .se-frontend { font-family: inherit; }
+    .se-frontend { font-family: inherit; color: inherit; }
 
-    /* Search bar */
-    .se-search-form { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:24px; }
+    /* ── Search / Filter ── */
+    .se-search-form { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:28px; align-items:center; }
     .se-input {
-        padding: 9px 14px; border: 1px solid #d1d5db; border-radius: 6px;
-        font-size: 14px; background: #fff;
+        padding: 9px 14px; border: 1px solid #d1d5db; border-radius: 8px;
+        font-size: 14px; background: #fff; color: inherit; line-height: 1.4;
+        transition: border-color .15s, box-shadow .15s;
     }
-    .se-input:focus { outline:none; border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+    .se-input:focus { outline:none; border-color:#7c3aed; box-shadow:0 0 0 3px rgba(124,58,237,.12); }
 
-    /* Buttons */
+    /* ── Buttons ── */
     .se-btn {
-        display:inline-block; padding:9px 18px; background:#1d2327; color:#fff;
-        border:none; border-radius:6px; font-size:14px; font-weight:500;
-        cursor:pointer; text-decoration:none; transition: background .15s;
+        display:inline-block; padding:9px 20px; background:#7c3aed; color:#fff !important;
+        border:none; border-radius:8px; font-size:14px; font-weight:600;
+        cursor:pointer; text-decoration:none !important; transition: background .15s, transform .1s;
+        line-height: 1.4;
     }
-    .se-btn:hover { background:#3d4349; color:#fff; }
-    .se-btn-primary { background:#6366f1; }
-    .se-btn-primary:hover { background:#4f46e5; color:#fff; }
-    .se-btn-outline { background:transparent; color:#1d2327; border:1px solid #d1d5db; }
-    .se-btn-outline:hover { background:#f9fafb; color:#1d2327; }
-    .se-btn-sm { padding:6px 14px; font-size:13px; }
+    .se-btn:hover { background:#6d28d9; transform: translateY(-1px); }
+    .se-btn-primary { background:#7c3aed; }
+    .se-btn-primary:hover { background:#6d28d9; }
+    .se-btn-outline { background:transparent !important; color:#6b7280 !important; border:1px solid #d1d5db; }
+    .se-btn-outline:hover { border-color:#7c3aed; color:#7c3aed !important; background:transparent !important; transform:none; }
+    .se-btn-sm { padding:7px 16px; font-size:13px; }
 
-    /* Tags */
+    /* ── Category pill ── */
     .se-tag {
-        display:inline-block; padding:3px 10px; border-radius:20px;
-        font-size:12px; font-weight:600; letter-spacing:.3px;
-        background:#eef2ff; color:#6366f1; margin-bottom:8px;
+        display:inline-block; padding:3px 12px; border-radius:20px;
+        font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase;
+        background:#f3f0ff; color:#7c3aed; margin-bottom:10px;
     }
-    .se-tag-sm { font-size:11px; padding:2px 8px; }
+    .se-tag-sm { font-size:10px; padding:2px 9px; }
 
-    /* Event list */
-    .se-list { display:flex; flex-direction:column; gap:20px; }
+    /* ── Event list ── */
+    .se-list { display:flex; flex-direction:column; gap:0; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; }
     .se-event-card {
-        display:flex; gap:0; border:1px solid #e5e7eb; border-radius:10px;
-        overflow:hidden; background:#fff; transition: box-shadow .2s, transform .2s;
+        display:flex; gap:0; background:#fff;
+        border-bottom:1px solid #e5e7eb;
+        transition: background .15s;
     }
-    .se-event-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.08); transform: translateY(-1px); }
-    .se-card-image { flex:0 0 220px; overflow:hidden; }
+    .se-event-card:last-child { border-bottom:none; }
+    .se-event-card:hover { background:#faf9ff; }
+
+    /* Date badge on the left */
+    .se-card-date-badge {
+        flex: 0 0 80px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+        padding: 20px 8px; background:#f3f0ff; border-right:1px solid #e5e7eb;
+        text-align:center; line-height:1.2;
+    }
+    .se-card-date-badge .se-badge-month { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#7c3aed; }
+    .se-card-date-badge .se-badge-day   { font-size:30px; font-weight:800; color:#1f2937; line-height:1; margin: 3px 0; }
+    .se-card-date-badge .se-badge-dow   { font-size:11px; color:#9ca3af; font-weight:500; }
+
+    .se-card-image { flex:0 0 200px; overflow:hidden; }
     .se-card-image img { width:100%; height:100%; object-fit:cover; display:block; transition: transform .3s; }
     .se-event-card:hover .se-card-image img { transform:scale(1.03); }
-    .se-card-body { flex:1; padding:20px 24px; }
-    .se-card-title { margin:0 0 10px; font-size:20px; line-height:1.3; }
+
+    .se-card-body { flex:1; padding:20px 24px; display:flex; flex-direction:column; justify-content:center; }
+    .se-card-title { margin:0 0 8px; font-size:18px; font-weight:700; line-height:1.3; }
     .se-card-title a { color:inherit; text-decoration:none; }
-    .se-card-title a:hover { color:#6366f1; }
-    .se-card-meta { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:14px; }
-    .se-meta-item {
-        display:flex; align-items:center; gap:5px;
-        font-size:13px; color:#6b7280;
-    }
-    .se-meta-item svg { width:14px; height:14px; flex-shrink:0; }
-    .se-empty-msg { color:#6b7280; padding:32px 0; }
+    .se-card-title a:hover { color:#7c3aed; }
 
-    /* Detail view */
-    .se-back-link { font-size:14px; color:#6b7280; text-decoration:none; }
-    .se-back-link:hover { color:#6366f1; }
+    .se-card-meta { display:flex; flex-wrap:wrap; gap:14px; margin-bottom:12px; }
+    .se-meta-item { display:flex; align-items:center; gap:5px; font-size:13px; color:#6b7280; }
+    .se-meta-item svg { width:14px; height:14px; flex-shrink:0; color:#9ca3af; }
+
+    .se-empty-msg { color:#9ca3af; padding:48px 0; text-align:center; font-size:15px; }
+
+    /* ── Detail view ── */
+    .se-back-link { display:inline-flex; align-items:center; gap:5px; font-size:14px; color:#6b7280; text-decoration:none; margin-bottom:24px; }
+    .se-back-link:hover { color:#7c3aed; }
+
     .se-detail-image {
-        width:100%; max-height:400px; object-fit:cover;
-        border-radius:10px; margin-bottom:24px; display:block;
+        width:100%; max-height:420px; object-fit:cover;
+        border-radius:12px; margin-bottom:28px; display:block;
     }
-    .se-detail-header { margin-bottom:16px; }
-    .se-detail-title { font-size:32px; line-height:1.2; margin:0; }
-    .se-detail-meta {
-        display:flex; flex-wrap:wrap; gap:20px;
-        padding:20px; background:#f9fafb; border-radius:8px;
-        margin-bottom:24px;
-    }
-    .se-detail-meta .se-meta-item { font-size:14px; gap:10px; }
-    .se-detail-meta .se-meta-item svg { width:18px; height:18px; color:#6366f1; }
-    .se-detail-description { font-size:16px; line-height:1.7; color:#374151; margin-bottom:20px; }
-    .se-detail-tags { display:flex; flex-wrap:wrap; gap:6px; }
+    .se-detail-header { margin-bottom:20px; }
+    .se-detail-title { font-size:30px; font-weight:800; line-height:1.25; margin:4px 0 0; }
 
-    @media (max-width: 600px) {
+    .se-detail-meta {
+        display:flex; flex-wrap:wrap; gap:0;
+        border:1px solid #e5e7eb; border-radius:10px;
+        overflow:hidden; margin-bottom:28px;
+    }
+    .se-detail-meta .se-meta-item {
+        flex: 1 1 180px; font-size:14px; gap:12px; padding:16px 20px;
+        border-right:1px solid #e5e7eb; color:#374151; align-items:flex-start;
+    }
+    .se-detail-meta .se-meta-item:last-child { border-right:none; }
+    .se-detail-meta .se-meta-item svg { width:18px; height:18px; flex-shrink:0; color:#7c3aed; margin-top:2px; }
+    .se-detail-meta .se-meta-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#9ca3af; margin-bottom:3px; }
+    .se-detail-meta .se-meta-value { font-weight:600; }
+
+    .se-detail-description { font-size:16px; line-height:1.75; color:#374151; margin-bottom:24px; }
+    .se-detail-tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:24px; }
+
+    .se-tickets-btn { margin-top:4px; }
+
+    @media (max-width: 640px) {
         .se-event-card { flex-direction:column; }
-        .se-card-image { flex:none; height:200px; }
+        .se-card-date-badge { flex-direction:row; gap:10px; padding:14px 16px; border-right:none; border-bottom:1px solid #e5e7eb; justify-content:flex-start; }
+        .se-card-date-badge .se-badge-day { font-size:22px; }
+        .se-card-image { height:180px; }
         .se-detail-title { font-size:24px; }
+        .se-detail-meta .se-meta-item { flex: 1 1 100%; border-right:none; border-bottom:1px solid #e5e7eb; }
+        .se-detail-meta .se-meta-item:last-child { border-bottom:none; }
     }
     </style>
     <?php
@@ -813,6 +892,7 @@ function se_format_event( $e ) {
         'description' => $e->description,
         'event_date'  => $e->event_date,
         'event_time'  => $e->event_time,
+        'end_time'    => $e->end_time ?? null,
         'location'    => $e->location,
         'image_url'   => $e->image_url,
         'ticket_url'  => $e->ticket_url,
@@ -842,6 +922,7 @@ function se_api_event_args( $required = true ) {
         'description' => [ 'type' => 'string', 'sanitize_callback' => 'wp_kses_post' ],
         'event_date'  => [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
         'event_time'  => [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+        'end_time'    => [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
         'location'    => [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
         'image_url'   => [ 'type' => 'string', 'sanitize_callback' => 'esc_url_raw' ],
         'ticket_url'  => [ 'type' => 'string', 'sanitize_callback' => 'esc_url_raw' ],
@@ -912,6 +993,7 @@ function se_api_create_event( WP_REST_Request $request ) {
         'description' => $request->get_param( 'description' ) ?? '',
         'event_date'  => $request->get_param( 'event_date' )  ?? null,
         'event_time'  => $request->get_param( 'event_time' )  ?? null,
+        'end_time'    => $request->get_param( 'end_time' )    ?? null,
         'location'    => $request->get_param( 'location' )    ?? '',
         'image_url'   => $request->get_param( 'image_url' )   ?? '',
         'ticket_url'  => $request->get_param( 'ticket_url' )  ?? '',
@@ -932,7 +1014,7 @@ function se_api_update_event( WP_REST_Request $request ) {
     if ( ! $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $table WHERE id = %d", $id ) ) ) {
         return new WP_Error( 'not_found', 'Event not found.', [ 'status' => 404 ] );
     }
-    $fields = [ 'title','description','event_date','event_time','location','image_url','ticket_url','category','tags','price' ];
+    $fields = [ 'title','description','event_date','event_time','end_time','location','image_url','ticket_url','category','tags','price' ];
     $data   = [];
     foreach ( $fields as $f ) {
         if ( $request->has_param( $f ) ) $data[ $f ] = $request->get_param( $f );

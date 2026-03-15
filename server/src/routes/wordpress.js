@@ -57,6 +57,7 @@ router.post('/push/:eventId', async (req, res) => {
       description: event.description  || '',
       event_date:  fmtDate(event.event_date),
       event_time:  fmtTime(event.start_time),
+      end_time:    fmtTime(event.end_time),
       location:    event.location     || '',
       image_url:   event.image_url    || '',
       ticket_url:  event.ticket_url   || '',
