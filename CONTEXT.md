@@ -59,24 +59,35 @@ server/src/
     ├── recipes.js
     ├── settings.js
     ├── square.js
+    ├── finance.js        (income_entries, expense_entries + donations export)
+    ├── wordpress.js      (push events → WP plugin, push items → WooCommerce REST API)
+    ├── notifications.js
+    ├── users.js
+    ├── webhooks.js
     └── modules.js        (ingredients, itemBuilder, eventMenus, donations, vendors)
 
 client/src/
-├── App.jsx
+├── App.jsx               (includes mobile nav drawer + hamburger)
 ├── lib/api.js
 ├── hooks/useAuth.jsx
 └── pages/
     ├── LoginPage.jsx
     ├── DashboardPage.jsx
-    ├── EventsPage.jsx
+    ├── EventsPage.jsx        (includes LogSalesModal → POST /finance/income)
     ├── VendorsPage.jsx
     ├── IngredientsPage.jsx
     ├── RecipesPage.jsx       (includes MakeView component)
     ├── SettingsPage.jsx
-    ├── ItemBuilderPage.jsx
-    ├── ImportModal.jsx
+    ├── ItemBuilderPage.jsx   (includes variants tab + Push to Square + Push to WooCommerce)
+    ├── ItemBuilderImportModal.jsx
     ├── RecipesImportModal.jsx
-    └── stubs.jsx             (EventMenusPage, DonationsPage)
+    ├── DonationsPage.jsx
+    ├── FinancePage.jsx
+    ├── UsersPage.jsx
+    ├── TestLogPage.jsx
+    ├── EventMenusPage.jsx
+    ├── MenuDisplayPage.jsx
+    └── MenuLandingPage.jsx
 ```
 
 ---
@@ -99,8 +110,14 @@ app.use('/items',       itemBuilderRouter);
 app.use('/event-menus', eventMenusRouter);
 app.use('/donations',   donationsRouter);
 app.use('/vendors',     vendorsRouter);
-app.use('/settings',    settingsRouter);
-app.use('/square',      squareRouter);
+app.use('/settings',      settingsRouter);
+app.use('/users',         usersRouter);
+app.use('/finance',       financeRouter);
+app.use('/square',        squareRouter);
+app.use('/webhooks',      webhooksRouter);
+app.use('/notifications', notificationsRouter);
+app.use('/wordpress',     wordpressRouter);
+// Public (no auth): GET /public/menus, GET /public/menu/:id
 ```
 
 ---
