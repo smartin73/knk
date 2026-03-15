@@ -26,6 +26,8 @@ import {
 import squareRouter from './routes/square.js';
 import webhooksRouter from './routes/webhooks.js';
 import notificationsRouter from './routes/notifications.js';
+import wordpressRouter from './routes/wordpress.js';
+
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -94,6 +96,7 @@ app.use('/finance',  financeRouter);
 app.use('/square',        squareRouter);
 app.use('/webhooks',      webhooksRouter);
 app.use('/notifications', notificationsRouter);
+app.use('/wordpress', wordpressRouter);
 
 // ── Public: menu landing — today's menu or list ──────────
 app.get('/public/menus', async (req, res) => {

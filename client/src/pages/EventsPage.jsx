@@ -423,6 +423,22 @@ export function EventsPage() {
     });
   }
 
+  async function handleWpPush(event) {
+  try {
+    const res = await api.post(`/wordpress/push/${event.id}`, {});
+    if (res.error) throw new Error(res.error);
+    load();
+  } catch (e) {
+    alert('WordPress push failed: ' + (e.message || 'Unknown error'));
+  }
+}
+
+async function handleWpUnlink(event) {
+  if (!confirm("Unlink from WordPress? The event will remain on WordPress but won't be tracked here.")) return;
+  await api.delete(`/wordpress/unlink/${event.id}`);
+  load();
+}
+
   async function handleImport(rows) {
   const vendorMap = {};
   vendors.forEach(v => { vendorMap[v.vendor_name.trim().toLowerCase()] = v.id; });
