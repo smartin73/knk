@@ -224,12 +224,13 @@ location      text
 description   text
 image_url     text
 ticket_url    text
-map_embed     text
+map_embed     text       ← iframe embed; "Generate from Location" button auto-builds from location field
 category      text
 tags          text
 price         numeric
 status        text
 posted_to_web boolean
+woo_id        text       ← WordPress Simple Events plugin ID; null = not yet pushed
 created_at    timestamptz
 updated_at    timestamptz
 ```
@@ -374,7 +375,7 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 
 | Module | Status |
 |--------|--------|
-| Events | ✅ Full CRUD + CSV import + Repeat (weekly/biweekly/monthly, generates independent draft events) |
+| Events | ✅ Full CRUD + CSV import + Repeat + Push to Web / Sync to Web / Unlink from Web (WordPress Simple Events plugin); "Generate from Location" button auto-fills map embed |
 | Vendors | ✅ Full CRUD + CSV import |
 | Ingredients | ✅ Full CRUD + price history + CSV import |
 | Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage + MakeView + test logging |
@@ -384,7 +385,7 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 | Donations | ✅ Full CRUD + CSV export (item-based, linked to events + item builder) |
 | Users | ✅ Admin/member roles + user management + change password |
 | Income/Expenses | ✅ Income + Expenses CRUD + CSV export (donations auto-included) + Log Sales action on Events |
-| WordPress/WooCommerce | ✅ Push events → WP plugin (`POST /wordpress/push/:eventId`); Push items → WooCommerce REST API (`POST /wordpress/push-item/:id`); simple + variable products with variants |
+| WordPress/WooCommerce | ✅ Push events → WP plugin (RowMenu: "Push to Web" / "Sync to Web" / "Unlink from Web"); Push items → WooCommerce REST API; simple + variable products with variants |
 | Mobile Nav | ✅ Hamburger + slide-out drawer, auto-closes on route change |
 
 ---
@@ -408,3 +409,4 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 - [x] Repeating events — Repeat… RowMenu action; frequency (weekly/biweekly/monthly) + end date; live date preview; generates independent Draft events via POST /events/repeat
 - [ ] Event Menus Phase 2 live testing — waiting on next event
 - [x] Recipe version history (covered by Test module)
+- [ ] Notifications on Recipe Steps — when a step has `requires_notification = true`, trigger a Pushover notification during MakeView at the appropriate time

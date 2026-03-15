@@ -878,6 +878,7 @@ export function ItemBuilderPage() {
                   <th>Packaging</th>
                   <th>Fees</th>
                   <th>Square</th>
+                  <th>Woo</th>
                   <th></th>
                 </tr>
               </thead>
@@ -899,6 +900,11 @@ export function ItemBuilderPage() {
                     <td>
                       {i.square_id
                         ? <span style={{ fontSize: 11, color: 'var(--green, #4caf50)', fontWeight: 600 }}>✓ Synced</span>
+                        : <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>—</span>}
+                    </td>
+                    <td>
+                      {i.woo_id
+                        ? <span style={{ fontSize: 11, color: '#7f54b3', fontWeight: 600 }}>✓ Synced</span>
                         : <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>—</span>}
                     </td>
                     <td>

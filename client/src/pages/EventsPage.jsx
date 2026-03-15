@@ -544,20 +544,20 @@ export function EventsPage() {
   }
 
   async function handleWpPush(event) {
-  try {
-    const res = await api.post(`/wordpress/push/${event.id}`, {});
-    if (res.error) throw new Error(res.error);
-    load();
-  } catch (e) {
-    alert('WordPress push failed: ' + (e.message || 'Unknown error'));
+    try {
+      const res = await api.post(`/wordpress/push/${event.id}`, {});
+      if (res.error) throw new Error(res.error);
+      load();
+    } catch (e) {
+      alert('WordPress push failed: ' + (e.message || 'Unknown error'));
+    }
   }
-}
 
-async function handleWpUnlink(event) {
-  if (!confirm("Unlink from WordPress? The event will remain on WordPress but won't be tracked here.")) return;
-  await api.delete(`/wordpress/unlink/${event.id}`);
-  load();
-}
+  async function handleWpUnlink(event) {
+    if (!confirm("Unlink from WordPress? The event will remain on WordPress but won't be tracked here.")) return;
+    await api.delete(`/wordpress/unlink/${event.id}`);
+    load();
+  }
 
   async function handleImport(rows) {
   const vendorMap = {};
@@ -619,13 +619,6 @@ async function handleWpUnlink(event) {
   load();
 }
 
-  // Dupe detection by event_name + event_date combo
-  const existingNames = new Set(
-    events.map(e => `${e.event_name.toLowerCase()}|${String(e.event_date).slice(0, 10)}`)
-  );
-
-  // For ImportModal nameKey we use event_name — dupe check is on name only
-  // (same event name on different dates is allowed, but same name+date is a dupe)
   const existingEventNames = new Set(events.map(e => e.event_name.toLowerCase()));
 
   const counts = STATUSES.reduce((acc, s) => {
@@ -734,6 +727,10 @@ async function handleWpUnlink(event) {
                           { label: 'Duplicate', onClick: () => handleDuplicate(e) },
                           { label: 'Repeat…',   onClick: () => handleRepeat(e) },
                           { label: 'Log Sales', onClick: () => setModal({ mode: 'log-sales', event: e }) },
+                          e.woo_id
+                            ? { label: 'Sync to Web',   onClick: () => handleWpPush(e) }
+                            : { label: 'Push to Web',   onClick: () => handleWpPush(e) },
+                          ...(e.woo_id ? [{ label: 'Unlink from Web', onClick: () => handleWpUnlink(e) }] : []),
                           { label: 'Delete',    onClick: () => setModal({ mode: 'delete', event: e }), danger: true },
                         ]} />
                       </div>
