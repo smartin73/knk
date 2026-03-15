@@ -49,11 +49,14 @@ router.post('/push/:eventId', async (req, res) => {
     if (!apiKey)  return res.status(400).json({ error: 'WordPress API key not configured in Settings' });
 
     // Map knk fields → WP plugin fields
+    const fmtDate = v => v ? (v instanceof Date ? v.toISOString() : String(v)).slice(0, 10) : null;
+    const fmtTime = v => v ? String(v).slice(0, 5) : null;
+
     const payload = {
       title:       event.event_name,
       description: event.description  || '',
-      event_date:  event.event_date   ? String(event.event_date).slice(0, 10) : null,
-      event_time:  event.start_time   ? String(event.start_time).slice(0, 5)  : null,
+      event_date:  fmtDate(event.event_date),
+      event_time:  fmtTime(event.start_time),
       location:    event.location     || '',
       image_url:   event.image_url    || '',
       ticket_url:  event.ticket_url   || '',
