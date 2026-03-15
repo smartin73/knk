@@ -34,7 +34,7 @@ function ItemCard({ item }) {
       opacity: isSoldOut ? 0.7 : 1,
     }}>
       {/* Photo */}
-      <div style={{ position: 'relative', paddingTop: '70%', background: '#f0ece8' }}>
+      <div style={{ position: 'relative', paddingTop: '60%', background: '#f0ece8' }}>
         {item.image_url
           ? <img src={item.image_url} alt={item.item_name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
           : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48 }}>🍞</div>
@@ -93,7 +93,7 @@ export function MenuDisplayPage() {
   const { id } = useParams();
   const width = useWindowWidth();
   const isMobile = width < 520;
-  const isWide = width >= 900;
+  const isWide = width >= 768;
   const [menu, setMenu] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
@@ -150,7 +150,7 @@ export function MenuDisplayPage() {
       {/* Header */}
       <div style={{ background: '#1a1a1a' }}>
         {menu.logo_url
-          ? <img src={menu.logo_url} alt="Knife & Knead" style={{ width: '100%', height: 'auto', display: 'block' }} />
+          ? <img src={menu.logo_url} alt="Knife & Knead" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
           : <div style={{ padding: isMobile ? '20px 24px' : '28px 40px', color: '#fff', fontWeight: 800, fontSize: isMobile ? 26 : 36, letterSpacing: '-0.5px', textAlign: 'center' }}>Knife & Knead</div>
         }
         {(fmtDate || timeStr) && (

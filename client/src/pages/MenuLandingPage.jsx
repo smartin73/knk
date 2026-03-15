@@ -15,10 +15,13 @@ export function MenuLandingPage() {
   const [menus, setMenus] = useState(null);
   const [err, setErr] = useState('');
 
+  const [logoUrl, setLogoUrl] = useState(null);
+
   useEffect(() => {
     fetch(`${BASE}/public/menus`)
       .then(r => r.json())
       .then(data => {
+        setLogoUrl(data.logo_url || null);
         if (data.redirect) {
           navigate(`/menu/${data.redirect}`, { replace: true });
         } else {
@@ -42,9 +45,12 @@ export function MenuLandingPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f0eb', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div style={{ background: '#1a1a1a', padding: '20px 24px', textAlign: 'center' }}>
-        <div style={{ color: '#fff', fontWeight: 800, fontSize: 22, letterSpacing: '-0.3px' }}>Knife & Knead</div>
-        <div style={{ color: '#999', fontSize: 13, marginTop: 4 }}>Select a menu</div>
+      <div style={{ background: '#1a1a1a' }}>
+        {logoUrl
+          ? <img src={logoUrl} alt="Knife & Knead" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
+          : <div style={{ padding: '20px 24px', textAlign: 'center', color: '#fff', fontWeight: 800, fontSize: 22, letterSpacing: '-0.3px' }}>Knife & Knead</div>
+        }
+        <div style={{ color: '#999', fontSize: 13, textAlign: 'center', padding: '8px 24px 12px' }}>Select a menu</div>
       </div>
 
       {menus.length === 0 ? (

@@ -105,21 +105,26 @@ app.use('/wordpress', wordpressRouter);
 // ── Public: menu landing — today's menu or list ──────────
 app.get('/public/menus', async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT em.id, em.menu_name, em.is_active, e.event_name, e.event_date, e.start_time, e.end_time
-       FROM event_menus em
-       LEFT JOIN events e ON em.event_id = e.id
-       WHERE em.is_active = true
-       ORDER BY e.event_date ASC`
-    );
+    const [menusRes, settingRes] = await Promise.all([
+      pool.query(
+        `SELECT em.id, em.menu_name, em.is_active, e.event_name, e.event_date, e.start_time, e.end_time
+         FROM event_menus em
+         LEFT JOIN events e ON em.event_id = e.id
+         WHERE em.is_active = true
+         ORDER BY e.event_date ASC`
+      ),
+      pool.query(`SELECT value FROM settings WHERE key='logo_url'`),
+    ]);
 
+    const logo_url = settingRes.rows[0]?.value || null;
+    const rows = menusRes.rows;
     const today = rows.filter(m => m.event_date &&
       m.event_date.toISOString().split('T')[0] === new Date().toISOString().split('T')[0]
     );
 
-    if (today.length === 1) return res.json({ redirect: today[0].id });
-    if (today.length > 1)   return res.json({ menus: today });
-    return res.json({ menus: rows });
+    if (today.length === 1) return res.json({ redirect: today[0].id, logo_url });
+    if (today.length > 1)   return res.json({ menus: today, logo_url });
+    return res.json({ menus: rows, logo_url });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Server error' });
