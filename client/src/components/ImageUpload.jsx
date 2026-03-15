@@ -45,8 +45,8 @@ export function ImageUpload({ value, onChange }) {
           `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
           { method: 'POST', body: fd }
         );
-        if (!res.ok) throw new Error('Cloudinary upload failed');
         const data = await res.json();
+        if (!res.ok) throw new Error(data?.error?.message || 'Cloudinary upload failed');
         url = optimizeUrl(data.secure_url);
       } else {
         // Fallback: upload to local server
@@ -57,8 +57,8 @@ export function ImageUpload({ value, onChange }) {
       }
 
       onChange(url);
-    } catch {
-      setErr('Upload failed — please try again.');
+    } catch (e) {
+      setErr(e.message || 'Upload failed — please try again.');
     } finally {
       setUploading(false);
       e.target.value = '';

@@ -195,26 +195,31 @@ itemBuilderRouter.put('/:id', async (req, res) => {
 
 // PUT /items/:id/items  (replace all component items)
 itemBuilderRouter.put('/:id/items', async (req, res) => {
-  const { items } = req.body;
-  await query('DELETE FROM item_builder_items WHERE item_builder_id=$1', [req.params.id]);
-  for (const item of (items || [])) {
-    await query(
-      `INSERT INTO item_builder_items (item_builder_id,recipe_id,ingredient_id,item_name,quantity,unit,sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [req.params.id, item.recipe_id||null, item.ingredient_id||null,
-       item.item_name||null, item.quantity||1, item.unit||null, item.sort_order||0]
+  try {
+    const { items } = req.body;
+    await query('DELETE FROM item_builder_items WHERE item_builder_id=$1', [req.params.id]);
+    for (const item of (items || [])) {
+      await query(
+        `INSERT INTO item_builder_items (item_builder_id,recipe_id,ingredient_id,item_name,quantity,unit,sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [req.params.id, item.recipe_id||null, item.ingredient_id||null,
+         item.item_name||null, item.quantity||1, item.unit||null, item.sort_order||0]
+      );
+    }
+    const { rows } = await query(
+      `SELECT ibi.*, r.recipe_name, r.serving_size,
+         ii.item_name as ingredient_name, ii.cost_per_gram
+       FROM item_builder_items ibi
+       LEFT JOIN recipes r ON ibi.recipe_id = r.id
+       LEFT JOIN ingredient_items ii ON ibi.ingredient_id = ii.id
+       WHERE ibi.item_builder_id=$1 ORDER BY ibi.sort_order`,
+      [req.params.id]
     );
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
   }
-  const { rows } = await query(
-    `SELECT ibi.*, r.recipe_name, r.serving_size,
-       ii.item_name as ingredient_name, ii.cost_per_gram
-     FROM item_builder_items ibi
-     LEFT JOIN recipes r ON ibi.recipe_id = r.id
-     LEFT JOIN ingredient_items ii ON ibi.ingredient_id = ii.id
-     WHERE ibi.item_builder_id=$1 ORDER BY ibi.sort_order`,
-    [req.params.id]
-  );
-  res.json(rows);
 });
 
 // PUT /items/:id/variants  (replace all variants)

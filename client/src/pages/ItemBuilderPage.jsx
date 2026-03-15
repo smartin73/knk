@@ -157,7 +157,7 @@ function ComponentRow({ comp, idx, total, recipes, allIngredients, onChange, onR
 const EMPTY_VARIANT = { variant_name: '', price_override: '', square_id: '', sort_order: 0, is_active: true };
 
 // ── Item Form ─────────────────────────────────────────────
-function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel }) {
+function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel, onDelete }) {
   const [form, setForm]             = useState({ ...EMPTY_FORM, ...initial });
   const [components, setComponents] = useState(
     (initial?.items || []).map(i => ({ ...i, type: i.recipe_id ? 'recipe' : 'ingredient' }))
@@ -556,6 +556,11 @@ function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel
 
         <div className="modal-actions" style={{ marginTop: 20 }}>
           <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+          {onDelete && (
+            <button className="btn btn-danger" style={{ marginLeft: 'auto' }} onClick={onDelete}>
+              Delete
+            </button>
+          )}
           <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
             {saving ? 'Saving…' : 'Save Item'}
           </button>
@@ -792,20 +797,16 @@ export function ItemBuilderPage() {
   }
 
   async function handleSave(form, components, variants) {
-    try {
-      let saved;
-      if (modal.item?.id) {
-        saved = await api.put(`/items/${modal.item.id}`, form);
-      } else {
-        saved = await api.post('/items', form);
-      }
-      await api.put(`/items/${saved.id}/items`, { items: components });
-      await api.put(`/items/${saved.id}/variants`, { variants });
-      setModal(null);
-      load();
-    } catch (e) {
-      alert(`Save failed: ${e.message}`);
+    let saved;
+    if (modal.item?.id) {
+      saved = await api.put(`/items/${modal.item.id}`, form);
+    } else {
+      saved = await api.post('/items', form);
     }
+    await api.put(`/items/${saved.id}/items`, { items: components });
+    await api.put(`/items/${saved.id}/variants`, { variants });
+    setModal(null);
+    load();
   }
 
   async function handleDelete() {
@@ -954,6 +955,7 @@ export function ItemBuilderPage() {
           settings={settings}
           onSave={handleSave}
           onCancel={() => setModal(null)}
+          onDelete={modal.item?.id ? () => setModal({ mode: 'delete', item: modal.item }) : undefined}
         />
       )}
       {modal?.mode === 'delete' && (

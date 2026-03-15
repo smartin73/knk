@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { mkdirSync } from 'fs';
 import multer from 'multer';
 import settingsRouter from './routes/settings.js';
 import usersRouter from './routes/users.js';
@@ -63,11 +64,13 @@ app.use(session({
 
 
 // ── Static uploads ────────────────────────────────────────
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+mkdirSync(uploadsDir, { recursive: true });
+app.use('/uploads', express.static(uploadsDir));
 
 // ── File upload ───────────────────────────────────────────
 const storage = multer.diskStorage({
-  destination: path.join(__dirname, '..', 'uploads'),
+  destination: uploadsDir,
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
     cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
