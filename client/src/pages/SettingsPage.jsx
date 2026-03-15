@@ -34,8 +34,10 @@ const SETTINGS_SCHEMA = [
     category: 'WordPress',
     icon: '🌐',
     settings: [
-      { key: 'wordpress_site_url',      label: 'Site URL',        description: 'Your WordPress site URL (e.g. https://knifeandknead.com).', is_encrypted: false },
-      { key: 'wordpress_api_key',       label: 'API Key',         description: 'API key for the knk WordPress plugin.', is_encrypted: true },
+      { key: 'wordpress_site_url',        label: 'Site URL',               description: 'Your WordPress site URL (e.g. https://knifeandknead.com).', is_encrypted: false },
+      { key: 'wordpress_api_key',         label: 'API Key',                description: 'API key for the knk WordPress plugin (used to push events).', is_encrypted: true },
+      { key: 'woo_consumer_key',          label: 'WooCommerce Consumer Key',    description: 'WooCommerce REST API consumer key (WooCommerce → Settings → Advanced → REST API).', is_encrypted: true },
+      { key: 'woo_consumer_secret',       label: 'WooCommerce Consumer Secret', description: 'WooCommerce REST API consumer secret.', is_encrypted: true },
     ],
   },
 

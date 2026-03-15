@@ -23,15 +23,17 @@ function decrypt(encrypted) {
 
 async function getWpSettings() {
   const { rows } = await query(
-    `SELECT key, value, is_encrypted FROM settings WHERE key IN ('wordpress_site_url', 'wordpress_api_key')`
+    `SELECT key, value, is_encrypted FROM settings WHERE key IN ('wordpress_site_url', 'wordpress_api_key', 'woo_consumer_key', 'woo_consumer_secret')`
   );
   const map = {};
   for (const r of rows) {
     map[r.key] = r.is_encrypted ? decrypt(r.value) : r.value;
   }
   return {
-    siteUrl: (map.wordpress_site_url || '').replace(/\/$/, ''),
-    apiKey:  map.wordpress_api_key || '',
+    siteUrl:        (map.wordpress_site_url || '').replace(/\/$/, ''),
+    apiKey:          map.wordpress_api_key    || '',
+    wooConsumerKey:  map.woo_consumer_key     || '',
+    wooConsumerSecret: map.woo_consumer_secret || '',
   };
 }
 
@@ -96,6 +98,115 @@ router.post('/push/:eventId', async (req, res) => {
     res.json({ ok: true, woo_id: wpId });
   } catch (e) {
     console.error('WP push error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /wordpress/push-item/:id — create or update item in WooCommerce
+router.post('/push-item/:id', async (req, res) => {
+  try {
+    const itemRes = await query(
+      `SELECT ib.*, array_agg(
+        json_build_object(
+          'id', iv.id,
+          'variant_name', iv.variant_name,
+          'price_override', iv.price_override,
+          'is_active', iv.is_active
+        ) ORDER BY iv.sort_order
+      ) FILTER (WHERE iv.id IS NOT NULL) AS variants
+      FROM item_builder ib
+      LEFT JOIN item_variants iv ON iv.item_builder_id = ib.id AND iv.is_active = true
+      WHERE ib.id = $1
+      GROUP BY ib.id`,
+      [req.params.id]
+    );
+    const item = itemRes.rows[0];
+    if (!item) return res.status(404).json({ error: 'Item not found' });
+
+    const { siteUrl, wooConsumerKey, wooConsumerSecret } = await getWpSettings();
+    if (!siteUrl)           return res.status(400).json({ error: 'WordPress site URL not configured in Settings' });
+    if (!wooConsumerKey)    return res.status(400).json({ error: 'WooCommerce Consumer Key not configured in Settings' });
+    if (!wooConsumerSecret) return res.status(400).json({ error: 'WooCommerce Consumer Secret not configured in Settings' });
+
+    const auth = 'Basic ' + Buffer.from(`${wooConsumerKey}:${wooConsumerSecret}`).toString('base64');
+    const headers = { 'Content-Type': 'application/json', Authorization: auth };
+    const variants = item.variants || [];
+
+    let wooRes, wooProduct;
+
+    if (variants.length > 0) {
+      // Variable product — push as 'variable' with variations
+      const payload = {
+        name:              item.item_name,
+        type:              'variable',
+        description:       item.description || '',
+        short_description: item.description || '',
+        regular_price:     item.retail_price ? String(item.retail_price) : '',
+        images:            item.image_url ? [{ src: item.image_url }] : [],
+        attributes: [{ name: 'Option', options: variants.map(v => v.variant_name), variation: true, visible: true }],
+      };
+
+      if (item.woo_id) {
+        wooRes = await fetch(`${siteUrl}/wp-json/wc/v3/products/${item.woo_id}`, { method: 'PUT', headers, body: JSON.stringify(payload) });
+      } else {
+        wooRes = await fetch(`${siteUrl}/wp-json/wc/v3/products`, { method: 'POST', headers, body: JSON.stringify(payload) });
+      }
+
+      if (!wooRes.ok) {
+        const text = await wooRes.text();
+        return res.status(502).json({ error: `WooCommerce returned ${wooRes.status}: ${text}` });
+      }
+      wooProduct = await wooRes.json();
+      const productId = String(wooProduct.id);
+
+      // Sync variations
+      const existingRes = await fetch(`${siteUrl}/wp-json/wc/v3/products/${productId}/variations?per_page=100`, { headers });
+      const existing = existingRes.ok ? await existingRes.json() : [];
+      for (const variant of variants) {
+        const varPayload = {
+          regular_price: variant.price_override ? String(variant.price_override) : (item.retail_price ? String(item.retail_price) : ''),
+          attributes: [{ name: 'Option', option: variant.variant_name }],
+        };
+        const existingVar = existing.find(e => e.attributes?.[0]?.option === variant.variant_name);
+        if (existingVar) {
+          await fetch(`${siteUrl}/wp-json/wc/v3/products/${productId}/variations/${existingVar.id}`, { method: 'PUT', headers, body: JSON.stringify(varPayload) });
+        } else {
+          await fetch(`${siteUrl}/wp-json/wc/v3/products/${productId}/variations`, { method: 'POST', headers, body: JSON.stringify(varPayload) });
+        }
+      }
+
+      await query('UPDATE item_builder SET woo_id = $1 WHERE id = $2', [productId, item.id]);
+      return res.json({ ok: true, woo_id: productId });
+
+    } else {
+      // Simple product
+      const payload = {
+        name:              item.item_name,
+        type:              'simple',
+        description:       item.description || '',
+        short_description: item.description || '',
+        regular_price:     item.retail_price ? String(item.retail_price) : '',
+        images:            item.image_url ? [{ src: item.image_url }] : [],
+      };
+
+      if (item.woo_id) {
+        wooRes = await fetch(`${siteUrl}/wp-json/wc/v3/products/${item.woo_id}`, { method: 'PUT', headers, body: JSON.stringify(payload) });
+      } else {
+        wooRes = await fetch(`${siteUrl}/wp-json/wc/v3/products`, { method: 'POST', headers, body: JSON.stringify(payload) });
+      }
+
+      if (!wooRes.ok) {
+        const text = await wooRes.text();
+        return res.status(502).json({ error: `WooCommerce returned ${wooRes.status}: ${text}` });
+      }
+      wooProduct = await wooRes.json();
+      const productId = String(wooProduct.id);
+
+      await query('UPDATE item_builder SET woo_id = $1 WHERE id = $2', [productId, item.id]);
+      return res.json({ ok: true, woo_id: productId });
+    }
+  } catch (e) {
+    console.error('WP push-item error:', e);
     res.status(500).json({ error: e.message });
   }
 });

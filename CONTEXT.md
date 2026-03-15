@@ -328,7 +328,7 @@ updated_at    timestamptz
 - [x] Donations module (needs schema rebuild) — prerequisite for Income/Expenses
 - [x] Income vs Expenses module — needs Donations done first
 - [x] Mobile nav / full mobile pass
-- [ ] Item variations — prerequisite for WordPress storefront
+- [x] Item variations — prerequisite for WordPress storefront
 - [ ] WordPress integration — replace WooCommerce with ItemBuilder storefront (requires variations first)
 - [ ] Repeating events
 - [ ] Event Menus Phase 2 live testing — waiting on next event
