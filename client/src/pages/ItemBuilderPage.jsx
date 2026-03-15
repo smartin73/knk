@@ -154,12 +154,15 @@ function ComponentRow({ comp, idx, total, recipes, allIngredients, onChange, onR
   );
 }
 
+const EMPTY_VARIANT = { variant_name: '', price_override: '', square_id: '', sort_order: 0, is_active: true };
+
 // ── Item Form ─────────────────────────────────────────────
 function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel }) {
   const [form, setForm]             = useState({ ...EMPTY_FORM, ...initial });
   const [components, setComponents] = useState(
     (initial?.items || []).map(i => ({ ...i, type: i.recipe_id ? 'recipe' : 'ingredient' }))
   );
+  const [variants, setVariants] = useState(initial?.variants || []);
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState('');
   const [tab, setTab]       = useState('details');
@@ -225,11 +228,31 @@ function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel
   const totalOnline    = ingredientCost + packagingCost + feeOnline;
   const retail         = form.retail_price ? parseFloat(form.retail_price) : null;
 
+  function addVariant() {
+    setVariants(vs => [...vs, { ...EMPTY_VARIANT, sort_order: vs.length }]);
+  }
+  function setVariant(idx, k, v) {
+    setVariants(vs => vs.map((vr, i) => i === idx ? { ...vr, [k]: v } : vr));
+  }
+  function removeVariant(idx) {
+    setVariants(vs => vs.filter((_, i) => i !== idx).map((vr, i) => ({ ...vr, sort_order: i })));
+  }
+  function moveVariant(idx, dir) {
+    setVariants(vs => {
+      const next = [...vs]; const swap = idx + dir;
+      if (swap < 0 || swap >= next.length) return vs;
+      [next[idx], next[swap]] = [next[swap], next[idx]];
+      return next.map((vr, i) => ({ ...vr, sort_order: i }));
+    });
+  }
+
   async function handleSubmit() {
     if (!form.item_name.trim()) { setTab('details'); return setErr('Item name is required.'); }
+    const invalidVariant = variants.find(v => !v.variant_name.trim());
+    if (invalidVariant) { setTab('variants'); return setErr('All variants need a name.'); }
     setErr(''); setSaving(true);
     try {
-      await onSave(form, components);
+      await onSave(form, components, variants);
     } catch (e) {
       setErr(e.message || 'Save failed.');
     } finally {
@@ -254,6 +277,9 @@ function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel
             Components {components.length > 0 && `(${components.length})`}
           </button>
           <button style={tabStyle('costing')} onClick={() => setTab('costing')}>Costing</button>
+          <button style={tabStyle('variants')} onClick={() => setTab('variants')}>
+            Variants {variants.length > 0 && `(${variants.length})`}
+          </button>
         </div>
 
         <div style={{ overflowY: 'auto', flex: 1, paddingRight: 4 }}>
@@ -466,6 +492,64 @@ function ItemForm({ initial, recipes, allIngredients, settings, onSave, onCancel
               )}
             </div>
           )}
+
+          {tab === 'variants' && (
+            <div>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
+                Variants let you offer the same item in different sizes, flavors, or options — each with its own Square ID and optional price.
+              </p>
+              {variants.length === 0 && (
+                <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>No variants yet.</div>
+              )}
+              {variants.map((v, idx) => (
+                <div key={idx} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: 10, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', gap: 2 }}>
+                      <button onClick={() => moveVariant(idx, -1)} disabled={idx === 0} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px' }}>↑</button>
+                      <button onClick={() => moveVariant(idx, 1)} disabled={idx === variants.length - 1} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px' }}>↓</button>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginLeft: 2 }}>Variant {idx + 1}</span>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={v.is_active} onChange={e => setVariant(idx, 'is_active', e.target.checked)} style={{ width: 'auto' }} />
+                      Active
+                    </label>
+                    <button onClick={() => removeVariant(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red, #e55)', padding: '2px 6px', fontSize: 14 }}>✕</button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr', gap: 8 }}>
+                    <div>
+                      <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Name</label>
+                      <input
+                        value={v.variant_name}
+                        onChange={e => setVariant(idx, 'variant_name', e.target.value)}
+                        placeholder="e.g. Small, Large, Dozen"
+                        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13 }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Price ($)</label>
+                      <input
+                        type="number" step="0.01" min="0"
+                        value={v.price_override}
+                        onChange={e => setVariant(idx, 'price_override', e.target.value)}
+                        placeholder="Item price"
+                        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13 }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Square ID</label>
+                      <input
+                        value={v.square_id}
+                        onChange={e => setVariant(idx, 'square_id', e.target.value)}
+                        placeholder="Square variation ID"
+                        style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, padding: '5px 8px', color: 'var(--text)', fontSize: 13 }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <button className="btn btn-secondary btn-sm" onClick={addVariant}>+ Add Variant</button>
+            </div>
+          )}
         </div>
 
         {err && <div className="error-msg" style={{ marginTop: 12 }}>{err}</div>}
@@ -584,6 +668,30 @@ function ItemDetail({ item: initialItem, recipes, allIngredients, settings, onEd
                 {item.contains_label && <DetailRow label="Contains"  value={item.contains_label} />}
               </div>
 
+              {(item.variants || []).length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>Variants</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        {['Name', 'Price', 'Square ID'].map(h => (
+                          <th key={h} style={{ textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, padding: '4px 8px 6px 0', textTransform: 'uppercase' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {item.variants.map((v, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid var(--border)', opacity: v.is_active ? 1 : 0.5 }}>
+                          <td style={{ padding: '6px 8px 6px 0', fontSize: 13 }}>{v.variant_name}</td>
+                          <td style={{ padding: '6px 8px 6px 0', fontSize: 13 }}>{v.price_override ? fmtPrice(v.price_override) : <span style={{ color: 'var(--text-muted)' }}>Item price</span>}</td>
+                          <td style={{ padding: '6px 0', fontSize: 12, color: 'var(--text-muted)' }}>{v.square_id || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
               {item.ingredient_label && (
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>Ingredient Label</div>
@@ -594,7 +702,7 @@ function ItemDetail({ item: initialItem, recipes, allIngredients, settings, onEd
 
             <div className="modal-actions" style={{ marginTop: 16 }}>
               <button className="btn btn-secondary" onClick={onClose}>Close</button>
-              <button className="btn btn-primary" onClick={onEdit}>Edit</button>
+              <button className="btn btn-primary" onClick={() => onEdit(item)}>Edit</button>
             </div>
           </>
         )}
@@ -674,7 +782,12 @@ export function ItemBuilderPage() {
     !search || i.item_name.toLowerCase().includes(search.toLowerCase())
   );
 
-  async function handleSave(form, components) {
+  async function handleOpenEdit(item) {
+    const full = await api.get(`/items/${item.id}`);
+    setModal({ mode: 'edit', item: full });
+  }
+
+  async function handleSave(form, components, variants) {
     let saved;
     if (modal.item?.id) {
       saved = await api.put(`/items/${modal.item.id}`, form);
@@ -682,6 +795,7 @@ export function ItemBuilderPage() {
       saved = await api.post('/items', form);
     }
     await api.put(`/items/${saved.id}/items`, { items: components });
+    await api.put(`/items/${saved.id}/variants`, { variants });
     setModal(null);
     load();
   }
@@ -780,7 +894,7 @@ export function ItemBuilderPage() {
                     <td>
                       <div className="actions">
                         <RowMenu actions={[
-                          { label: 'Edit',      onClick: () => setModal({ mode: 'edit', item: i }) },
+                          { label: 'Edit',      onClick: () => handleOpenEdit(i) },
                           { label: 'Duplicate', onClick: () => handleDuplicate(i) },
                           { label: i.square_id ? '↑ Push to Square' : '→ Push to Square', onClick: () => handleSquarePush(i) },
                           { label: 'Delete',    onClick: () => setModal({ mode: 'delete', item: i }), danger: true },
@@ -801,7 +915,7 @@ export function ItemBuilderPage() {
           recipes={recipes}
           allIngredients={allIngredients}
           settings={settings}
-          onEdit={() => setModal({ mode: 'edit', item: modal.item })}
+          onEdit={(full) => setModal({ mode: 'edit', item: full })}
           onClose={() => setModal(null)}
         />
       )}

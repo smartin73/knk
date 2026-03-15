@@ -327,7 +327,7 @@ updated_at    timestamptz
 - [x] Users module (roles: admin/member) — security foundation for multi-user access
 - [x] Donations module (needs schema rebuild) — prerequisite for Income/Expenses
 - [x] Income vs Expenses module — needs Donations done first
-- [ ] Mobile nav / full mobile pass
+- [x] Mobile nav / full mobile pass
 - [ ] Item variations — prerequisite for WordPress storefront
 - [ ] WordPress integration — replace WooCommerce with ItemBuilder storefront (requires variations first)
 - [ ] Repeating events

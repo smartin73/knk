@@ -92,21 +92,30 @@ itemBuilderRouter.post('/import', async (req, res) => {
 });
 
 itemBuilderRouter.get('/:id', async (req, res) => {
-  const [item, items] = await Promise.all([
-    query('SELECT * FROM item_builder WHERE id=$1', [req.params.id]),
-    query(
-      `SELECT ibi.*,
-        r.recipe_name, r.serving_size,
-        ii.item_name as ingredient_name, ii.cost_per_gram
-       FROM item_builder_items ibi
-       LEFT JOIN recipes r ON ibi.recipe_id = r.id
-       LEFT JOIN ingredient_items ii ON ibi.ingredient_id = ii.id
-       WHERE ibi.item_builder_id=$1 ORDER BY ibi.sort_order`,
-      [req.params.id]
-    ),
-  ]);
-  if (!item.rows[0]) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...item.rows[0], items: items.rows });
+  try {
+    const [item, items, variants] = await Promise.all([
+      query('SELECT * FROM item_builder WHERE id=$1', [req.params.id]),
+      query(
+        `SELECT ibi.*,
+          r.recipe_name, r.serving_size,
+          ii.item_name as ingredient_name, ii.cost_per_gram
+         FROM item_builder_items ibi
+         LEFT JOIN recipes r ON ibi.recipe_id = r.id
+         LEFT JOIN ingredient_items ii ON ibi.ingredient_id = ii.id
+         WHERE ibi.item_builder_id=$1 ORDER BY ibi.sort_order`,
+        [req.params.id]
+      ),
+      query(
+        'SELECT * FROM item_variants WHERE item_builder_id=$1 ORDER BY sort_order',
+        [req.params.id]
+      ),
+    ]);
+    if (!item.rows[0]) return res.status(404).json({ error: 'Not found' });
+    res.json({ ...item.rows[0], items: items.rows, variants: variants.rows });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 itemBuilderRouter.post('/', async (req, res) => {
@@ -167,9 +176,37 @@ itemBuilderRouter.put('/:id/items', async (req, res) => {
   res.json(rows);
 });
 
+// PUT /items/:id/variants  (replace all variants)
+itemBuilderRouter.put('/:id/variants', async (req, res) => {
+  try {
+    const { variants } = req.body;
+    await query('DELETE FROM item_variants WHERE item_builder_id=$1', [req.params.id]);
+    for (const v of (variants || [])) {
+      await query(
+        `INSERT INTO item_variants (item_builder_id, variant_name, price_override, square_id, sort_order, is_active)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [req.params.id, v.variant_name, v.price_override || null, v.square_id || null, v.sort_order || 0, v.is_active !== false]
+      );
+    }
+    const { rows } = await query(
+      'SELECT * FROM item_variants WHERE item_builder_id=$1 ORDER BY sort_order',
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 itemBuilderRouter.delete('/:id', async (req, res) => {
-  await query('DELETE FROM item_builder WHERE id=$1', [req.params.id]);
-  res.json({ ok: true });
+  try {
+    await query('DELETE FROM item_builder WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // ── Event Menus ──────────────────────────────────────────
