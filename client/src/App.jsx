@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { AuthProvider, useAuth } from './hooks/useAuth.jsx';
 
-// Pages (stubs — each module fills these in)
 import LoginPage        from './pages/LoginPage.jsx';
 import DashboardPage    from './pages/DashboardPage.jsx';
 import { DonationsPage } from './pages/stubs.jsx';
@@ -14,20 +14,21 @@ import { IngredientsPage } from './pages/IngredientsPage.jsx';
 import { RecipesPage } from './pages/RecipesPage.jsx';
 import { SettingsPage } from './pages/SettingsPage.jsx';
 import { ItemBuilderPage } from './pages/ItemBuilderPage.jsx';
-import { MakePage } from './pages/MakePage.jsx';
 import { TestLogPage } from './pages/TestLogPage.jsx';
+import { UsersPage, ChangePasswordModal } from './pages/UsersPage.jsx';
 
 const NAV = [
-  { to: '/',            label: 'Dashboard',    icon: '▦' },
-  { to: '/recipes',     label: 'Recipes',      icon: '📖' },
-  { to: '/ingredients', label: 'Ingredients',  icon: '🧂' },
-  { to: '/items',       label: 'Item Builder', icon: '🧁' },
-  { to: '/test-log',    label: 'Test Log',     icon: '🧪' },
-  { to: '/events',      label: 'Events',       icon: '📅' },
-  { to: '/events/vendors', label: 'Vendors', icon: '🏪' },
-  { to: '/menus',       label: 'Event Menus',  icon: '🗒' },
-  { to: '/donations',   label: 'Donations',    icon: '💛' },
-  { to: '/settings', label: 'Settings', icon: '⚙️' },
+  { to: '/',               label: 'Dashboard',   icon: '▦' },
+  { to: '/recipes',        label: 'Recipes',     icon: '📖' },
+  { to: '/ingredients',    label: 'Ingredients', icon: '🧂' },
+  { to: '/items',          label: 'Item Builder', icon: '🧁' },
+  { to: '/test-log',       label: 'Test Log',    icon: '🧪' },
+  { to: '/events',         label: 'Events',      icon: '📅' },
+  { to: '/events/vendors', label: 'Vendors',     icon: '🏪' },
+  { to: '/menus',          label: 'Event Menus', icon: '🗒' },
+  { to: '/donations',      label: 'Donations',   icon: '💛' },
+  { to: '/users',          label: 'Users',       icon: '👤', adminOnly: true },
+  { to: '/settings',       label: 'Settings',    icon: '⚙️', adminOnly: true },
 ];
 
 function RequireAuth({ children }) {
@@ -39,6 +40,9 @@ function RequireAuth({ children }) {
 function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [showChangePw, setShowChangePw] = useState(false);
+  const isAdmin = user?.role === 'admin';
+
   const handleLogout = async () => { await logout(); navigate('/login'); };
 
   return (
@@ -49,7 +53,7 @@ function Layout() {
           <span>Knife & Knead</span>
         </div>
         <ul className="sidebar-nav">
-          {NAV.map(n => (
+          {NAV.filter(n => !n.adminOnly || isAdmin).map(n => (
             <li key={n.to}>
               <NavLink to={n.to} end={n.to === '/'} className={({ isActive }) => isActive ? 'active' : ''}>
                 <span className="nav-icon">{n.icon}</span>
@@ -60,6 +64,12 @@ function Layout() {
         </ul>
         <div className="sidebar-footer">
           <span className="sidebar-user">{user?.username}</span>
+          <button
+            onClick={() => setShowChangePw(true)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 11, padding: 0, textAlign: 'left' }}
+          >
+            Change password
+          </button>
           <button onClick={handleLogout} className="logout-btn">Sign out</button>
         </div>
       </nav>
@@ -74,9 +84,11 @@ function Layout() {
           <Route path="events/vendors" element={<VendorsPage />} />
           <Route path="menus/*"     element={<EventMenusPage />} />
           <Route path="donations"   element={<DonationsPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+          <Route path="users"       element={<UsersPage />} />
+          <Route path="settings"    element={<SettingsPage />} />
         </Routes>
       </main>
+      {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
     </div>
   );
 }

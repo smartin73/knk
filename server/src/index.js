@@ -8,6 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import settingsRouter from './routes/settings.js';
+import usersRouter from './routes/users.js';
 
 import pool from './db/pool.js';
 import authRouter from './routes/auth.js';
@@ -87,6 +88,7 @@ app.use('/event-menus',  eventMenusRouter);
 app.use('/donations',    donationsRouter);
 app.use('/vendors',      vendorsRouter);
 app.use('/settings', settingsRouter);
+app.use('/users',    usersRouter);
 app.use('/square',        squareRouter);
 app.use('/webhooks',      webhooksRouter);
 app.use('/notifications', notificationsRouter);

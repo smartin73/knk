@@ -15,19 +15,20 @@ router.post('/login', async (req, res) => {
       'SELECT * FROM users WHERE username = $1', [username]
     );
     const user = rows[0];
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!user || !user.is_active) return res.status(401).json({ error: 'Invalid credentials' });
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
     req.session.userId   = user.id;
     req.session.username = user.username;
+    req.session.role     = user.role;
     req.session.save((err) => {
       if (err) {
         console.error('Session save error:', err);
         return res.status(500).json({ error: 'Session error' });
       }
-      res.json({ ok: true, username: user.username });
+      res.json({ ok: true, username: user.username, role: user.role });
     });
   } catch (e) {
     console.error(e);
@@ -44,7 +45,7 @@ router.post('/logout', (req, res) => {
 router.get('/me', (req, res) => {
   if (!req.session?.userId)
     return res.status(401).json({ error: 'Not authenticated' });
-  res.json({ userId: req.session.userId, username: req.session.username });
+  res.json({ userId: req.session.userId, username: req.session.username, role: req.session.role });
 });
 
 export default router;
