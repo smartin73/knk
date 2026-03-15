@@ -189,7 +189,7 @@ router.post('/import', requireAuth, async (req, res) => {
               recipeId,
               step.step_number,
               step.step_type || 'regular',
-              step.step_description || null,
+              step.step_description || '',
               step.step_time || null,
               step.requires_notification === 'Yes',
             ]
@@ -551,7 +551,7 @@ router.post('/:id/tests/:tid/promote', async (req, res) => {
       await client.query(
         `INSERT INTO recipe_steps (recipe_id, step_number, step_type, step_description, step_time, requires_notification, fold_type, fold_interval, temp_min, temp_max)
          VALUES ($1,$2,$3,$4,$5::interval,$6,$7,$8,$9,$10)`,
-        [req.params.id, s.step_number, s.step_type, s.step_description, s.step_time||null,
+        [req.params.id, s.step_number, s.step_type||'regular', s.step_description||'', s.step_time||null,
          s.requires_notification, s.fold_type, s.fold_interval, s.temp_min, s.temp_max]
       );
     }
