@@ -63,13 +63,15 @@ function Layout() {
           ))}
         </ul>
         <div className="sidebar-footer">
-          <span className="sidebar-user">{user?.username}</span>
-          <button
-            onClick={() => setShowChangePw(true)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 11, padding: 0, textAlign: 'left' }}
-          >
-            Change password
-          </button>
+          <div className="sidebar-footer-user">
+            <span className="sidebar-user">{user?.username}</span>
+            <button
+              onClick={() => setShowChangePw(true)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 11, padding: 0, textAlign: 'left' }}
+            >
+              Change password
+            </button>
+          </div>
           <button onClick={handleLogout} className="logout-btn">Sign out</button>
         </div>
       </nav>

@@ -77,8 +77,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
-.sidebar-user { font-size: 12px; color: var(--text-muted); }
+.sidebar-footer-user {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.sidebar-user { font-size: 12px; color: var(--text-muted); font-weight: 600; }
 .logout-btn {
   background: none;
   border: 1px solid var(--border);
