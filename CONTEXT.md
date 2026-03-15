@@ -310,7 +310,7 @@ updated_at    timestamptz
 | Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (Phase 2) |
 | Donations | ✅ Full CRUD + CSV export (item-based, linked to events + item builder) |
 | Users | ✅ Admin/member roles + user management + change password |
-| Income/Expenses | 🔲 Not started |
+| Income/Expenses | ✅ Income + Expenses CRUD + CSV export (donations auto-included) + Log Sales action on Events |
 
 ---
 
@@ -326,7 +326,7 @@ updated_at    timestamptz
 - [x] Cloudinary image upload
 - [x] Users module (roles: admin/member) — security foundation for multi-user access
 - [x] Donations module (needs schema rebuild) — prerequisite for Income/Expenses
-- [ ] Income vs Expenses module — needs Donations done first
+- [x] Income vs Expenses module — needs Donations done first
 - [ ] Mobile nav / full mobile pass
 - [ ] Item variations — prerequisite for WordPress storefront
 - [ ] WordPress integration — replace WooCommerce with ItemBuilder storefront (requires variations first)

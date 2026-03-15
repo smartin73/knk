@@ -4,6 +4,82 @@ import { ImportModal } from './ImportModal.jsx';
 import { RowMenu } from '../components/RowMenu.jsx';
 import { ImageUpload } from '../components/ImageUpload.jsx';
 
+function LogSalesModal({ event, onClose }) {
+  const [amount, setAmount] = useState('');
+  const [source, setSource] = useState('square');
+  const [notes,  setNotes]  = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err,    setErr]    = useState('');
+  const [done,   setDone]   = useState(false);
+
+  async function handleSubmit() {
+    if (!amount || Number(amount) <= 0) return setErr('Amount is required.');
+    setErr(''); setSaving(true);
+    try {
+      await api.post('/finance/income', {
+        source,
+        amount: Number(amount),
+        date: event.event_date,
+        event_id: event.id,
+        description: event.event_name,
+        notes: notes || null,
+      });
+      setDone(true);
+    } catch (e) {
+      setErr(e.message || 'Save failed.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 400 }}>
+        <div className="modal-title">Log Sales — {event.event_name}</div>
+        {done ? (
+          <>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Sales logged to Income & Expenses.</p>
+            <div className="modal-actions">
+              <button className="btn btn-primary" onClick={onClose}>Done</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="form-grid">
+              <div className="field">
+                <label>Source</label>
+                <select value={source} onChange={e => setSource(e.target.value)}
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 14 }}>
+                  <option value="square">Square</option>
+                  <option value="website">Website</option>
+                  <option value="manual">Manual</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>Total Sales ($)</label>
+                <input autoFocus type="number" min="0" step="0.01" value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSubmit()} />
+              </div>
+              <div className="field full">
+                <label>Notes <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
+                <input value={notes} onChange={e => setNotes(e.target.value)} />
+              </div>
+            </div>
+            {err && <div className="error-msg" style={{ marginTop: 8 }}>{err}</div>}
+            <div className="modal-actions" style={{ marginTop: 20 }}>
+              <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
+                {saving ? 'Saving…' : 'Log Sales'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const STATUS_BADGES = {
   draft:     'badge-gray',
   confirmed: 'badge-blue',
@@ -520,6 +596,7 @@ export function EventsPage() {
                         <RowMenu actions={[
                           { label: 'Edit',      onClick: () => setModal({ mode: 'edit', event: e }) },
                           { label: 'Duplicate', onClick: () => handleDuplicate(e) },
+                          { label: 'Log Sales', onClick: () => setModal({ mode: 'log-sales', event: e }) },
                           { label: 'Delete',    onClick: () => setModal({ mode: 'delete', event: e }), danger: true },
                         ]} />
                       </div>
@@ -553,6 +630,9 @@ export function EventsPage() {
           onConfirm={handleDelete}
           onCancel={() => setModal(null)}
         />
+      )}
+      {modal?.mode === 'log-sales' && (
+        <LogSalesModal event={modal.event} onClose={() => setModal(null)} />
       )}
       {modal?.mode === 'import' && (
         <ImportModal
