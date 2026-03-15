@@ -410,3 +410,6 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 - [ ] Event Menus Phase 2 live testing — waiting on next event
 - [x] Recipe version history (covered by Test module)
 - [ ] Notifications on Recipe Steps — when a step has `requires_notification = true`, trigger a Pushover notification during MakeView at the appropriate time
+- [ ] Menu Specials — featured/limited-time items called out separately on a menu; scope TBD (is_special flag on event_menu_items or separate section)
+- [ ] Event auto-push to WordPress — auto-push on create/save instead of manual button; "Posted to website" indicator driven by woo_id presence
+- [ ] Item Builder Favorites — is_favorite boolean on item_builder; star toggle in UI; filter/section for quick access when building menus
