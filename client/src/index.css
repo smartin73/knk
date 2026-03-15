@@ -98,6 +98,53 @@ body {
 }
 .logout-btn:hover { color: var(--danger); border-color: var(--danger); }
 
+/* ── Mobile header ───────────────────────────────────────── */
+.mobile-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 54px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.hamburger {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 22px;
+  padding: 4px 6px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Nav drawer (mobile) ─────────────────────────────────── */
+.nav-drawer-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 199;
+}
+.nav-drawer-backdrop.open { display: block; }
+.nav-drawer {
+  position: fixed;
+  top: 0; left: 0;
+  width: 240px;
+  height: 100dvh;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 200;
+  transform: translateX(-100%);
+  transition: transform 0.22s ease;
+}
+.nav-drawer.open { transform: translateX(0); }
+
 /* ── Main content ────────────────────────────────────────── */
 .main-content {
   flex: 1;
@@ -290,7 +337,11 @@ tbody tr:hover td { background: var(--surface2); }
 .actions { display: flex; gap: 6px; justify-content: flex-end; }
 
 @media (max-width: 768px) {
-  .form-grid { grid-template-columns: 1fr; }
-  .sidebar { display: none; }
-  .main-content { padding: 16px; }
+  .app-shell       { flex-direction: column; }
+  .mobile-header   { display: flex; }
+  .sidebar         { display: none; }
+  .main-content    { padding: 16px; }
+  .form-grid       { grid-template-columns: 1fr; }
+  .page-header     { flex-wrap: wrap; gap: 10px; }
+  .modal           { padding: 20px; }
 }

@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate, NavLink, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './hooks/useAuth.jsx';
 
 import LoginPage        from './pages/LoginPage.jsx';
@@ -39,44 +39,82 @@ function RequireAuth({ children }) {
   return user ? children : <Navigate to="/login" replace />;
 }
 
+function NavLinks({ isAdmin, onClick }) {
+  return (
+    <>
+      <ul className="sidebar-nav">
+        {NAV.filter(n => !n.adminOnly || isAdmin).map(n => (
+          <li key={n.to}>
+            <NavLink to={n.to} end={n.to === '/'} className={({ isActive }) => isActive ? 'active' : ''} onClick={onClick}>
+              <span className="nav-icon">{n.icon}</span>
+              {n.label}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showChangePw, setShowChangePw] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const isAdmin = user?.role === 'admin';
+
+  useEffect(() => { setNavOpen(false); }, [location.pathname]);
 
   const handleLogout = async () => { await logout(); navigate('/login'); };
 
+  const footer = (
+    <div className="sidebar-footer">
+      <div className="sidebar-footer-user">
+        <span className="sidebar-user">{user?.username}</span>
+        <button
+          onClick={() => { setShowChangePw(true); setNavOpen(false); }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 11, padding: 0, textAlign: 'left' }}
+        >
+          Change password
+        </button>
+      </div>
+      <button onClick={handleLogout} className="logout-btn">Sign out</button>
+    </div>
+  );
+
   return (
     <div className="app-shell">
+      {/* Mobile header */}
+      <header className="mobile-header">
+        <div className="sidebar-logo" style={{ padding: 0, border: 'none' }}>
+          <span>🔪</span>
+          <span>Knife & Knead</span>
+        </div>
+        <button className="hamburger" onClick={() => setNavOpen(v => !v)} aria-label="Menu">☰</button>
+      </header>
+
+      {/* Desktop sidebar */}
       <nav className="sidebar">
         <div className="sidebar-logo">
           <span>🔪</span>
           <span>Knife & Knead</span>
         </div>
-        <ul className="sidebar-nav">
-          {NAV.filter(n => !n.adminOnly || isAdmin).map(n => (
-            <li key={n.to}>
-              <NavLink to={n.to} end={n.to === '/'} className={({ isActive }) => isActive ? 'active' : ''}>
-                <span className="nav-icon">{n.icon}</span>
-                {n.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-        <div className="sidebar-footer">
-          <div className="sidebar-footer-user">
-            <span className="sidebar-user">{user?.username}</span>
-            <button
-              onClick={() => setShowChangePw(true)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 11, padding: 0, textAlign: 'left' }}
-            >
-              Change password
-            </button>
-          </div>
-          <button onClick={handleLogout} className="logout-btn">Sign out</button>
-        </div>
+        <NavLinks isAdmin={isAdmin} />
+        {footer}
       </nav>
+
+      {/* Mobile nav drawer */}
+      <div className={`nav-drawer-backdrop${navOpen ? ' open' : ''}`} onClick={() => setNavOpen(false)} />
+      <nav className={`nav-drawer${navOpen ? ' open' : ''}`}>
+        <div className="sidebar-logo">
+          <span>🔪</span>
+          <span>Knife & Knead</span>
+        </div>
+        <NavLinks isAdmin={isAdmin} onClick={() => setNavOpen(false)} />
+        {footer}
+      </nav>
+
       <main className="main-content">
         <Routes>
           <Route index              element={<DashboardPage />} />
