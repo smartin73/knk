@@ -308,8 +308,8 @@ updated_at    timestamptz
 | Settings | ✅ Square, Pushover, WordPress, Costing, Cloudinary, Branding, Event Menus |
 | ItemBuilder | ✅ Full CRUD + components + costing + Square push |
 | Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (Phase 2) |
-| Donations | 🔲 Stub — needs rebuild (wrong schema) |
-| Users | 🔲 Not started |
+| Donations | ✅ Full CRUD + CSV export (item-based, linked to events + item builder) |
+| Users | ✅ Admin/member roles + user management + change password |
 | Income/Expenses | 🔲 Not started |
 
 ---
@@ -324,8 +324,8 @@ updated_at    timestamptz
 - [x] Pushover notifications
 - [x] Recipe test logging
 - [x] Cloudinary image upload
-- [ ] Users module (roles: admin/member) — security foundation for multi-user access
-- [ ] Donations module (needs schema rebuild) — prerequisite for Income/Expenses
+- [x] Users module (roles: admin/member) — security foundation for multi-user access
+- [x] Donations module (needs schema rebuild) — prerequisite for Income/Expenses
 - [ ] Income vs Expenses module — needs Donations done first
 - [ ] Mobile nav / full mobile pass
 - [ ] Item variations — prerequisite for WordPress storefront

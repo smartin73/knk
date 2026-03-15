@@ -16,6 +16,7 @@ import { SettingsPage } from './pages/SettingsPage.jsx';
 import { ItemBuilderPage } from './pages/ItemBuilderPage.jsx';
 import { TestLogPage } from './pages/TestLogPage.jsx';
 import { UsersPage, ChangePasswordModal } from './pages/UsersPage.jsx';
+import { FinancePage } from './pages/FinancePage.jsx';
 
 const NAV = [
   { to: '/',               label: 'Dashboard',   icon: '▦' },
@@ -27,6 +28,7 @@ const NAV = [
   { to: '/events/vendors', label: 'Vendors',     icon: '🏪' },
   { to: '/menus',          label: 'Event Menus', icon: '🗒' },
   { to: '/donations',      label: 'Donations',   icon: '💛' },
+  { to: '/finance',        label: 'Income & Expenses', icon: '💰' },
   { to: '/users',          label: 'Users',       icon: '👤', adminOnly: true },
   { to: '/settings',       label: 'Settings',    icon: '⚙️', adminOnly: true },
 ];
@@ -86,6 +88,7 @@ function Layout() {
           <Route path="events/vendors" element={<VendorsPage />} />
           <Route path="menus/*"     element={<EventMenusPage />} />
           <Route path="donations"   element={<DonationsPage />} />
+          <Route path="finance"     element={<FinancePage />} />
           <Route path="users"       element={<UsersPage />} />
           <Route path="settings"    element={<SettingsPage />} />
         </Routes>
