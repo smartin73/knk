@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Simple Events
  * Description: A lightweight events manager — add events via the admin, display them on your site.
- * Version: 1.1.2
+ * Version: 1.1.3
  * Author: Scott Martin / Knife and Knead
  * Text Domain: simple-events
  */
@@ -727,124 +727,148 @@ function se_enqueue_frontend_styles() {
     $done = true;
     ?>
     <style>
-    .se-frontend { font-family: inherit; color: inherit; }
+    /* KNK Simple Events — styled to match knifeandknead.com (Storefront theme, gold accent) */
+    .se-frontend { font-family: 'Source Sans Pro', sans-serif; color: #333; }
 
     /* ── Search / Filter ── */
     .se-search-form { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:28px; align-items:center; }
     .se-input {
-        padding: 9px 14px; border: 1px solid #d1d5db; border-radius: 8px;
-        font-size: 14px; background: #fff; color: inherit; line-height: 1.4;
-        transition: border-color .15s, box-shadow .15s;
+        padding: 8px 14px; border: 1px solid #d1d5db; border-radius: 3px;
+        font-size: 14px; background: #fff; color: #333; line-height: 1.4;
+        font-family: inherit;
+        transition: border-color .15s;
     }
-    .se-input:focus { outline:none; border-color:#7c3aed; box-shadow:0 0 0 3px rgba(124,58,237,.12); }
+    .se-input:focus { outline:none; border-color:#dd9933; box-shadow:0 0 0 2px rgba(221,153,51,.18); }
 
-    /* ── Buttons ── */
+    /* ── Buttons — match Storefront rounded style ── */
     .se-btn {
-        display:inline-block; padding:9px 20px; background:#7c3aed; color:#fff !important;
-        border:none; border-radius:8px; font-size:14px; font-weight:600;
-        cursor:pointer; text-decoration:none !important; transition: background .15s, transform .1s;
+        display:inline-block; padding:10px 22px; background:#dd9933; color:#fff !important;
+        border:none; border-radius:3px; font-size:14px; font-weight:600;
+        font-family:inherit; cursor:pointer; text-decoration:none !important;
+        transition: background .15s, opacity .15s;
         line-height: 1.4;
     }
-    .se-btn:hover { background:#6d28d9; transform: translateY(-1px); }
-    .se-btn-primary { background:#7c3aed; }
-    .se-btn-primary:hover { background:#6d28d9; }
-    .se-btn-outline { background:transparent !important; color:#6b7280 !important; border:1px solid #d1d5db; }
-    .se-btn-outline:hover { border-color:#7c3aed; color:#7c3aed !important; background:transparent !important; transform:none; }
+    .se-btn:hover { background:#c4881f; color:#fff !important; }
+    .se-btn-primary { background:#dd9933; }
+    .se-btn-primary:hover { background:#c4881f; }
+    .se-btn-outline {
+        background:transparent !important; color:#dd9933 !important;
+        border:2px solid #dd9933;
+    }
+    .se-btn-outline:hover { background:#dd9933 !important; color:#fff !important; }
     .se-btn-sm { padding:7px 16px; font-size:13px; }
 
     /* ── Category pill ── */
     .se-tag {
-        display:inline-block; padding:3px 12px; border-radius:20px;
+        display:inline-block; padding:3px 12px; border-radius:3px;
         font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase;
-        background:#f3f0ff; color:#7c3aed; margin-bottom:10px;
+        background:#fdf3e0; color:#c4881f; margin-bottom:10px;
     }
     .se-tag-sm { font-size:10px; padding:2px 9px; }
 
     /* ── Event list ── */
-    .se-list { display:flex; flex-direction:column; gap:0; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; }
+    .se-list { display:flex; flex-direction:column; gap:0; border:1px solid #e1e1e1; border-radius:3px; overflow:hidden; }
     .se-event-card {
         display:flex; gap:0; background:#fff;
-        border-bottom:1px solid #e5e7eb;
+        border-bottom:1px solid #e1e1e1;
         transition: background .15s;
     }
     .se-event-card:last-child { border-bottom:none; }
-    .se-event-card:hover { background:#faf9ff; }
+    .se-event-card:hover { background:#fffdf5; }
 
-    /* Date badge on the left */
+    /* Date badge */
     .se-card-date-badge {
         flex: 0 0 80px; display:flex; flex-direction:column; align-items:center; justify-content:center;
-        padding: 20px 8px; background:#f3f0ff; border-right:1px solid #e5e7eb;
+        padding: 20px 8px; background:#fdf3e0; border-right:1px solid #e1e1e1;
         text-align:center; line-height:1.2;
     }
-    .se-card-date-badge .se-badge-month { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#7c3aed; }
-    .se-card-date-badge .se-badge-day   { font-size:30px; font-weight:800; color:#1f2937; line-height:1; margin: 3px 0; }
-    .se-card-date-badge .se-badge-dow   { font-size:11px; color:#9ca3af; font-weight:500; }
+    .se-card-date-badge .se-badge-month { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#dd9933; }
+    .se-card-date-badge .se-badge-day   { font-size:30px; font-weight:800; color:#333; line-height:1; margin: 3px 0; }
+    .se-card-date-badge .se-badge-dow   { font-size:11px; color:#999; font-weight:500; }
 
     .se-card-image { flex:0 0 200px; overflow:hidden; }
     .se-card-image img { width:100%; height:100%; object-fit:cover; display:block; transition: transform .3s; }
     .se-event-card:hover .se-card-image img { transform:scale(1.03); }
 
     .se-card-body { flex:1; padding:20px 24px; display:flex; flex-direction:column; justify-content:center; }
-    .se-card-title { margin:0 0 8px; font-size:18px; font-weight:700; line-height:1.3; }
-    .se-card-title a { color:inherit; text-decoration:none; }
-    .se-card-title a:hover { color:#7c3aed; }
+    .se-card-title { margin:0 0 8px; font-size:18px; font-weight:700; line-height:1.3; color:#333; }
+    .se-card-title a { color:#333; text-decoration:none; }
+    .se-card-title a:hover { color:#dd9933; }
 
     .se-card-meta { display:flex; flex-wrap:wrap; gap:14px; margin-bottom:12px; }
-    .se-meta-item { display:flex; align-items:center; gap:5px; font-size:13px; color:#6b7280; }
-    .se-meta-item svg { width:14px; height:14px; flex-shrink:0; color:#9ca3af; }
+    .se-meta-item { display:flex; align-items:center; gap:5px; font-size:13px; color:#767676; }
+    .se-meta-item svg { width:14px; height:14px; flex-shrink:0; color:#bbb; }
 
-    .se-empty-msg { color:#9ca3af; padding:48px 0; text-align:center; font-size:15px; }
+    .se-empty-msg { color:#999; padding:48px 0; text-align:center; font-size:15px; }
 
     /* ── Detail view ── */
-    .se-back-link { display:inline-flex; align-items:center; gap:5px; font-size:14px; color:#6b7280; text-decoration:none; margin-bottom:20px; }
-    .se-back-link:hover { color:#7c3aed; }
+    .se-back-link {
+        display:inline-flex; align-items:center; gap:5px; font-size:14px;
+        color:#dd9933; text-decoration:none; margin-bottom:24px; font-weight:600;
+    }
+    .se-back-link:hover { color:#c4881f; text-decoration:underline; }
 
     .se-detail-card {
-        background:#fff; border:1px solid #e5e7eb; border-radius:12px;
-        padding:28px 32px; box-shadow:0 1px 4px rgba(0,0,0,.06);
+        background:#fff; border:1px solid #e1e1e1; border-radius:3px;
+        padding:32px 36px; box-shadow:0 1px 3px rgba(0,0,0,.06);
     }
 
-    .se-detail-header { margin-bottom:20px; }
-    .se-detail-title { font-size:22px; font-weight:700; line-height:1.3; margin:0 0 4px; color:#111827; }
-    .se-detail-category { font-size:13px; color:#6b7280; margin-top:2px; }
+    .se-detail-header { margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid #f0f0f0; }
+    .se-detail-title { font-size:24px; font-weight:700; line-height:1.3; margin:0 0 6px; color:#333; }
+    .se-detail-category { font-size:13px; color:#767676; margin-top:0; }
 
     .se-detail-image {
-        width:100%; max-height:360px; object-fit:cover;
-        border-radius:8px; margin-bottom:24px; display:block;
+        width:100%; max-height:380px; object-fit:cover;
+        border-radius:2px; margin-bottom:24px; display:block;
     }
 
-    /* 2-column grid — mirrors KNK EventDetail */
+    /* 2-column metadata grid */
     .se-detail-grid {
-        display:grid; grid-template-columns:1fr 1fr; gap:14px 24px; margin-bottom:24px;
+        display:grid; grid-template-columns:1fr 1fr; gap:16px 28px; margin-bottom:24px;
+        padding-bottom:24px; border-bottom:1px solid #f0f0f0;
     }
-    .se-detail-field {}
     .se-field-label {
-        font-size:11px; font-weight:600; color:#9ca3af;
-        text-transform:uppercase; letter-spacing:.4px; margin-bottom:3px;
+        font-size:10px; font-weight:700; color:#bbb;
+        text-transform:uppercase; letter-spacing:.6px; margin-bottom:4px;
     }
-    .se-field-value { font-size:13px; color:#111827; }
-    .se-field-link { color:#7c3aed; text-decoration:none; font-size:13px; }
-    .se-field-link:hover { text-decoration:underline; }
+    .se-field-value { font-size:14px; color:#333; font-weight:500; }
+    .se-field-link { color:#dd9933; text-decoration:none; font-size:14px; font-weight:600; }
+    .se-field-link:hover { color:#c4881f; text-decoration:underline; }
 
-    .se-detail-section { margin-bottom:20px; }
-    .se-detail-description { font-size:13px; line-height:1.7; color:#374151; margin-top:6px; }
+    .se-detail-section { margin-bottom:24px; padding-bottom:24px; border-bottom:1px solid #f0f0f0; }
+    .se-detail-section:last-child { border-bottom:none; margin-bottom:0; padding-bottom:0; }
+    .se-detail-description { font-size:15px; line-height:1.75; color:#555; margin-top:8px; }
 
-    .se-detail-map { margin-top:8px; border-radius:8px; overflow:hidden; }
+    .se-detail-map { margin-top:8px; border-radius:2px; overflow:hidden; }
     .se-detail-map iframe { display:block; width:100%; border:0; }
 
-    .se-detail-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:20px; }
+    .se-detail-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:20px; padding-top:20px; border-top:1px solid #f0f0f0; }
 
     @media (max-width: 640px) {
         .se-event-card { flex-direction:column; }
-        .se-card-date-badge { flex-direction:row; gap:10px; padding:14px 16px; border-right:none; border-bottom:1px solid #e5e7eb; justify-content:flex-start; }
+        .se-card-date-badge { flex-direction:row; gap:10px; padding:14px 16px; border-right:none; border-bottom:1px solid #e1e1e1; justify-content:flex-start; }
         .se-card-date-badge .se-badge-day { font-size:22px; }
         .se-card-image { height:180px; }
-        .se-detail-card { padding:20px 16px; }
+        .se-detail-card { padding:20px 18px; }
         .se-detail-title { font-size:20px; }
-        .se-detail-grid { grid-template-columns:1fr; gap:12px; }
+        .se-detail-grid { grid-template-columns:1fr; gap:14px; }
     }
     </style>
     <?php
+}
+
+/* ─────────────────────────────────────────
+   9a. SANITIZE HELPERS
+───────────────────────────────────────── */
+function se_sanitize_map_embed( $value ) {
+    // wp_kses_post strips iframes — allow them explicitly for map embeds
+    return wp_kses( $value, [
+        'iframe' => [
+            'src'            => true, 'width'          => true, 'height'         => true,
+            'style'          => true, 'allowfullscreen'=> true, 'loading'        => true,
+            'referrerpolicy' => true, 'frameborder'    => true, 'title'          => true,
+        ],
+    ] );
 }
 
 /* ═════════════════════════════════════════════════════════════
@@ -971,7 +995,7 @@ function se_api_event_args( $required = true ) {
         'event_time'  => [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
         'end_time'    => [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
         'location'    => [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
-        'map_embed'   => [ 'type' => 'string', 'sanitize_callback' => 'wp_kses_post' ],
+        'map_embed'   => [ 'type' => 'string', 'sanitize_callback' => 'se_sanitize_map_embed' ],
         'image_url'   => [ 'type' => 'string', 'sanitize_callback' => 'esc_url_raw' ],
         'ticket_url'  => [ 'type' => 'string', 'sanitize_callback' => 'esc_url_raw' ],
         'category'    => [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
