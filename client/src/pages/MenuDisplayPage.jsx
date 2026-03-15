@@ -34,7 +34,7 @@ function ItemCard({ item }) {
       opacity: isSoldOut ? 0.7 : 1,
     }}>
       {/* Photo */}
-      <div style={{ position: 'relative', paddingTop: '60%', background: '#f0ece8' }}>
+      <div style={{ position: 'relative', paddingTop: '52%', background: '#f0ece8' }}>
         {item.image_url
           ? <img src={item.image_url} alt={item.item_name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
           : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48 }}>🍞</div>
@@ -69,7 +69,7 @@ function ItemCard({ item }) {
       </div>
 
       {/* Info */}
-      <div style={{ padding: '12px 14px 14px' }}>
+      <div style={{ padding: '8px 12px 10px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#1a1a1a', lineHeight: 1.3 }}>{item.item_name}</div>
           {isLimited && (
@@ -150,14 +150,14 @@ export function MenuDisplayPage() {
       {/* Header */}
       <div style={{ background: '#1a1a1a' }}>
         {menu.logo_url
-          ? <img src={menu.logo_url} alt="Knife & Knead" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
-          : <div style={{ padding: isMobile ? '20px 24px' : '28px 40px', color: '#fff', fontWeight: 800, fontSize: isMobile ? 26 : 36, letterSpacing: '-0.5px', textAlign: 'center' }}>Knife & Knead</div>
+          ? <img src={menu.logo_url} alt="Knife & Knead" style={{ width: '100%', height: 'auto', display: 'block' }} />
+          : <div style={{ padding: '14px 24px', color: '#fff', fontWeight: 800, fontSize: isMobile ? 22 : 28, letterSpacing: '-0.5px', textAlign: 'center' }}>Knife & Knead</div>
         }
         {(fmtDate || timeStr) && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, padding: '8px 24px 12px' }}>
-            {fmtDate && <span style={{ color: '#ccc', fontSize: isMobile ? 12 : 14, fontWeight: 500 }}>{fmtDate}</span>}
-            {fmtDate && timeStr && <span style={{ color: '#555', fontSize: 14 }}>·</span>}
-            {timeStr && <span style={{ color: '#999', fontSize: isMobile ? 12 : 13 }}>{timeStr}</span>}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '4px 24px 8px' }}>
+            {fmtDate && <span style={{ color: '#ccc', fontSize: 12, fontWeight: 500 }}>{fmtDate}</span>}
+            {fmtDate && timeStr && <span style={{ color: '#555', fontSize: 12 }}>·</span>}
+            {timeStr && <span style={{ color: '#999', fontSize: 12 }}>{timeStr}</span>}
           </div>
         )}
       </div>
@@ -167,8 +167,8 @@ export function MenuDisplayPage() {
         <div style={{
           background: menu.tagline_color || '#e85d26',
           color: '#fff',
-          padding: '10px 24px',
-          fontSize: 16,
+          padding: '7px 24px',
+          fontSize: 14,
           fontWeight: 700,
           textAlign: 'center',
           letterSpacing: '0.2px',
@@ -178,7 +178,7 @@ export function MenuDisplayPage() {
       )}
 
       {/* Menu name */}
-      <div style={{ padding: isMobile ? '16px 16px 6px' : '20px 24px 8px', fontSize: isMobile ? 18 : 22, fontWeight: 800, color: '#1a1a1a', letterSpacing: '-0.4px' }}>
+      <div style={{ padding: isMobile ? '10px 16px 4px' : '12px 24px 4px', fontSize: isMobile ? 16 : 19, fontWeight: 800, color: '#1a1a1a', letterSpacing: '-0.4px' }}>
         {menu.menu_name}
       </div>
 
@@ -192,8 +192,8 @@ export function MenuDisplayPage() {
         <div style={{
           display: 'grid',
           gridTemplateColumns: isMobile ? '1fr' : isWide ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
-          gap: isMobile ? 12 : 16,
-          padding: isMobile ? '12px 16px 40px' : '16px 24px 40px',
+          gap: isMobile ? 10 : 12,
+          padding: isMobile ? '10px 12px 24px' : '12px 20px 24px',
           maxWidth: 960,
           margin: '0 auto',
         }}>

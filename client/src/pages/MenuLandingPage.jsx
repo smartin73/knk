@@ -47,7 +47,7 @@ export function MenuLandingPage() {
     <div style={{ minHeight: '100vh', background: '#f5f0eb', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ background: '#1a1a1a' }}>
         {logoUrl
-          ? <img src={logoUrl} alt="Knife & Knead" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
+          ? <img src={logoUrl} alt="Knife & Knead" style={{ width: '100%', height: 'auto', display: 'block' }} />
           : <div style={{ padding: '20px 24px', textAlign: 'center', color: '#fff', fontWeight: 800, fontSize: 22, letterSpacing: '-0.3px' }}>Knife & Knead</div>
         }
         <div style={{ color: '#999', fontSize: 13, textAlign: 'center', padding: '8px 24px 12px' }}>Select a menu</div>
