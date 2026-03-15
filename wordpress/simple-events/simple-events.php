@@ -9,7 +9,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'SE_VERSION',    '1.1.2' );
+define( 'SE_VERSION',    '1.1.3' );
 define( 'SE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
