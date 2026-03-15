@@ -587,7 +587,7 @@ function CostRow({ label, value, muted, bold, note, positive }) {
 }
 
 // ── Detail Modal ──────────────────────────────────────────
-function ItemDetail({ item: initialItem, recipes, allIngredients, settings, onEdit, onClose }) {
+function ItemDetail({ item: initialItem, recipes, allIngredients, onEdit, onClose }) {
   const [item, setItem]       = useState(initialItem);
   const [loading, setLoading] = useState(true);
 
@@ -847,8 +847,10 @@ export function ItemBuilderPage() {
           <div className="page-title">🧁 ItemBuilder</div>
           <div className="page-subtitle">{items.length} item{items.length !== 1 ? 's' : ''}</div>
         </div>
-        <button className="btn btn-secondary" onClick={() => setModal({ mode: 'import' })}>↑ Import</button>
-        <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>+ New Item</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={() => setModal({ mode: 'import' })}>↑ Import</button>
+          <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>+ New Item</button>
+        </div>
       </div>
 
       <div className="search-bar">

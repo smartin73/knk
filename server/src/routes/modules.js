@@ -63,10 +63,12 @@ itemBuilderRouter.get('/', async (req, res) => {
 
 // POST /items/import
 itemBuilderRouter.post('/import', async (req, res) => {
-  const { items } = req.body;
+  const { items, components } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Insert items
     for (const item of items) {
       await client.query(
         `INSERT INTO item_builder (item_name,description,batch_qty,retail_price,
@@ -80,6 +82,35 @@ itemBuilderRouter.post('/import', async (req, res) => {
          item.image_url||null, item.square_id||null, item.woo_id||null, true]
       );
     }
+
+    // Insert components if provided
+    if (Array.isArray(components) && components.length > 0) {
+      // Build lookup maps
+      const { rows: ibRows } = await client.query('SELECT id, item_name FROM item_builder');
+      const { rows: recipeRows } = await client.query('SELECT id, recipe_name FROM recipes');
+      const { rows: ingRows } = await client.query('SELECT id, item_name FROM ingredient_items');
+
+      const ibMap  = Object.fromEntries(ibRows.map(r => [r.item_name.toLowerCase(), r.id]));
+      const recMap = Object.fromEntries(recipeRows.map(r => [r.recipe_name.toLowerCase(), r.id]));
+      const ingMap = Object.fromEntries(ingRows.map(r => [r.item_name.toLowerCase(), r.id]));
+
+      for (let i = 0; i < components.length; i++) {
+        const c = components[i];
+        const ibId = ibMap[c.item_name?.toLowerCase()];
+        if (!ibId) continue; // item not found, skip
+
+        const isRecipe = (c.component_type || '').toLowerCase() === 'recipe';
+        const recipeId = isRecipe ? (recMap[c.component_name?.toLowerCase()] || null) : null;
+        const ingId    = !isRecipe ? (ingMap[c.component_name?.toLowerCase()] || null) : null;
+
+        await client.query(
+          `INSERT INTO item_builder_items (item_builder_id, recipe_id, ingredient_id, item_name, quantity, unit, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [ibId, recipeId, ingId, c.component_name || null, parseFloat(c.quantity) || 1, c.unit || null, i]
+        );
+      }
+    }
+
     await client.query('COMMIT');
     res.json({ ok: true });
   } catch (e) {

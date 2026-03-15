@@ -48,16 +48,18 @@ function StepIndicator({ current }) {
 }
 
 export function ItemBuilderImportModal({ existingNames, onClose, onDone }) {
-  const [step, setStep]         = useState(0);
-  const [file, setFile]         = useState(null);
-  const [preview, setPreview]   = useState(null); // { toImport, dupes, invalid }
+  const [step, setStep]           = useState(0);
+  const [file, setFile]           = useState(null);
+  const [compFile, setCompFile]   = useState(null);
+  const [preview, setPreview]     = useState(null); // { toImport, dupes, invalid, components }
   const [importing, setImporting] = useState(false);
-  const [imported, setImported] = useState(0);
-  const [err, setErr]           = useState('');
-  const fileRef = useRef();
+  const [imported, setImported]   = useState(0);
+  const [err, setErr]             = useState('');
+  const fileRef     = useRef();
+  const compFileRef = useRef();
 
   async function handlePreview() {
-    if (!file) return setErr('Please upload a CSV file.');
+    if (!file) return setErr('Please upload an items CSV file.');
     setErr('');
     try {
       const rows = await parseCsv(file);
@@ -87,7 +89,22 @@ export function ItemBuilderImportModal({ existingNames, onClose, onDone }) {
         });
       }
 
-      setPreview({ toImport, dupes, invalid });
+      // Parse components CSV if provided
+      let components = [];
+      if (compFile) {
+        const compRows = await parseCsv(compFile);
+        components = compRows
+          .filter(r => r.item_name?.trim() && r.component_name?.trim())
+          .map(r => ({
+            item_name:      r.item_name.trim(),
+            component_name: r.component_name.trim(),
+            component_type: (r.component_type || 'recipe').trim().toLowerCase(),
+            quantity:       r.quantity ? parseFloat(r.quantity) : 1,
+            unit:           r.unit || null,
+          }));
+      }
+
+      setPreview({ toImport, dupes, invalid, components });
       setStep(1);
     } catch (e) {
       setErr('Error parsing CSV: ' + e.message);
@@ -97,7 +114,7 @@ export function ItemBuilderImportModal({ existingNames, onClose, onDone }) {
   async function handleImport() {
     setImporting(true); setErr('');
     try {
-      const res = await api.post('/items/import', { items: preview.toImport });
+      const res = await api.post('/items/import', { items: preview.toImport, components: preview.components });
       if (res.ok === false) throw new Error(res.error || 'Import failed');
       setImported(preview.toImport.length);
       setStep(2);
@@ -127,9 +144,10 @@ export function ItemBuilderImportModal({ existingNames, onClose, onDone }) {
               <span style={{ fontSize: 12, marginTop: 6, display: 'block' }}>Only <strong>item_name</strong> is required. Boolean fields accept true/false or yes/no.</span>
             </div>
 
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 600 }}>Items CSV <span style={{ color: 'var(--danger)' }}>*</span></div>
               <div
-                style={{ border: '2px dashed var(--border)', borderRadius: 8, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', background: file ? 'var(--surface2)' : undefined }}
+                style={{ border: '2px dashed var(--border)', borderRadius: 8, padding: '16px', textAlign: 'center', cursor: 'pointer', background: file ? 'var(--surface2)' : undefined }}
                 onClick={() => fileRef.current.click()}
               >
                 {file
@@ -139,6 +157,24 @@ export function ItemBuilderImportModal({ existingNames, onClose, onDone }) {
               </div>
               <input ref={fileRef} type="file" accept=".csv" style={{ display: 'none' }}
                 onChange={e => { setFile(e.target.files[0]); e.target.value = ''; }} />
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 600 }}>Components CSV <span style={{ fontSize: 11, fontWeight: 400 }}>(optional)</span></div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>
+                Columns: <code>item_name, component_name, component_type (recipe|ingredient), quantity, unit</code>
+              </div>
+              <div
+                style={{ border: '2px dashed var(--border)', borderRadius: 8, padding: '16px', textAlign: 'center', cursor: 'pointer', background: compFile ? 'var(--surface2)' : undefined }}
+                onClick={() => compFileRef.current.click()}
+              >
+                {compFile
+                  ? <span style={{ color: 'var(--accent)', fontWeight: 600 }}>✓ {compFile.name}</span>
+                  : <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Click to upload components CSV (optional)</span>
+                }
+              </div>
+              <input ref={compFileRef} type="file" accept=".csv" style={{ display: 'none' }}
+                onChange={e => { setCompFile(e.target.files[0]); e.target.value = ''; }} />
             </div>
 
             {err && <div className="error-msg" style={{ marginBottom: 12 }}>{err}</div>}
@@ -153,8 +189,9 @@ export function ItemBuilderImportModal({ existingNames, onClose, onDone }) {
         {/* ── Step 1: Preview ── */}
         {step === 1 && preview && (
           <div>
-            <div style={{ display: 'flex', gap: 20, marginBottom: 20, fontSize: 13 }}>
-              <span style={{ color: 'var(--accent)' }}>✓ {preview.toImport.length} will import</span>
+            <div style={{ display: 'flex', gap: 20, marginBottom: 20, fontSize: 13, flexWrap: 'wrap' }}>
+              <span style={{ color: 'var(--accent)' }}>✓ {preview.toImport.length} items</span>
+              {preview.components.length > 0 && <span style={{ color: 'var(--accent)' }}>✓ {preview.components.length} component{preview.components.length !== 1 ? 's' : ''}</span>}
               {preview.dupes.length > 0 && <span style={{ color: '#f59e0b' }}>⚠ {preview.dupes.length} duplicate{preview.dupes.length !== 1 ? 's' : ''} (will skip)</span>}
               {preview.invalid.length > 0 && <span style={{ color: 'var(--danger)' }}>✕ {preview.invalid.length} invalid (will skip)</span>}
             </div>
@@ -214,7 +251,9 @@ export function ItemBuilderImportModal({ existingNames, onClose, onDone }) {
               {imported} item{imported !== 1 ? 's' : ''} imported
             </div>
             <div style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>
-              Components can be linked from the item edit form.
+              {preview?.components?.length > 0
+                ? `${preview.components.length} component${preview.components.length !== 1 ? 's' : ''} linked.`
+                : 'Components can be linked from the item edit form.'}
             </div>
             <button className="btn btn-primary" onClick={() => { onDone(); onClose(); }}>Done</button>
           </div>
