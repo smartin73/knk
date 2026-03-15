@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth.jsx';
 
 import LoginPage        from './pages/LoginPage.jsx';
 import DashboardPage    from './pages/DashboardPage.jsx';
-import { DonationsPage } from './pages/stubs.jsx';
+import { DonationsPage } from './pages/DonationsPage.jsx';
 import { EventMenusPage } from './pages/EventMenusPage.jsx';
 import { MenuDisplayPage } from './pages/MenuDisplayPage.jsx';
 import { MenuLandingPage } from './pages/MenuLandingPage.jsx';

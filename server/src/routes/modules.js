@@ -276,34 +276,100 @@ import { Router as DoRouter } from 'express';
 export const donationsRouter = DoRouter();
 donationsRouter.use(requireAuth);
 
+// Must be before /:id
+donationsRouter.get('/export', async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const { rows } = await query(
+      `SELECT d.donated_at, e.event_name, ib.item_name, d.quantity, d.unit_value,
+              (d.quantity * d.unit_value) AS total_value, d.notes
+       FROM donations d
+       LEFT JOIN events e ON d.event_id = e.id
+       LEFT JOIN item_builder ib ON d.item_builder_id = ib.id
+       WHERE ($1::date IS NULL OR d.donated_at >= $1::date)
+         AND ($2::date IS NULL OR d.donated_at <= $2::date)
+       ORDER BY d.donated_at DESC`,
+      [from || null, to || null]
+    );
+    const esc = v => `"${String(v || '').replace(/"/g, '""')}"`;
+    const lines = [
+      'Date,Event,Item,Qty,Unit Value,Total Value,Notes',
+      ...rows.map(r => [
+        r.donated_at ? new Date(r.donated_at).toISOString().split('T')[0] : '',
+        esc(r.event_name),
+        esc(r.item_name),
+        r.quantity,
+        r.unit_value,
+        r.total_value,
+        esc(r.notes),
+      ].join(',')),
+    ];
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="donations.csv"');
+    res.send(lines.join('\n'));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 donationsRouter.get('/', async (req, res) => {
-  const { rows } = await query(
-    `SELECT d.*, e.event_name FROM donations d
-     LEFT JOIN events e ON d.event_id=e.id ORDER BY d.donated_at DESC`
-  );
-  res.json(rows);
+  try {
+    const { rows } = await query(
+      `SELECT d.*, e.event_name, ib.item_name, ib.retail_price,
+              (d.quantity * d.unit_value) AS total_value
+       FROM donations d
+       LEFT JOIN events e ON d.event_id = e.id
+       LEFT JOIN item_builder ib ON d.item_builder_id = ib.id
+       ORDER BY d.donated_at DESC`
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
+
 donationsRouter.post('/', async (req, res) => {
-  const f = req.body;
-  const { rows } = await query(
-    `INSERT INTO donations (event_id,donor_name,amount,donated_at,notes)
-     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-    [f.event_id||null,f.donor_name,f.amount,f.donated_at||new Date(),f.notes]
-  );
-  res.status(201).json(rows[0]);
+  try {
+    const { event_id, item_builder_id, quantity, unit_value, donated_at, notes } = req.body;
+    const { rows } = await query(
+      `INSERT INTO donations (event_id, item_builder_id, quantity, unit_value, donated_at, notes)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [event_id || null, item_builder_id, quantity, unit_value, donated_at || new Date(), notes || null]
+    );
+    res.status(201).json(rows[0]);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
+
 donationsRouter.put('/:id', async (req, res) => {
-  const f = req.body;
-  const { rows } = await query(
-    `UPDATE donations SET event_id=$1,donor_name=$2,amount=$3,donated_at=$4,notes=$5
-     WHERE id=$6 RETURNING *`,
-    [f.event_id||null,f.donor_name,f.amount,f.donated_at,f.notes,req.params.id]
-  );
-  res.json(rows[0]);
+  try {
+    const { event_id, item_builder_id, quantity, unit_value, donated_at, notes } = req.body;
+    const { rows } = await query(
+      `UPDATE donations SET event_id=$1, item_builder_id=$2, quantity=$3, unit_value=$4,
+              donated_at=$5, notes=$6, updated_at=now()
+       WHERE id=$7 RETURNING *`,
+      [event_id || null, item_builder_id, quantity, unit_value, donated_at, notes || null, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Not found' });
+    res.json(rows[0]);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
+
 donationsRouter.delete('/:id', async (req, res) => {
-  await query('DELETE FROM donations WHERE id=$1', [req.params.id]);
-  res.json({ ok: true });
+  try {
+    await query('DELETE FROM donations WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // ── Vendors ──────────────────────────────────────────────
