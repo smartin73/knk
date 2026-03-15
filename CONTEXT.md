@@ -271,6 +271,60 @@ created_at       timestamptz
 updated_at       timestamptz
 ```
 
+### item_variants
+```
+id               uuid  PK  DEFAULT gen_random_uuid()
+item_builder_id  uuid  NOT NULL  FK → item_builder.id  ON DELETE CASCADE
+variant_name     text  NOT NULL
+price_override   numeric           (null = use item retail_price)
+square_id        text
+sort_order       integer  DEFAULT 0
+is_active        boolean  DEFAULT true
+created_at       timestamptz
+updated_at       timestamptz
+```
+Migration: `server/migrations/add_item_variants.sql`
+
+### donations
+```
+id               uuid  PK
+event_id         uuid  FK → events.id
+item_builder_id  uuid  FK → item_builder.id
+quantity         numeric  NOT NULL  DEFAULT 1
+unit_value       numeric  NOT NULL  DEFAULT 0
+donated_at       date
+notes            text
+created_at       timestamptz
+updated_at       timestamptz
+```
+Migration: `server/migrations/rebuild_donations.sql`
+
+### income_entries
+```
+id           uuid  PK  DEFAULT gen_random_uuid()
+source       text  CHECK IN ('square','website','manual')
+amount       numeric
+date         date
+event_id     uuid  FK → events.id
+description  text
+notes        text
+created_at   timestamptz
+updated_at   timestamptz
+```
+
+### expense_entries
+```
+id           uuid  PK  DEFAULT gen_random_uuid()
+category     text
+amount       numeric
+date         date
+description  text
+notes        text
+created_at   timestamptz
+updated_at   timestamptz
+```
+Migration: `server/migrations/add_finance_tables.sql`
+
 ### settings
 ```
 id            uuid  PK
@@ -283,6 +337,8 @@ description   text
 created_at    timestamptz
 updated_at    timestamptz
 ```
+Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url`, `wordpress_api_key`,
+`woo_consumer_key`, `woo_consumer_secret`, `cloudinary_*`, `logo_url`, `menu_refresh_interval`, `packaging_cost`, `square_fee_*`
 
 ---
 
@@ -322,12 +378,14 @@ updated_at    timestamptz
 | Vendors | ✅ Full CRUD + CSV import |
 | Ingredients | ✅ Full CRUD + price history + CSV import |
 | Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage + MakeView + test logging |
-| Settings | ✅ Square, Pushover, WordPress, Costing, Cloudinary, Branding, Event Menus |
-| ItemBuilder | ✅ Full CRUD + components + costing + Square push |
+| Settings | ✅ Square, Pushover, WordPress + WooCommerce, Costing, Cloudinary, Branding, Event Menus |
+| ItemBuilder | ✅ Full CRUD + components + costing + variants + Push to Square + Push to WooCommerce |
 | Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (Phase 2) |
 | Donations | ✅ Full CRUD + CSV export (item-based, linked to events + item builder) |
 | Users | ✅ Admin/member roles + user management + change password |
 | Income/Expenses | ✅ Income + Expenses CRUD + CSV export (donations auto-included) + Log Sales action on Events |
+| WordPress/WooCommerce | ✅ Push events → WP plugin (`POST /wordpress/push/:eventId`); Push items → WooCommerce REST API (`POST /wordpress/push-item/:id`); simple + variable products with variants |
+| Mobile Nav | ✅ Hamburger + slide-out drawer, auto-closes on route change |
 
 ---
 
@@ -345,8 +403,8 @@ updated_at    timestamptz
 - [x] Donations module (needs schema rebuild) — prerequisite for Income/Expenses
 - [x] Income vs Expenses module — needs Donations done first
 - [x] Mobile nav / full mobile pass
-- [x] Item variations — prerequisite for WordPress storefront
-- [ ] WordPress integration — replace WooCommerce with ItemBuilder storefront (requires variations first)
+- [x] Item variations — per-item variants with name, price override, Square ID
+- [x] WordPress integration — Push to WooCommerce on ItemBuilder (simple + variable products with variants); Push events to WP plugin already existed
 - [ ] Repeating events
 - [ ] Event Menus Phase 2 live testing — waiting on next event
 - [x] Recipe version history (covered by Test module)
