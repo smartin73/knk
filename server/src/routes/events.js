@@ -35,6 +35,66 @@ router.get('/:id', async (req, res) => {
   res.json(rows[0]);
 });
 
+// POST /events/repeat — generate recurring copies of an event
+router.post('/repeat', async (req, res) => {
+  try {
+    const { event_id, frequency, until } = req.body;
+    if (!event_id || !frequency || !until) {
+      return res.status(400).json({ error: 'event_id, frequency, and until are required' });
+    }
+
+    const { rows } = await query('SELECT * FROM events WHERE id = $1', [event_id]);
+    const src = rows[0];
+    if (!src) return res.status(404).json({ error: 'Event not found' });
+
+    const startDate = new Date(src.event_date);
+    const endDate   = new Date(until);
+    if (endDate <= startDate) {
+      return res.status(400).json({ error: 'Until date must be after the event date' });
+    }
+
+    const stepDays = frequency === 'weekly' ? 7 : frequency === 'biweekly' ? 14 : null;
+
+    function nextDate(d) {
+      const n = new Date(d);
+      if (stepDays) {
+        n.setDate(n.getDate() + stepDays);
+      } else {
+        // monthly: same day, next month
+        n.setMonth(n.getMonth() + 1);
+      }
+      return n;
+    }
+
+    const dates = [];
+    let cur = nextDate(startDate);
+    while (cur <= endDate) {
+      dates.push(cur.toISOString().slice(0, 10));
+      cur = nextDate(cur);
+    }
+
+    if (dates.length === 0) {
+      return res.status(400).json({ error: 'No occurrences fall within the selected range' });
+    }
+
+    for (const d of dates) {
+      await query(
+        `INSERT INTO events (vendor_id,event_name,event_date,start_time,end_time,
+          location,description,image_url,ticket_url,map_embed,category,tags,price,status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+        [src.vendor_id,src.event_name,d,src.start_time,src.end_time,
+         src.location,src.description,src.image_url,src.ticket_url,src.map_embed,
+         src.category,src.tags,src.price,'draft']
+      );
+    }
+
+    res.json({ created: dates.length, dates });
+  } catch (e) {
+    console.error('Repeat event error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /events
 router.post('/', async (req, res) => {
   const f = req.body;

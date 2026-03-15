@@ -339,6 +339,108 @@ function EventForm({ initial, vendors, onSave, onCancel }) {
   );
 }
 
+// ── Repeat Modal ──────────────────────────────────────────
+function RepeatModal({ event, onClose, onDone }) {
+  const [frequency, setFrequency] = useState('weekly');
+  const [until, setUntil]         = useState('');
+  const [saving, setSaving]       = useState(false);
+  const [err, setErr]             = useState('');
+
+  const srcDate = event.event_date ? String(event.event_date).slice(0, 10) : null;
+
+  // Compute preview dates in JS so user sees them before confirming
+  const preview = (() => {
+    if (!srcDate || !until || until <= srcDate) return [];
+    const stepDays = frequency === 'weekly' ? 7 : frequency === 'biweekly' ? 14 : null;
+    const dates = [];
+    let cur = new Date(srcDate);
+    const end = new Date(until);
+    while (true) {
+      if (stepDays) {
+        cur.setDate(cur.getDate() + stepDays);
+      } else {
+        cur.setMonth(cur.getMonth() + 1);
+      }
+      if (cur > end) break;
+      dates.push(cur.toISOString().slice(0, 10));
+    }
+    return dates;
+  })();
+
+  async function handleConfirm() {
+    if (!until) return setErr('Please set an end date.');
+    if (preview.length === 0) return setErr('No occurrences in range.');
+    setErr(''); setSaving(true);
+    try {
+      const res = await api.post('/events/repeat', { event_id: event.id, frequency, until });
+      onDone(res.created);
+    } catch (e) {
+      setErr(e.message || 'Failed to create events.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 460 }}>
+        <div className="modal-title">Repeat Event</div>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
+          Creates copies of <strong style={{ color: 'var(--text)' }}>{event.event_name}</strong>
+          {srcDate && <> starting from <strong style={{ color: 'var(--text)' }}>{fmt(srcDate)}</strong></>}.
+          Each copy is independent and starts as Draft.
+        </p>
+
+        <div className="form-grid">
+          <div className="field">
+            <label>Frequency</label>
+            <select value={frequency} onChange={e => setFrequency(e.target.value)}>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Every 2 weeks</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>Repeat until</label>
+            <input
+              type="date"
+              value={until}
+              min={srcDate || ''}
+              onChange={e => setUntil(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {preview.length > 0 && (
+          <div style={{ marginTop: 16, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 14px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+              {preview.length} occurrence{preview.length !== 1 ? 's' : ''} will be created
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', maxHeight: 120, overflowY: 'auto' }}>
+              {preview.map(d => (
+                <span key={d} style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmt(d)}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {err && <div className="error-msg" style={{ marginTop: 10 }}>{err}</div>}
+
+        <div className="modal-actions" style={{ marginTop: 20 }}>
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button
+            className="btn btn-primary"
+            onClick={handleConfirm}
+            disabled={saving || preview.length === 0}
+          >
+            {saving ? 'Creating…' : `Create ${preview.length > 0 ? preview.length : ''} Event${preview.length !== 1 ? 's' : ''}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Delete Confirm ────────────────────────────────────────
 function DeleteConfirm({ event, onConfirm, onCancel }) {
   const [deleting, setDeleting] = useState(false);
@@ -407,6 +509,10 @@ export function EventsPage() {
     await api.delete(`/events/${modal.event.id}`);
     setModal(null);
     load();
+  }
+
+  function handleRepeat(e) {
+    setModal({ mode: 'repeat', event: e });
   }
 
   function handleDuplicate(e) {
@@ -612,6 +718,7 @@ async function handleWpUnlink(event) {
                         <RowMenu actions={[
                           { label: 'Edit',      onClick: () => setModal({ mode: 'edit', event: e }) },
                           { label: 'Duplicate', onClick: () => handleDuplicate(e) },
+                          { label: 'Repeat…',   onClick: () => handleRepeat(e) },
                           { label: 'Log Sales', onClick: () => setModal({ mode: 'log-sales', event: e }) },
                           { label: 'Delete',    onClick: () => setModal({ mode: 'delete', event: e }), danger: true },
                         ]} />
@@ -645,6 +752,13 @@ async function handleWpUnlink(event) {
           event={modal.event}
           onConfirm={handleDelete}
           onCancel={() => setModal(null)}
+        />
+      )}
+      {modal?.mode === 'repeat' && (
+        <RepeatModal
+          event={modal.event}
+          onClose={() => setModal(null)}
+          onDone={(count) => { setModal(null); load(); alert(`${count} event${count !== 1 ? 's' : ''} created.`); }}
         />
       )}
       {modal?.mode === 'log-sales' && (
