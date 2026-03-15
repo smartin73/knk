@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 
 export function RowMenu({ actions }) {
   const [open, setOpen] = useState(false);
-  const [pos, setPos]   = useState({ top: 0, right: 0 });
+  const [pos, setPos]   = useState({ top: 0, right: 0, openUp: false });
   const btnRef      = useRef();
   const dropdownRef = useRef();
 
@@ -20,7 +20,13 @@ export function RowMenu({ actions }) {
   function handleOpen() {
     if (!open && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
-      setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+      const estimatedHeight = actions.length * 38 + 8;
+      const openUp = rect.bottom + estimatedHeight > window.innerHeight - 8;
+      setPos({
+        right: window.innerWidth - rect.right,
+        top:   openUp ? rect.top - estimatedHeight : rect.bottom + 4,
+        openUp,
+      });
     }
     setOpen(o => !o);
   }
