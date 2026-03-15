@@ -2,16 +2,31 @@
 /**
  * Plugin Name: Simple Events
  * Description: A lightweight events manager — add events via the admin, display them on your site.
- * Version: 1.1.0
- * Author: Your Name
+ * Version: 1.1.2
+ * Author: Scott Martin / Knife and Knead
  * Text Domain: simple-events
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'SE_VERSION',    '1.1.0' );
+define( 'SE_VERSION',    '1.1.2' );
 define( 'SE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+
+/* ─────────────────────────────────────────
+   AUTO-UPDATES via Plugin Update Checker
+   Points to GitHub releases on the knk repo
+───────────────────────────────────────── */
+require_once SE_PLUGIN_DIR . 'plugin-update-checker/plugin-update-checker.php';
+$seUpdateChecker = YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+    'https://github.com/smartin73/knk',
+    __FILE__,
+    'simple-events'
+);
+if ( defined( 'SE_GITHUB_TOKEN' ) && SE_GITHUB_TOKEN ) {
+    $seUpdateChecker->setAuthentication( SE_GITHUB_TOKEN );
+}
+$seUpdateChecker->getVcsApi()->enableReleaseAssets();
 
 /* ─────────────────────────────────────────
    1. ACTIVATION — create custom table
@@ -30,6 +45,7 @@ function se_activate() {
         event_time  TIME,
         end_time    TIME,
         location    VARCHAR(255),
+        map_embed   TEXT,
         image_url   VARCHAR(500),
         ticket_url  VARCHAR(500),
         category    VARCHAR(100),
@@ -55,6 +71,9 @@ function se_maybe_upgrade_db() {
     $cols  = $wpdb->get_col( "DESCRIBE $table", 0 );
     if ( ! in_array( 'end_time', $cols ) ) {
         $wpdb->query( "ALTER TABLE $table ADD COLUMN end_time TIME DEFAULT NULL AFTER event_time" );
+    }
+    if ( ! in_array( 'map_embed', $cols ) ) {
+        $wpdb->query( "ALTER TABLE $table ADD COLUMN map_embed TEXT DEFAULT NULL AFTER location" );
     }
 }
 
@@ -602,80 +621,98 @@ function se_render_detail( $id ) {
     se_enqueue_frontend_styles();
     ?>
     <div class="se-frontend se-detail">
-        <p><a href="?" class="se-back-link">← Back to all events</a></p>
+        <a href="?" class="se-back-link">← Back to all events</a>
 
-        <?php if ( $e->image_url ) : ?>
-            <img src="<?php echo esc_url( $e->image_url ); ?>" alt="<?php echo esc_attr( $e->title ); ?>" class="se-detail-image">
-        <?php endif; ?>
+        <div class="se-detail-card">
 
-        <div class="se-detail-header">
-            <?php if ( $e->category ) : ?>
-                <span class="se-tag"><?php echo esc_html( $e->category ); ?></span>
+            <!-- Header: Name + Category -->
+            <div class="se-detail-header">
+                <div>
+                    <h1 class="se-detail-title"><?php echo esc_html( $e->title ); ?></h1>
+                    <?php if ( $e->category ) : ?>
+                        <div class="se-detail-category"><?php echo esc_html( $e->category ); ?></div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <?php if ( $e->image_url ) : ?>
+                <img src="<?php echo esc_url( $e->image_url ); ?>" alt="<?php echo esc_attr( $e->title ); ?>" class="se-detail-image">
             <?php endif; ?>
-            <h1 class="se-detail-title"><?php echo esc_html( $e->title ); ?></h1>
-        </div>
 
-        <div class="se-detail-meta">
-            <?php if ( $e->event_date ) : ?>
-                <div class="se-meta-item">
-                    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5h8v1H6V7z"/></svg>
-                    <div>
-                        <div class="se-meta-label">Date</div>
-                        <div class="se-meta-value"><?php echo esc_html( date( 'l, F j, Y', strtotime( $e->event_date ) ) ); ?></div>
+            <!-- 2-column metadata grid (mirrors KNK EventDetail) -->
+            <div class="se-detail-grid">
+                <?php if ( $e->event_date ) : ?>
+                <div class="se-detail-field">
+                    <div class="se-field-label">Date</div>
+                    <div class="se-field-value"><?php echo esc_html( date( 'l, F j, Y', strtotime( $e->event_date ) ) ); ?></div>
+                </div>
+                <?php endif; ?>
+
+                <?php if ( $e->event_time ) : ?>
+                <div class="se-detail-field">
+                    <div class="se-field-label">Time</div>
+                    <div class="se-field-value"><?php
+                        echo esc_html( date( 'g:i A', strtotime( $e->event_time ) ) );
+                        if ( ! empty( $e->end_time ) ) {
+                            echo ' &ndash; ' . esc_html( date( 'g:i A', strtotime( $e->end_time ) ) );
+                        }
+                    ?></div>
+                </div>
+                <?php endif; ?>
+
+                <?php if ( $e->location ) : ?>
+                <div class="se-detail-field">
+                    <div class="se-field-label">Location</div>
+                    <div class="se-field-value"><?php echo esc_html( $e->location ); ?></div>
+                </div>
+                <?php endif; ?>
+
+                <?php if ( $e->price ) : ?>
+                <div class="se-detail-field">
+                    <div class="se-field-label">Price</div>
+                    <div class="se-field-value"><?php echo esc_html( $e->price ); ?></div>
+                </div>
+                <?php endif; ?>
+
+                <?php if ( $e->ticket_url ) : ?>
+                <div class="se-detail-field">
+                    <div class="se-field-label">Tickets</div>
+                    <div class="se-field-value">
+                        <a href="<?php echo esc_url( $e->ticket_url ); ?>" target="_blank" rel="noopener" class="se-field-link">Get Tickets / More Info →</a>
                     </div>
                 </div>
-            <?php endif; ?>
-            <?php if ( $e->event_time ) : ?>
-                <div class="se-meta-item">
-                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
-                    <div>
-                        <div class="se-meta-label">Time</div>
-                        <div class="se-meta-value"><?php
-                            echo esc_html( date( 'g:i A', strtotime( $e->event_time ) ) );
-                            if ( ! empty( $e->end_time ) ) {
-                                echo ' &ndash; ' . esc_html( date( 'g:i A', strtotime( $e->end_time ) ) );
-                            }
-                        ?></div>
-                    </div>
-                </div>
-            <?php endif; ?>
-            <?php if ( $e->location ) : ?>
-                <div class="se-meta-item">
-                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
-                    <div>
-                        <div class="se-meta-label">Location</div>
-                        <div class="se-meta-value"><?php echo esc_html( $e->location ); ?></div>
-                    </div>
-                </div>
-            <?php endif; ?>
-            <?php if ( $e->price ) : ?>
-                <div class="se-meta-item">
-                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/></svg>
-                    <div>
-                        <div class="se-meta-label">Price</div>
-                        <div class="se-meta-value"><?php echo esc_html( $e->price ); ?></div>
-                    </div>
-                </div>
-            <?php endif; ?>
-        </div>
+                <?php endif; ?>
+            </div>
 
-        <?php if ( $e->description ) : ?>
-            <div class="se-detail-description"><?php echo wp_kses_post( $e->description ); ?></div>
-        <?php endif; ?>
+            <?php if ( $e->description ) : ?>
+            <div class="se-detail-section">
+                <div class="se-field-label">Description</div>
+                <div class="se-detail-description"><?php echo wp_kses_post( nl2br( $e->description ) ); ?></div>
+            </div>
+            <?php endif; ?>
 
-        <?php if ( $e->tags ) : ?>
+            <?php if ( ! empty( $e->map_embed ) ) : ?>
+            <div class="se-detail-section">
+                <div class="se-field-label">Map</div>
+                <div class="se-detail-map"><?php echo wp_kses( $e->map_embed, [
+                    'iframe' => [
+                        'src'             => true, 'width'           => true, 'height'          => true,
+                        'style'           => true, 'allowfullscreen' => true, 'loading'         => true,
+                        'referrerpolicy'  => true, 'frameborder'     => true,
+                    ],
+                ] ); ?></div>
+            </div>
+            <?php endif; ?>
+
+            <?php if ( $e->tags ) : ?>
             <div class="se-detail-tags">
                 <?php foreach ( array_map( 'trim', explode( ',', $e->tags ) ) as $tag ) : ?>
                     <span class="se-tag se-tag-sm"><?php echo esc_html( $tag ); ?></span>
                 <?php endforeach; ?>
             </div>
-        <?php endif; ?>
+            <?php endif; ?>
 
-        <?php if ( $e->ticket_url ) : ?>
-            <div style="margin-top:28px;">
-                <a href="<?php echo esc_url( $e->ticket_url ); ?>" class="se-btn se-btn-primary" target="_blank" rel="noopener">Get Tickets / More Info →</a>
-            </div>
-        <?php endif; ?>
+        </div><!-- .se-detail-card -->
     </div>
     <?php
     return ob_get_clean();
@@ -759,43 +796,52 @@ function se_enqueue_frontend_styles() {
     .se-empty-msg { color:#9ca3af; padding:48px 0; text-align:center; font-size:15px; }
 
     /* ── Detail view ── */
-    .se-back-link { display:inline-flex; align-items:center; gap:5px; font-size:14px; color:#6b7280; text-decoration:none; margin-bottom:24px; }
+    .se-back-link { display:inline-flex; align-items:center; gap:5px; font-size:14px; color:#6b7280; text-decoration:none; margin-bottom:20px; }
     .se-back-link:hover { color:#7c3aed; }
 
-    .se-detail-image {
-        width:100%; max-height:420px; object-fit:cover;
-        border-radius:12px; margin-bottom:28px; display:block;
+    .se-detail-card {
+        background:#fff; border:1px solid #e5e7eb; border-radius:12px;
+        padding:28px 32px; box-shadow:0 1px 4px rgba(0,0,0,.06);
     }
+
     .se-detail-header { margin-bottom:20px; }
-    .se-detail-title { font-size:30px; font-weight:800; line-height:1.25; margin:4px 0 0; }
+    .se-detail-title { font-size:22px; font-weight:700; line-height:1.3; margin:0 0 4px; color:#111827; }
+    .se-detail-category { font-size:13px; color:#6b7280; margin-top:2px; }
 
-    .se-detail-meta {
-        display:flex; flex-wrap:wrap; gap:0;
-        border:1px solid #e5e7eb; border-radius:10px;
-        overflow:hidden; margin-bottom:28px;
+    .se-detail-image {
+        width:100%; max-height:360px; object-fit:cover;
+        border-radius:8px; margin-bottom:24px; display:block;
     }
-    .se-detail-meta .se-meta-item {
-        flex: 1 1 180px; font-size:14px; gap:12px; padding:16px 20px;
-        border-right:1px solid #e5e7eb; color:#374151; align-items:flex-start;
+
+    /* 2-column grid — mirrors KNK EventDetail */
+    .se-detail-grid {
+        display:grid; grid-template-columns:1fr 1fr; gap:14px 24px; margin-bottom:24px;
     }
-    .se-detail-meta .se-meta-item:last-child { border-right:none; }
-    .se-detail-meta .se-meta-item svg { width:18px; height:18px; flex-shrink:0; color:#7c3aed; margin-top:2px; }
-    .se-detail-meta .se-meta-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#9ca3af; margin-bottom:3px; }
-    .se-detail-meta .se-meta-value { font-weight:600; }
+    .se-detail-field {}
+    .se-field-label {
+        font-size:11px; font-weight:600; color:#9ca3af;
+        text-transform:uppercase; letter-spacing:.4px; margin-bottom:3px;
+    }
+    .se-field-value { font-size:13px; color:#111827; }
+    .se-field-link { color:#7c3aed; text-decoration:none; font-size:13px; }
+    .se-field-link:hover { text-decoration:underline; }
 
-    .se-detail-description { font-size:16px; line-height:1.75; color:#374151; margin-bottom:24px; }
-    .se-detail-tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:24px; }
+    .se-detail-section { margin-bottom:20px; }
+    .se-detail-description { font-size:13px; line-height:1.7; color:#374151; margin-top:6px; }
 
-    .se-tickets-btn { margin-top:4px; }
+    .se-detail-map { margin-top:8px; border-radius:8px; overflow:hidden; }
+    .se-detail-map iframe { display:block; width:100%; border:0; }
+
+    .se-detail-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:20px; }
 
     @media (max-width: 640px) {
         .se-event-card { flex-direction:column; }
         .se-card-date-badge { flex-direction:row; gap:10px; padding:14px 16px; border-right:none; border-bottom:1px solid #e5e7eb; justify-content:flex-start; }
         .se-card-date-badge .se-badge-day { font-size:22px; }
         .se-card-image { height:180px; }
-        .se-detail-title { font-size:24px; }
-        .se-detail-meta .se-meta-item { flex: 1 1 100%; border-right:none; border-bottom:1px solid #e5e7eb; }
-        .se-detail-meta .se-meta-item:last-child { border-bottom:none; }
+        .se-detail-card { padding:20px 16px; }
+        .se-detail-title { font-size:20px; }
+        .se-detail-grid { grid-template-columns:1fr; gap:12px; }
     }
     </style>
     <?php
@@ -894,6 +940,7 @@ function se_format_event( $e ) {
         'event_time'  => $e->event_time,
         'end_time'    => $e->end_time ?? null,
         'location'    => $e->location,
+        'map_embed'   => $e->map_embed ?? null,
         'image_url'   => $e->image_url,
         'ticket_url'  => $e->ticket_url,
         'category'    => $e->category,
@@ -924,6 +971,7 @@ function se_api_event_args( $required = true ) {
         'event_time'  => [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
         'end_time'    => [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
         'location'    => [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+        'map_embed'   => [ 'type' => 'string', 'sanitize_callback' => 'wp_kses_post' ],
         'image_url'   => [ 'type' => 'string', 'sanitize_callback' => 'esc_url_raw' ],
         'ticket_url'  => [ 'type' => 'string', 'sanitize_callback' => 'esc_url_raw' ],
         'category'    => [ 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
@@ -995,6 +1043,7 @@ function se_api_create_event( WP_REST_Request $request ) {
         'event_time'  => $request->get_param( 'event_time' )  ?? null,
         'end_time'    => $request->get_param( 'end_time' )    ?? null,
         'location'    => $request->get_param( 'location' )    ?? '',
+        'map_embed'   => $request->get_param( 'map_embed' )   ?? '',
         'image_url'   => $request->get_param( 'image_url' )   ?? '',
         'ticket_url'  => $request->get_param( 'ticket_url' )  ?? '',
         'category'    => $request->get_param( 'category' )    ?? '',
@@ -1014,7 +1063,7 @@ function se_api_update_event( WP_REST_Request $request ) {
     if ( ! $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $table WHERE id = %d", $id ) ) ) {
         return new WP_Error( 'not_found', 'Event not found.', [ 'status' => 404 ] );
     }
-    $fields = [ 'title','description','event_date','event_time','end_time','location','image_url','ticket_url','category','tags','price' ];
+    $fields = [ 'title','description','event_date','event_time','end_time','location','map_embed','image_url','ticket_url','category','tags','price' ];
     $data   = [];
     foreach ( $fields as $f ) {
         if ( $request->has_param( $f ) ) $data[ $f ] = $request->get_param( $f );
