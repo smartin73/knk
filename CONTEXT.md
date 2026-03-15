@@ -290,6 +290,11 @@ updated_at    timestamptz
 
 6. **No named `pool` export** from pool.js — use `import pool, { query } from '../db/pool.js'`
 
+7. **DB migrations must run from the DB server** — `knkdb` lacks ALTER TABLE. Postgres is on a separate server (108.12.248.102). Pipe migrations via SSH:
+   ```bash
+   cat /srv/www/knk/repo/server/migrations/<file>.sql | ssh serveradmin@108.12.248.102 "sudo -u postgres psql -d knk"
+   ```
+
 ---
 
 ## Modules Status
@@ -299,11 +304,13 @@ updated_at    timestamptz
 | Events | ✅ Full CRUD + CSV import |
 | Vendors | ✅ Full CRUD + CSV import |
 | Ingredients | ✅ Full CRUD + price history + CSV import |
-| Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage + MakeView |
-| Settings | ✅ All groups (Square, Pushover, WordPress, Costing) |
+| Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage + MakeView + test logging |
+| Settings | ✅ Square, Pushover, WordPress, Costing, Cloudinary, Branding, Event Menus |
 | ItemBuilder | ✅ Full CRUD + components + costing + Square push |
-| Event Menus | 🔲 Stub only |
-| Donations | 🔲 Stub only |
+| Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (Phase 2) |
+| Donations | 🔲 Stub — needs rebuild (wrong schema) |
+| Users | 🔲 Not started |
+| Income/Expenses | 🔲 Not started |
 
 ---
 
@@ -312,14 +319,17 @@ updated_at    timestamptz
 - [x] Recipe detail/edit: fetch full recipe (with steps) before opening edit form
 - [x] ItemBuilder CSV import
 - [x] Actions overflow menu (hamburger) when 3+ actions
-- [ ] Event Menus module
-- [ ] Donations module
+- [x] Event Menus module (Phase 1 + Phase 2 webhook)
 - [x] Square production credentials
 - [x] Pushover notifications
-- [ ] WordPress integration
-- [ ] User management + per-module permissions + password reset
-- [ ] Recipe test tracking (version history)
+- [x] Recipe test logging
+- [x] Cloudinary image upload
+- [ ] Users module (roles: admin/member) — security foundation for multi-user access
+- [ ] Donations module (needs schema rebuild) — prerequisite for Income/Expenses
+- [ ] Income vs Expenses module — needs Donations done first
+- [ ] Mobile nav / full mobile pass
+- [ ] Item variations — prerequisite for WordPress storefront
+- [ ] WordPress integration — replace WooCommerce with ItemBuilder storefront (requires variations first)
 - [ ] Repeating events
-- [ ] Square Sales Webhook
-- [ ] Sales reporting
-- [ ] Mobile nav
+- [ ] Event Menus Phase 2 live testing — waiting on next event
+- [x] Recipe version history (covered by Test module)
