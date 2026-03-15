@@ -73,7 +73,7 @@ client/src/
 └── pages/
     ├── LoginPage.jsx
     ├── DashboardPage.jsx
-    ├── EventsPage.jsx        (includes LogSalesModal → POST /finance/income)
+    ├── EventsPage.jsx        (includes LogSalesModal → POST /finance/income; RepeatModal → POST /events/repeat)
     ├── VendorsPage.jsx
     ├── IngredientsPage.jsx
     ├── RecipesPage.jsx       (includes MakeView component)
@@ -374,7 +374,7 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 
 | Module | Status |
 |--------|--------|
-| Events | ✅ Full CRUD + CSV import |
+| Events | ✅ Full CRUD + CSV import + Repeat (weekly/biweekly/monthly, generates independent draft events) |
 | Vendors | ✅ Full CRUD + CSV import |
 | Ingredients | ✅ Full CRUD + price history + CSV import |
 | Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage + MakeView + test logging |
@@ -405,6 +405,6 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 - [x] Mobile nav / full mobile pass
 - [x] Item variations — per-item variants with name, price override, Square ID
 - [x] WordPress integration — Push to WooCommerce on ItemBuilder (simple + variable products with variants); Push events to WP plugin already existed
-- [ ] Repeating events
+- [x] Repeating events — Repeat… RowMenu action; frequency (weekly/biweekly/monthly) + end date; live date preview; generates independent Draft events via POST /events/repeat
 - [ ] Event Menus Phase 2 live testing — waiting on next event
 - [x] Recipe version history (covered by Test module)

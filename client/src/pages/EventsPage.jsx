@@ -304,11 +304,25 @@ function EventForm({ initial, vendors, onSave, onCancel }) {
             <input value={form.ticket_url || ''} onChange={e => set('ticket_url', e.target.value)} placeholder="https://..." />
           </div>
           <div className="field full">
-            <label>Map Embed</label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+              <label style={{ margin: 0 }}>Map Embed</label>
+              {form.location && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    const src = `https://maps.google.com/maps?q=${encodeURIComponent(form.location)}&output=embed`;
+                    set('map_embed', `<iframe src="${src}" width="100%" height="300" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`);
+                  }}
+                >
+                  Generate from Location
+                </button>
+              )}
+            </div>
             <textarea
               value={form.map_embed || ''}
               onChange={e => set('map_embed', e.target.value)}
-              placeholder="Paste Google Maps iframe embed code..."
+              placeholder="Paste Google Maps iframe embed code, or generate from location above…"
               style={{ minHeight: 70 }}
             />
           </div>
