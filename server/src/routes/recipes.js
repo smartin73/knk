@@ -198,21 +198,29 @@ router.post('/import', requireAuth, async (req, res) => {
       }
 
       if (r.ingredients?.length) {
-        // Build name→id map for matching
+        // Build name→id map, auto-creating missing ingredient_items
         const names = r.ingredients.map(i => i.ingredient).filter(Boolean);
         const { rows: ingItems } = await client.query(
-          `SELECT id, item_name FROM ingredient_items WHERE item_name = ANY($1)`,
-          [names]
+          `SELECT id, item_name FROM ingredient_items WHERE lower(item_name) = ANY($1)`,
+          [names.map(n => n.toLowerCase())]
         );
         const nameToId = Object.fromEntries(ingItems.map(i => [i.item_name.toLowerCase(), i.id]));
 
         for (const ing of r.ingredients) {
-          const ingredientId = nameToId[ing.ingredient?.toLowerCase()] || null;
+          if (!ing.ingredient) continue;
+          const key = ing.ingredient.toLowerCase();
+          if (!nameToId[key]) {
+            const { rows: newIng } = await client.query(
+              `INSERT INTO ingredient_items (item_name) VALUES ($1) RETURNING id`,
+              [ing.ingredient]
+            );
+            nameToId[key] = newIng[0].id;
+          }
           await client.query(
             `INSERT INTO recipe_ingredients
               (recipe_id, ingredient_id, ingredient, amount, measurement, sort_order)
              VALUES ($1,$2,$3,$4,$5,$6)`,
-            [recipeId, ingredientId, ing.ingredient || null, ing.amount || null, ing.measurement || null, ing.sort_order || 0]
+            [recipeId, nameToId[key], ing.ingredient, ing.amount || null, ing.measurement || null, ing.sort_order || 0]
           );
         }
       }

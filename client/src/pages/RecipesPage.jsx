@@ -30,11 +30,15 @@ function calcCost(ingredients) {
     return t + parseFloat(ing.cost_per_gram) * parseFloat(ing.amount);
   }, 0);
 }
+function fmtNum(n) {
+  if (n === null || n === undefined || n === '') return '';
+  const v = parseFloat(n);
+  if (isNaN(v)) return '';
+  return parseFloat(v.toFixed(2)).toString();
+}
 function fmtAmount(amount, multiplier) {
   if (!amount) return '';
-  const n = parseFloat(n2 => n2, parseFloat(amount) * multiplier);
-  const clean = parseFloat((parseFloat(amount) * multiplier).toPrecision(6));
-  return clean % 1 === 0 ? clean.toString() : clean.toFixed(1);
+  return fmtNum(parseFloat(amount) * multiplier);
 }
 function fmtTimestamp(ts) {
   if (!ts) return '';
@@ -237,8 +241,7 @@ function MakeView({ recipe, onClose }) {
                 <table style={{ width:'100%', borderCollapse:'collapse' }}>
                   <tbody>
                     {recipe.ingredients.map(ing => {
-                      const n = ing.amount ? parseFloat((parseFloat(ing.amount) * multiplier).toPrecision(6)) : null;
-                      const scaled = n !== null ? (n % 1 === 0 ? n.toString() : n.toFixed(1)) : '';
+                      const scaled = ing.amount ? fmtAmount(ing.amount, multiplier) : '';
                       return (
                         <tr key={ing.id} style={{ borderBottom:'1px solid var(--border)' }}>
                           <td style={{ padding:'7px 8px 7px 0', fontSize:13 }}>{ing.ingredient}</td>
@@ -673,7 +676,7 @@ function RecipeDetail({ recipe: initialRecipe, onEdit, onMake, onClose }) {
                     const c=i.cost_per_gram&&i.amount&&i.measurement==='g'?parseFloat(i.cost_per_gram)*parseFloat(i.amount):null;
                     return (<tr key={i.id} style={{borderBottom:'1px solid var(--border)'}}>
                       <td style={{padding:'6px 8px 6px 0',fontSize:13}}>{i.ingredient}</td>
-                      <td style={{padding:'6px 0',fontSize:13,color:'var(--text-muted)',textAlign:'right'}}>{i.amount?`${i.amount} ${i.measurement||''}`.trim():'—'}</td>
+                      <td style={{padding:'6px 0',fontSize:13,color:'var(--text-muted)',textAlign:'right'}}>{i.amount?`${fmtNum(i.amount)} ${i.measurement||''}`.trim():'—'}</td>
                       {c&&<td style={{padding:'6px 0 6px 12px',fontSize:11,color:'var(--text-muted)',fontFamily:'monospace',textAlign:'right'}}>${c.toFixed(4)}</td>}
                     </tr>);
                   })}

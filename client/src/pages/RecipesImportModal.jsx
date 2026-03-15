@@ -160,7 +160,7 @@ export function RecipesImportModal({ existingNames, onClose, onDone }) {
 
         const stepsByRecipe = {};
         for (const s of stepRows) {
-          const fk = s.recipe_fk_uuid; if (!fk) continue;
+          const fk = (s.recipe_fk_uuid || '').toLowerCase(); if (!fk) continue;
           if (!stepsByRecipe[fk]) stepsByRecipe[fk] = [];
           stepsByRecipe[fk].push({
             step_number: parseInt(s.StepNumber) || 1,
@@ -173,7 +173,7 @@ export function RecipesImportModal({ existingNames, onClose, onDone }) {
 
         const ingredientsByRecipe = {};
         for (const ing of ingredientRows) {
-          const fk = ing.recipe_fk_uuid; if (!fk) continue;
+          const fk = (ing.recipe_fk_uuid || '').toLowerCase(); if (!fk) continue;
           if (!ingredientsByRecipe[fk]) ingredientsByRecipe[fk] = [];
           ingredientsByRecipe[fk].push({
             ingredient:  ing.Ingredient  || ing.ingredient  || '',
@@ -188,7 +188,7 @@ export function RecipesImportModal({ existingNames, onClose, onDone }) {
           const name = (r.recipeName || '').trim();
           if (!name) { invalid.push({ ...r, _reason: 'Missing recipe name' }); continue; }
           if (existingNames.has(name.toLowerCase())) { dupes.push(name); continue; }
-          const uuid = r.recipes_pk_uuid;
+          const uuid = (r.recipes_pk_uuid || '').toLowerCase();
           toImport.push({
             recipe_name:      name,
             recipe_by:        r.recipeBy || null,
