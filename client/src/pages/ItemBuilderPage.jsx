@@ -783,21 +783,29 @@ export function ItemBuilderPage() {
   );
 
   async function handleOpenEdit(item) {
-    const full = await api.get(`/items/${item.id}`);
-    setModal({ mode: 'edit', item: full });
+    try {
+      const full = await api.get(`/items/${item.id}`);
+      setModal({ mode: 'edit', item: full });
+    } catch (e) {
+      alert(`Failed to load item: ${e.message}`);
+    }
   }
 
   async function handleSave(form, components, variants) {
-    let saved;
-    if (modal.item?.id) {
-      saved = await api.put(`/items/${modal.item.id}`, form);
-    } else {
-      saved = await api.post('/items', form);
+    try {
+      let saved;
+      if (modal.item?.id) {
+        saved = await api.put(`/items/${modal.item.id}`, form);
+      } else {
+        saved = await api.post('/items', form);
+      }
+      await api.put(`/items/${saved.id}/items`, { items: components });
+      await api.put(`/items/${saved.id}/variants`, { variants });
+      setModal(null);
+      load();
+    } catch (e) {
+      alert(`Save failed: ${e.message}`);
     }
-    await api.put(`/items/${saved.id}/items`, { items: components });
-    await api.put(`/items/${saved.id}/variants`, { variants });
-    setModal(null);
-    load();
   }
 
   async function handleDelete() {
