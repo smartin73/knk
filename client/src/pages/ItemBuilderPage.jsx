@@ -757,6 +757,7 @@ export function ItemBuilderPage() {
   const [settings, setSettings]         = useState({});
   const [loading, setLoading]           = useState(true);
   const [search, setSearch]             = useState('');
+  const [favOnly, setFavOnly]           = useState(false);
   const [modal, setModal]               = useState(null);
 
   const load = useCallback(async () => {
@@ -784,8 +785,19 @@ export function ItemBuilderPage() {
   useEffect(() => { load(); }, [load]);
 
   const filtered = items.filter(i =>
-    !search || i.item_name.toLowerCase().includes(search.toLowerCase())
+    (!search || i.item_name.toLowerCase().includes(search.toLowerCase())) &&
+    (!favOnly || i.is_favorite)
   );
+
+  async function handleToggleFavorite(item) {
+    const next = !item.is_favorite;
+    setItems(its => its.map(i => i.id === item.id ? { ...i, is_favorite: next } : i));
+    try {
+      await api.patch(`/items/${item.id}/favorite`, { is_favorite: next });
+    } catch {
+      setItems(its => its.map(i => i.id === item.id ? { ...i, is_favorite: item.is_favorite } : i));
+    }
+  }
 
   async function handleOpenEdit(item) {
     try {
@@ -869,6 +881,13 @@ export function ItemBuilderPage() {
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
+        <button
+          className={`btn btn-sm ${favOnly ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setFavOnly(f => !f)}
+          title="Show favorites only"
+        >
+          {favOnly ? '★ Favorites' : '☆ Favorites'}
+        </button>
       </div>
 
       <div className="card" style={{ padding: 0 }}>
@@ -884,6 +903,7 @@ export function ItemBuilderPage() {
             <table>
               <thead>
                 <tr>
+                  <th style={{ width: 28 }}></th>
                   <th>Item</th>
                   <th>Retail</th>
                   <th>Packaging</th>
@@ -896,6 +916,15 @@ export function ItemBuilderPage() {
               <tbody>
                 {filtered.map(i => (
                   <tr key={i.id}>
+                    <td style={{ textAlign: 'center', padding: '0 4px' }}>
+                      <button
+                        onClick={() => handleToggleFavorite(i)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, lineHeight: 1, color: i.is_favorite ? '#f5a623' : 'var(--text-muted)', padding: 2 }}
+                        title={i.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+                      >
+                        {i.is_favorite ? '★' : '☆'}
+                      </button>
+                    </td>
                     <td>
                       <div
                         style={{ fontWeight: 600, cursor: 'pointer', color: 'var(--accent2)' }}
