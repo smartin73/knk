@@ -19,3 +19,4 @@ server/package-lock.json
 .env
 .env.local
 .env.*.local
+server/.DS_Store

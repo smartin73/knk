@@ -257,9 +257,11 @@ image_url           text
 square_id           text
 woo_id              text
 is_active           boolean
+is_favorite         boolean  DEFAULT false
 created_at          timestamptz
 updated_at          timestamptz
 ```
+Migration: `server/migrations/add_item_builder_favorites.sql`
 
 ### item_builder_items (junction)
 ```
@@ -406,7 +408,7 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 | Ingredients | ✅ Full CRUD + price history + CSV import |
 | Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage + MakeView + test logging |
 | Settings | ✅ Square, Pushover, WordPress + WooCommerce, Costing, Cloudinary, Branding, Event Menus |
-| ItemBuilder | ✅ Full CRUD + components + costing + variants + Push to Square + Push to WooCommerce |
+| ItemBuilder | ✅ Full CRUD + components + costing + variants + Push to Square + Push to WooCommerce + Favorites (star toggle, filter, sort to top, integrated in Menu Builder picker) |
 | Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (Phase 2) + Menu Specials (is_special flag, star toggle in admin, MenuSpecialsPage at /menu/:id/specials, auto-redirect at /menu/specials) |
 | Donations | ✅ Full CRUD + CSV export (item-based, linked to events + item builder) |
 | Users | ✅ Admin/member roles + user management + change password |
@@ -438,4 +440,4 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 - [ ] Notifications on Recipe Steps — when a step has `requires_notification = true`, trigger a Pushover notification during MakeView at the appropriate time
 - [x] Menu Specials — is_special flag on event_menu_items; star toggle in admin; MenuSpecialsPage (/menu/:id/specials); /menu/specials auto-redirect; TWA plan: two APKs (one /menu, one /menu/specials); migration: add_menu_specials.sql (run as postgres superuser on DB server)
 - [ ] Event auto-push to WordPress — auto-push on create/save instead of manual button; "Posted to website" indicator driven by woo_id presence
-- [ ] Item Builder Favorites — is_favorite boolean on item_builder; star toggle in UI; filter/section for quick access when building menus
+- [x] Item Builder Favorites — is_favorite boolean on item_builder; star toggle, filter button, sort to top in list; favorites sorted to top + star indicator in Menu Builder item picker

@@ -233,13 +233,30 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
     setMenu(m => ({ ...m, items: m.items.filter(i => i.id !== itemId) }));
   }
 
+  async function handleToggleSpecial(item) {
+    const next = !item.is_special;
+    setMenu(m => ({ ...m, items: m.items.map(i => i.id === item.id ? { ...i, is_special: next } : i) }));
+    try {
+      await api.put(`/event-menus/${menuId}/items/${item.id}`, {
+        qty_on_hand:       item.qty_on_hand,
+        limited_threshold: item.limited_threshold,
+        sort_order:        item.sort_order,
+        is_special:        next,
+      });
+    } catch {
+      setMenu(m => ({ ...m, items: m.items.map(i => i.id === item.id ? { ...i, is_special: item.is_special } : i) }));
+    }
+  }
+
   async function saveItemEdit(item) {
     setSavingItem(item.id);
     try {
+      const current = menu.items.find(i => i.id === item.id);
       const updated = await api.put(`/event-menus/${menuId}/items/${item.id}`, {
         qty_on_hand:       item.qty_on_hand,
         limited_threshold: item.limited_threshold,
         sort_order:        item.sort_order,
+        is_special:        current?.is_special ?? false,
       });
       setMenu(m => ({ ...m, items: m.items.map(i => i.id === item.id ? { ...i, ...updated } : i) }));
       setEditingItem(null);
@@ -297,7 +314,7 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: 'var(--surface2)' }}>
-                {['', 'Item', 'Price', 'Qty on Hand', 'Limited At', 'Status', ''].map((h, i) => (
+                {['', 'Item', 'Price', 'Qty on Hand', 'Limited At', 'Status', 'Special', ''].map((h, i) => (
                   <th key={i} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
                 ))}
               </tr>
@@ -338,6 +355,15 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
                       <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 3, fontWeight: 600, background: `${style.color}22`, color: style.color }}>
                         {style.label}
                       </span>
+                    </td>
+                    <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                      <button
+                        onClick={() => handleToggleSpecial(item)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, lineHeight: 1, color: item.is_special ? '#f59e0b' : 'var(--text-muted)', padding: 2 }}
+                        title={item.is_special ? 'Remove from specials' : 'Mark as special'}
+                      >
+                        {item.is_special ? '★' : '☆'}
+                      </button>
                     </td>
                     <td style={{ padding: '10px 14px' }}>
                       {isEditing ? (
