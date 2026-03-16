@@ -192,6 +192,12 @@ function EventDetail({ event, onEdit, onClose }) {
           </div>
         )}
 
+        {event.image_url && (
+          <div style={{ marginBottom: 16 }}>
+            <img src={event.image_url} alt={event.event_name} style={{ width: '100%', borderRadius: 8, objectFit: 'cover', maxHeight: 240, display: 'block' }} />
+          </div>
+        )}
+
         {event.map_embed && (
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>Map</div>
