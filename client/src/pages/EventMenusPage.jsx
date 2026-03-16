@@ -124,10 +124,12 @@ function ItemPickerModal({ menuId, existingIds, onAdd, onClose }) {
     api.get('/items').then(setItems).catch(console.error);
   }, []);
 
-  const filtered = items.filter(i =>
-    !existingIds.has(i.id) &&
-    i.item_name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = items
+    .filter(i =>
+      !existingIds.has(i.id) &&
+      i.item_name.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => b.is_favorite - a.is_favorite);
 
   async function handleAdd(item) {
     setAdding(item.id);
@@ -171,7 +173,10 @@ function ItemPickerModal({ menuId, existingIds, onAdd, onClose }) {
                 : <div style={{ width: 44, height: 44, borderRadius: 6, background: 'var(--bg)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🧁</div>
               }
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.item_name}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {item.is_favorite && <span style={{ color: '#f5a623', marginRight: 4 }}>★</span>}
+                  {item.item_name}
+                </div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtPrice(item.retail_price)}</div>
               </div>
               <button

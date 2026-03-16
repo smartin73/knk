@@ -784,10 +784,12 @@ export function ItemBuilderPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const filtered = items.filter(i =>
-    (!search || i.item_name.toLowerCase().includes(search.toLowerCase())) &&
-    (!favOnly || i.is_favorite)
-  );
+  const filtered = items
+    .filter(i =>
+      (!search || i.item_name.toLowerCase().includes(search.toLowerCase())) &&
+      (!favOnly || i.is_favorite)
+    )
+    .sort((a, b) => b.is_favorite - a.is_favorite);
 
   async function handleToggleFavorite(item) {
     const next = !item.is_favorite;
