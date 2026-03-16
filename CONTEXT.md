@@ -188,9 +188,11 @@ purchase_from  text
 grams          numeric
 current_price  numeric
 cost_per_gram  numeric  (generated column)
+is_active      boolean  DEFAULT true
 created_at     timestamptz
 updated_at     timestamptz
 ```
+Migration: `server/migrations/add_ingredient_soft_delete.sql`
 
 ### ingredient_price_history
 ```
@@ -258,10 +260,11 @@ square_id           text
 woo_id              text
 is_active           boolean
 is_favorite         boolean  DEFAULT false
+freezer_qty         integer  DEFAULT 0   ← current unbaked stock in freezer
 created_at          timestamptz
 updated_at          timestamptz
 ```
-Migration: `server/migrations/add_item_builder_favorites.sql`
+Migrations: `server/migrations/add_item_builder_favorites.sql`, `server/migrations/add_freezer_qty.sql`
 
 ### item_builder_items (junction)
 ```
@@ -392,7 +395,10 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 
 6. **No named `pool` export** from pool.js — use `import pool, { query } from '../db/pool.js'`
 
-7. **DB migrations must run from the DB server** — `knkdb` lacks ALTER TABLE. Postgres is on a separate server (108.12.248.102). Pipe migrations via SSH:
+7. **Soft deletes on Item Builder, Recipes, Ingredients** — `DELETE` routes set `is_active=false` instead of hard-deleting to avoid FK constraint errors from historical records (donations, recipe components, etc.). List queries filter `WHERE is_active=true`. Hard-delete is only safe if no dependent records exist.
+   - Events: hard delete is blocked with a clear error if donations or income entries exist — use Cancelled status instead.
+
+8. **DB migrations must run from the DB server** — `knkdb` lacks ALTER TABLE. Postgres is on a separate server (108.12.248.102). Pipe migrations via SSH:
    ```bash
    cat /srv/www/knk/repo/server/migrations/<file>.sql | ssh serveradmin@108.12.248.102 "sudo -u postgres psql -d knk"
    ```
@@ -408,7 +414,7 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 | Ingredients | ✅ Full CRUD + price history + CSV import |
 | Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage + MakeView + test logging |
 | Settings | ✅ Square, Pushover, WordPress + WooCommerce, Costing, Cloudinary, Branding, Event Menus |
-| ItemBuilder | ✅ Full CRUD + components + costing + variants + Push to Square + Push to WooCommerce + Favorites (star toggle, filter, sort to top, integrated in Menu Builder picker) |
+| ItemBuilder | ✅ Full CRUD + components + costing + variants + Push to Square + Push to WooCommerce + Favorites (star toggle, filter, sort to top, integrated in Menu Builder picker) + Freezer stock (inline +/– in list; "Add to Freezer" from MakeView) |
 | Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (Phase 2) + Menu Specials (is_special flag, star toggle in admin, MenuSpecialsPage at /menu/:id/specials, auto-redirect at /menu/specials) |
 | Donations | ✅ Full CRUD + CSV export (item-based, linked to events + item builder) |
 | Users | ✅ Admin/member roles + user management + change password |
@@ -441,3 +447,5 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 - [x] Menu Specials — is_special flag on event_menu_items; star toggle in admin; MenuSpecialsPage (/menu/:id/specials); /menu/specials auto-redirect; TWA plan: two APKs (one /menu, one /menu/specials); migration: add_menu_specials.sql (run as postgres superuser on DB server)
 - [ ] Event auto-push to WordPress — auto-push on create/save instead of manual button; "Posted to website" indicator driven by woo_id presence
 - [x] Item Builder Favorites — is_favorite boolean on item_builder; star toggle, filter button, sort to top in list; favorites sorted to top + star indicator in Menu Builder item picker
+- [x] Inventory Phase 1: Freezer Stock — freezer_qty on item_builder; inline +/– on ItemBuilder list; "Add to Freezer" button in MakeView pre-fills scaledYield, picks item from item_builder, calls PATCH /items/:id/freezer; migration: add_freezer_qty.sql
+- [ ] Inventory Phase 2: Baking Plan + Shopping List — date-range → events → aggregate menu items → deficit vs freezer → batches → ingredient grams → purchase units (needs unit_label/unit_grams on ingredient_items)

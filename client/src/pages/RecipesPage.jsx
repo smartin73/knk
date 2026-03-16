@@ -95,12 +95,74 @@ function fmtCountdown(ms) {
 }
 
 // ── Make View ─────────────────────────────────────────────
+function AddToFreezerModal({ suggestedQty, onClose }) {
+  const [items, setItems]       = useState([]);
+  const [search, setSearch]     = useState('');
+  const [itemId, setItemId]     = useState('');
+  const [qty, setQty]           = useState(String(Math.round(suggestedQty)));
+  const [saving, setSaving]     = useState(false);
+  const [err, setErr]           = useState('');
+
+  useEffect(() => {
+    api.get('/items').then(setItems).catch(() => {});
+  }, []);
+
+  const filtered = items.filter(i => !search || i.item_name.toLowerCase().includes(search.toLowerCase()));
+
+  async function handleSave() {
+    if (!itemId) return setErr('Select an item.');
+    const n = parseInt(qty);
+    if (!n || n < 1) return setErr('Enter a quantity > 0.');
+    setSaving(true); setErr('');
+    try {
+      await api.patch(`/items/${itemId}/freezer`, { delta: n });
+      onClose();
+    } catch (e) {
+      setErr(e.message || 'Save failed.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" style={{ zIndex: 300 }} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 420 }}>
+        <div className="modal-title">Add to Freezer</div>
+        <div className="form-grid">
+          <div className="field full">
+            <label>Search Item</label>
+            <input autoFocus placeholder="Filter items…" value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <div className="field full">
+            <label>Item</label>
+            <select value={itemId} onChange={e => setItemId(e.target.value)}
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 14, width: '100%' }}>
+              <option value="">— Select item —</option>
+              {filtered.map(i => <option key={i.id} value={i.id}>{i.item_name}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label>Qty to Add</label>
+            <input type="number" min="1" step="1" value={qty} onChange={e => setQty(e.target.value)} />
+          </div>
+        </div>
+        {err && <div className="error-msg" style={{ marginTop: 8 }}>{err}</div>}
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Add to Freezer'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MakeView({ recipe, onClose }) {
   const [multiplier, setMultiplier]   = useState(1);
   const [customYield, setCustomYield] = useState('');
   const [folds, setFolds]             = useState([]);
   const [nextFoldNum, setNextFoldNum] = useState(1);
   const [stepTimers, setStepTimers]   = useState({}); // { [stepId]: { startedAt, duration, notified } }
+  const [showFreezer, setShowFreezer] = useState(false);
   const timeoutRefs = useRef({});
 
   // Tick every second while any timer is active
@@ -335,8 +397,12 @@ function MakeView({ recipe, onClose }) {
 
         <div className="modal-actions" style={{ marginTop:16 }}>
           <button className="btn btn-secondary" onClick={onClose}>Close</button>
+          <button className="btn btn-primary" onClick={() => setShowFreezer(true)}>+ Freezer</button>
         </div>
       </div>
+      {showFreezer && (
+        <AddToFreezerModal suggestedQty={scaledYield} onClose={() => setShowFreezer(false)} />
+      )}
     </div>
   );
 }
