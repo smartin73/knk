@@ -760,6 +760,7 @@ export function RecipesPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      params.set('active', 'true');
       if (search)      params.set('search', search);
       if (typeFilter)  params.set('type', typeFilter);
       if (stageFilter) params.set('stage', stageFilter);

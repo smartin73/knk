@@ -7,7 +7,7 @@ export const ingredientsRouter = IngRouter();
 ingredientsRouter.use(requireAuth);
 
 ingredientsRouter.get('/', async (req, res) => {
-  const { rows } = await query('SELECT * FROM ingredient_items ORDER BY item_name');
+  const { rows } = await query('SELECT * FROM ingredient_items WHERE is_active=true ORDER BY item_name');
   res.json(rows);
 });
 ingredientsRouter.get('/:id', async (req, res) => {
@@ -45,7 +45,7 @@ ingredientsRouter.put('/:id', async (req, res) => {
   res.json(rows[0]);
 });
 ingredientsRouter.delete('/:id', async (req, res) => {
-  await query('DELETE FROM ingredient_items WHERE id=$1', [req.params.id]);
+  await query('UPDATE ingredient_items SET is_active=false WHERE id=$1', [req.params.id]);
   res.json({ ok: true });
 });
 
@@ -56,7 +56,7 @@ itemBuilderRouter.use(requireAuth);
 
 itemBuilderRouter.get('/', async (req, res) => {
   const { rows } = await query(
-    `SELECT ib.* FROM item_builder ib ORDER BY ib.item_name`
+    `SELECT ib.* FROM item_builder ib WHERE ib.is_active=true ORDER BY ib.item_name`
   );
   res.json(rows);
 });
@@ -261,7 +261,7 @@ itemBuilderRouter.patch('/:id/favorite', async (req, res) => {
 
 itemBuilderRouter.delete('/:id', async (req, res) => {
   try {
-    await query('DELETE FROM item_builder WHERE id=$1', [req.params.id]);
+    await query('UPDATE item_builder SET is_active=false WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
   } catch (e) {
     console.error(e);

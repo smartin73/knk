@@ -127,8 +127,25 @@ router.put('/:id', async (req, res) => {
 
 // DELETE /events/:id
 router.delete('/:id', async (req, res) => {
-  await query('DELETE FROM events WHERE id = $1', [req.params.id]);
-  res.json({ ok: true });
+  try {
+    const { rows } = await query(
+      `SELECT
+        (SELECT COUNT(*) FROM donations WHERE event_id=$1)::int AS donation_count,
+        (SELECT COUNT(*) FROM income_entries WHERE event_id=$1)::int AS income_count`,
+      [req.params.id]
+    );
+    const { donation_count, income_count } = rows[0];
+    if (donation_count > 0 || income_count > 0) {
+      return res.status(400).json({
+        error: `This event has ${donation_count > 0 ? `${donation_count} donation(s)` : ''}${donation_count > 0 && income_count > 0 ? ' and ' : ''}${income_count > 0 ? `${income_count} sales entry(s)` : ''} logged. Mark it as Cancelled instead.`,
+      });
+    }
+    await query('DELETE FROM events WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 export default router;
