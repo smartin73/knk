@@ -617,6 +617,13 @@ function ItemDetail({ item: initialItem, recipes, allIngredients, onEdit, onClos
       <div className="modal" style={{ maxWidth: 580, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {loading ? <div className="loading">Loading…</div> : (
           <>
+            {item.image_url && (
+              <img
+                src={item.image_url}
+                alt={item.item_name}
+                style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 8, marginBottom: 12, display: 'block' }}
+              />
+            )}
             <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{item.item_name}</div>
             {item.description && <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>{item.description}</p>}
 
