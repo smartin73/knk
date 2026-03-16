@@ -354,9 +354,9 @@ eventMenusRouter.post('/:id/items', async (req, res) => {
 eventMenusRouter.put('/:id/items/:itemId', async (req, res) => {
   const f = req.body;
   const { rows } = await query(
-    `UPDATE event_menu_items SET qty_on_hand=$1,limited_threshold=$2,sort_order=$3
-     WHERE id=$4 AND menu_id=$5 RETURNING *`,
-    [f.qty_on_hand, f.limited_threshold, f.sort_order, req.params.itemId, req.params.id]
+    `UPDATE event_menu_items SET qty_on_hand=$1,limited_threshold=$2,sort_order=$3,is_special=$4
+     WHERE id=$5 AND menu_id=$6 RETURNING *`,
+    [f.qty_on_hand, f.limited_threshold, f.sort_order, f.is_special ?? false, req.params.itemId, req.params.id]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Not found' });
   res.json(rows[0]);

@@ -131,6 +131,35 @@ app.get('/public/menus', async (req, res) => {
   }
 });
 
+// ── Public: specials landing — today's specials or list ──
+app.get('/public/menus/specials', async (req, res) => {
+  try {
+    const [menusRes, settingRes] = await Promise.all([
+      pool.query(
+        `SELECT em.id, em.menu_name, em.is_active, e.event_name, e.event_date, e.start_time, e.end_time
+         FROM event_menus em
+         LEFT JOIN events e ON em.event_id = e.id
+         WHERE em.is_active = true
+         ORDER BY e.event_date ASC`
+      ),
+      pool.query(`SELECT value FROM settings WHERE key='logo_url'`),
+    ]);
+
+    const logo_url = settingRes.rows[0]?.value || null;
+    const rows = menusRes.rows;
+    const today = rows.filter(m => m.event_date &&
+      m.event_date.toISOString().split('T')[0] === new Date().toISOString().split('T')[0]
+    );
+
+    if (today.length === 1) return res.json({ redirect: today[0].id, logo_url });
+    if (today.length > 1)   return res.json({ menus: today, logo_url });
+    return res.json({ menus: rows, logo_url });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // ── Public: event menu display (no auth) ─────────────────
 app.get('/public/menu/:id', async (req, res) => {
   try {
@@ -145,6 +174,44 @@ app.get('/public/menu/:id', async (req, res) => {
          FROM event_menu_items emi
          LEFT JOIN item_builder ib ON emi.item_builder_id=ib.id
          WHERE emi.menu_id=$1 ORDER BY emi.sort_order, ib.item_name`,
+        [req.params.id]
+      ),
+      pool.query(`SELECT key, value FROM settings WHERE key IN ('menu_refresh_interval', 'logo_url')`),
+    ]);
+    if (!menuRes.rows[0]) return res.status(404).json({ error: 'Not found' });
+
+    const items = itemsRes.rows.map(item => {
+      let status = 'available';
+      if (item.qty_on_hand === 0) status = 'sold_out';
+      else if (item.qty_on_hand <= item.limited_threshold) status = 'limited';
+      return { ...item, status };
+    });
+
+    const settingsMap = {};
+    settingRes.rows.forEach(r => { settingsMap[r.key] = r.value; });
+    const refresh_interval = parseInt(settingsMap.menu_refresh_interval || '30');
+    const logo_url = settingsMap.logo_url || null;
+    res.json({ ...menuRes.rows[0], items, refresh_interval, logo_url });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ── Public: specials-only display (no auth) ──────────────
+app.get('/public/menu/:id/specials', async (req, res) => {
+  try {
+    const [menuRes, itemsRes, settingRes] = await Promise.all([
+      pool.query(
+        `SELECT em.*, e.event_name, e.event_date, e.start_time, e.end_time, e.location
+         FROM event_menus em LEFT JOIN events e ON em.event_id=e.id WHERE em.id=$1`,
+        [req.params.id]
+      ),
+      pool.query(
+        `SELECT emi.*, ib.item_name, ib.description, ib.retail_price, ib.image_url
+         FROM event_menu_items emi
+         LEFT JOIN item_builder ib ON emi.item_builder_id=ib.id
+         WHERE emi.menu_id=$1 AND emi.is_special=true ORDER BY emi.sort_order, ib.item_name`,
         [req.params.id]
       ),
       pool.query(`SELECT key, value FROM settings WHERE key IN ('menu_refresh_interval', 'logo_url')`),

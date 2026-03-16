@@ -10,20 +10,23 @@ function fmtTime(t) {
   return `${hour % 12 || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
 }
 
-export function MenuLandingPage() {
+export function MenuLandingPage({ specials = false }) {
   const navigate = useNavigate();
   const [menus, setMenus] = useState(null);
   const [err, setErr] = useState('');
 
   const [logoUrl, setLogoUrl] = useState(null);
 
+  const endpoint = specials ? `${BASE}/public/menus/specials` : `${BASE}/public/menus`;
+
   useEffect(() => {
-    fetch(`${BASE}/public/menus`)
+    fetch(endpoint)
       .then(r => r.json())
       .then(data => {
         setLogoUrl(data.logo_url || null);
         if (data.redirect) {
-          navigate(`/menu/${data.redirect}`, { replace: true });
+          const target = specials ? `/menu/${data.redirect}/specials` : `/menu/${data.redirect}`;
+          navigate(target, { replace: true });
         } else {
           setMenus(data.menus || []);
         }
@@ -71,7 +74,7 @@ export function MenuLandingPage() {
             return (
               <button
                 key={m.id}
-                onClick={() => navigate(`/menu/${m.id}`)}
+                onClick={() => navigate(specials ? `/menu/${m.id}/specials` : `/menu/${m.id}`)}
                 style={{
                   display: 'block', width: '100%', textAlign: 'left',
                   padding: '16px 20px', borderRadius: 12,

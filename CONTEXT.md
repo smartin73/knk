@@ -87,7 +87,8 @@ client/src/
     ├── TestLogPage.jsx
     ├── EventMenusPage.jsx
     ├── MenuDisplayPage.jsx
-    └── MenuLandingPage.jsx
+    ├── MenuLandingPage.jsx   (handles both /menu and /menu/specials; specials prop → redirects to /menu/:id/specials)
+    └── MenuSpecialsPage.jsx  (specials-only display for second tablet TWA)
 ```
 
 ---
@@ -118,6 +119,8 @@ app.use('/webhooks',      webhooksRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/wordpress',     wordpressRouter);
 // Public (no auth): GET /public/menus, GET /public/menu/:id
+// React routes: /menu → MenuLandingPage, /menu/specials → MenuLandingPage (specials mode) → /menu/:id/specials
+//               /menu/:id → MenuDisplayPage, /menu/:id/specials → MenuSpecialsPage
 ```
 
 ---
@@ -286,6 +289,29 @@ updated_at       timestamptz
 ```
 Migration: `server/migrations/add_item_variants.sql`
 
+### event_menus
+```
+id          uuid  PK  DEFAULT gen_random_uuid()
+event_id    uuid  FK → events.id  ON DELETE CASCADE
+menu_name   text  NOT NULL
+created_at  timestamptz
+updated_at  timestamptz
+```
+
+### event_menu_items
+```
+id               uuid  PK  DEFAULT gen_random_uuid()
+menu_id          uuid  FK → event_menus.id  ON DELETE CASCADE
+item_builder_id  uuid  FK → item_builder.id
+qty_on_hand      integer  DEFAULT 0
+limited_threshold integer  DEFAULT 0
+sort_order       integer  DEFAULT 0
+is_special       boolean  DEFAULT false   ← migration: add_menu_specials.sql
+created_at       timestamptz
+updated_at       timestamptz
+```
+Migration: `server/migrations/add_menu_specials.sql`
+
 ### donations
 ```
 id               uuid  PK
@@ -381,7 +407,7 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 | Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage + MakeView + test logging |
 | Settings | ✅ Square, Pushover, WordPress + WooCommerce, Costing, Cloudinary, Branding, Event Menus |
 | ItemBuilder | ✅ Full CRUD + components + costing + variants + Push to Square + Push to WooCommerce |
-| Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (Phase 2) |
+| Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (Phase 2) + Menu Specials (is_special flag, star toggle in admin, MenuSpecialsPage at /menu/:id/specials, auto-redirect at /menu/specials) |
 | Donations | ✅ Full CRUD + CSV export (item-based, linked to events + item builder) |
 | Users | ✅ Admin/member roles + user management + change password |
 | Income/Expenses | ✅ Income + Expenses CRUD + CSV export (donations auto-included) + Log Sales action on Events |
@@ -410,6 +436,6 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 - [ ] Event Menus Phase 2 live testing — waiting on next event
 - [x] Recipe version history (covered by Test module)
 - [ ] Notifications on Recipe Steps — when a step has `requires_notification = true`, trigger a Pushover notification during MakeView at the appropriate time
-- [ ] Menu Specials — featured/limited-time items called out separately on a menu; scope TBD (is_special flag on event_menu_items or separate section)
+- [x] Menu Specials — is_special flag on event_menu_items; star toggle in admin; MenuSpecialsPage (/menu/:id/specials); /menu/specials auto-redirect; TWA plan: two APKs (one /menu, one /menu/specials); migration: add_menu_specials.sql (run as postgres superuser on DB server)
 - [ ] Event auto-push to WordPress — auto-push on create/save instead of manual button; "Posted to website" indicator driven by woo_id presence
 - [ ] Item Builder Favorites — is_favorite boolean on item_builder; star toggle in UI; filter/section for quick access when building menus

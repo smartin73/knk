@@ -8,6 +8,7 @@ import { DonationsPage } from './pages/DonationsPage.jsx';
 import { EventMenusPage } from './pages/EventMenusPage.jsx';
 import { MenuDisplayPage } from './pages/MenuDisplayPage.jsx';
 import { MenuLandingPage } from './pages/MenuLandingPage.jsx';
+import { MenuSpecialsPage } from './pages/MenuSpecialsPage.jsx';
 import { EventsPage } from './pages/EventsPage.jsx';
 import { VendorsPage } from './pages/VendorsPage.jsx';
 import { IngredientsPage } from './pages/IngredientsPage.jsx';
@@ -143,6 +144,8 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/menu" element={<MenuLandingPage />} />
+          <Route path="/menu/specials" element={<MenuLandingPage specials />} />
+          <Route path="/menu/:id/specials" element={<MenuSpecialsPage />} />
           <Route path="/menu/:id" element={<MenuDisplayPage />} />
           <Route path="/*" element={
             <RequireAuth><Layout /></RequireAuth>
