@@ -2,14 +2,14 @@
 /**
  * Plugin Name: Simple Events
  * Description: A lightweight events manager — add events via the admin, display them on your site.
- * Version: 1.1.3
+ * Version: 1.1.4
  * Author: Scott Martin / Knife and Knead
  * Text Domain: simple-events
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'SE_VERSION',    '1.1.3' );
+define( 'SE_VERSION',    '1.1.4' );
 define( 'SE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -786,8 +786,8 @@ function se_enqueue_frontend_styles() {
     .se-card-date-badge .se-badge-day   { font-size:30px; font-weight:800; color:#333; line-height:1; margin: 3px 0; }
     .se-card-date-badge .se-badge-dow   { font-size:11px; color:#999; font-weight:500; }
 
-    .se-card-image { flex:0 0 200px; overflow:hidden; }
-    .se-card-image img { width:100%; height:100%; object-fit:cover; display:block; transition: transform .3s; }
+    .se-card-image { flex:0 0 160px; height:160px; overflow:hidden; }
+    .se-card-image img { width:100%; height:100%; object-fit:cover; object-position:center top; display:block; transition: transform .3s; }
     .se-event-card:hover .se-card-image img { transform:scale(1.03); }
 
     .se-card-body { flex:1; padding:20px 24px; display:flex; flex-direction:column; justify-content:center; }
@@ -818,8 +818,8 @@ function se_enqueue_frontend_styles() {
     .se-detail-category { font-size:13px; color:#767676; margin-top:0; }
 
     .se-detail-image {
-        width:100%; max-height:380px; object-fit:cover;
-        border-radius:2px; margin-bottom:24px; display:block;
+        display:block; max-width:100%; height:auto; max-height:80vh;
+        object-fit:contain; margin:0 auto 24px; border-radius:2px;
     }
 
     /* 2-column metadata grid */
