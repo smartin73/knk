@@ -3,7 +3,7 @@
   "short_name": "KNK Menus",
   "start_url": "/menu",
   "display": "fullscreen",
-  "background_color": "#ffffff",
+  "background_color": "#000000",
   "theme_color": "#dd9933",
   "icons": [
     {
