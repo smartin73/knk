@@ -28,6 +28,8 @@ import squareRouter from './routes/square.js';
 import webhooksRouter from './routes/webhooks.js';
 import notificationsRouter from './routes/notifications.js';
 import wordpressRouter from './routes/wordpress.js';
+import taxRouter, { sendTaxForms } from './routes/tax.js';
+import cron from 'node-cron';
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -101,6 +103,7 @@ app.use('/square',        squareRouter);
 app.use('/webhooks',      webhooksRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/wordpress', wordpressRouter);
+app.use('/tax',       taxRouter);
 
 // ── Public: branding settings (no auth) ──────────────────
 app.get('/public/branding', async (req, res) => {
@@ -263,3 +266,17 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => console.log(`API running on :${PORT}`));
+
+// ── Monthly tax filing cron (1st of each month at 9am) ───
+cron.schedule('0 9 1 * *', async () => {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 1);
+  const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  console.log(`[cron] Sending RI tax forms for ${month}`);
+  try {
+    await sendTaxForms(month);
+    console.log(`[cron] Tax forms sent for ${month}`);
+  } catch (e) {
+    console.error(`[cron] Tax form send failed:`, e.message);
+  }
+});

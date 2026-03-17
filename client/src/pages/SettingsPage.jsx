@@ -72,6 +72,25 @@ const SETTINGS_SCHEMA = [
   },
   {
     tab: 'app',
+    category: 'Tax Filing',
+    icon: '🧾',
+    settings: [
+      { key: 'tax_business_name',  label: 'Business Name',       description: 'Full legal business name as it appears on tax forms.', is_encrypted: false },
+      { key: 'tax_address',        label: 'Street Address',       description: 'Business street address.', is_encrypted: false },
+      { key: 'tax_city_state_zip', label: 'City, State, ZIP',     description: 'e.g. Providence, RI 02903', is_encrypted: false },
+      { key: 'tax_ein',            label: 'Federal EIN',          description: 'Employer Identification Number (e.g. 12-3456789).', is_encrypted: true },
+      { key: 'tax_ri_account',     label: 'RI Account Number',    description: 'Rhode Island Division of Taxation account number.', is_encrypted: false },
+      { key: 'tax_owner_title',    label: 'Owner / Title',        description: 'Name and title for signature line (e.g. Jane Smith, Owner).', is_encrypted: false },
+      { key: 'smtp_host',          label: 'SMTP Host',            description: 'Outgoing mail server (e.g. smtp.gmail.com).', is_encrypted: false },
+      { key: 'smtp_port',          label: 'SMTP Port',            description: '587 for TLS, 465 for SSL, 25 for plain.', is_encrypted: false },
+      { key: 'smtp_user',          label: 'SMTP Username',        description: 'Email account username / address.', is_encrypted: false },
+      { key: 'smtp_pass',          label: 'SMTP Password',        description: 'Email account password or app-specific password.', is_encrypted: true },
+      { key: 'smtp_from',          label: 'From Address',         description: 'Email address the forms are sent from.', is_encrypted: false },
+      { key: 'smtp_to',            label: 'Send Forms To',        description: 'Email address(es) that receive the tax forms (comma-separated).', is_encrypted: false },
+    ],
+  },
+  {
+    tab: 'app',
     category: 'Costing',
     icon: '💰',
     settings: [

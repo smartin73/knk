@@ -18,6 +18,8 @@
     "express-session": "^1.18.0",
     "helmet": "^7.1.0",
     "multer": "^2.0.0",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.2",
     "pdf-lib": "^1.17.1",
     "pg": "^8.11.3",
     "uuid": "^9.0.1"
