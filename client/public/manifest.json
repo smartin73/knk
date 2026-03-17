@@ -1,8 +1,8 @@
 {
   "name": "Knife & Knead Menus",
   "short_name": "KNK Menus",
-  "start_url": "/menus",
-  "display": "standalone",
+  "start_url": "/menu",
+  "display": "fullscreen",
   "background_color": "#ffffff",
   "theme_color": "#dd9933",
   "icons": [
