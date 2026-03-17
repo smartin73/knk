@@ -10,6 +10,73 @@ ingredientsRouter.get('/', async (req, res) => {
   const { rows } = await query('SELECT * FROM ingredient_items WHERE is_active=true ORDER BY item_name');
   res.json(rows);
 });
+// GET /ingredients/duplicates — find potential duplicate names via substring containment
+ingredientsRouter.get('/duplicates', async (req, res) => {
+  try {
+    const { rows } = await query(`
+      SELECT i.*, COUNT(ri.id)::int AS recipe_count
+      FROM ingredient_items i
+      LEFT JOIN recipe_ingredients ri ON ri.ingredient_id = i.id
+      WHERE i.is_active = true
+      GROUP BY i.id
+      ORDER BY i.item_name
+    `);
+
+    function normalize(name) {
+      return name.toLowerCase().trim().replace(/\s+/g, ' ');
+    }
+
+    const groups = [];
+    const used = new Set();
+    for (let i = 0; i < rows.length; i++) {
+      if (used.has(rows[i].id)) continue;
+      const normI = normalize(rows[i].item_name);
+      const group = [rows[i]];
+      for (let j = i + 1; j < rows.length; j++) {
+        if (used.has(rows[j].id)) continue;
+        const normJ = normalize(rows[j].item_name);
+        if (normI.includes(normJ) || normJ.includes(normI)) {
+          group.push(rows[j]);
+          used.add(rows[j].id);
+        }
+      }
+      if (group.length > 1) {
+        used.add(rows[i].id);
+        groups.push(group);
+      }
+    }
+    res.json(groups);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /ingredients/merge — re-point recipe_ingredients from discard to keep, soft-delete discard
+ingredientsRouter.post('/merge', async (req, res) => {
+  const { keep_id, discard_id } = req.body;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      'UPDATE recipe_ingredients SET ingredient_id = $1 WHERE ingredient_id = $2',
+      [keep_id, discard_id]
+    );
+    await client.query(
+      'UPDATE ingredient_items SET is_active = false WHERE id = $1',
+      [discard_id]
+    );
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
+});
+
 ingredientsRouter.get('/:id', async (req, res) => {
   const [item, history] = await Promise.all([
     query('SELECT * FROM ingredient_items WHERE id=$1', [req.params.id]),

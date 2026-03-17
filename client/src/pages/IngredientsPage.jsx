@@ -181,6 +181,95 @@ function IngredientForm({ initial, onSave, onCancel }) {
   );
 }
 
+// ── Duplicates Modal ──────────────────────────────────────
+function DuplicatesModal({ onClose, onMerged }) {
+  const [groups, setGroups] = useState(null);
+  const [merging, setMerging] = useState(null); // { groupIdx, keepId }
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    api.get('/ingredients/duplicates')
+      .then(setGroups)
+      .catch(e => setErr(e.message || 'Failed to load'));
+  }, []);
+
+  async function handleKeep(groupIdx, keepId) {
+    const group = groups[groupIdx];
+    const discardIds = group.filter(i => i.id !== keepId).map(i => i.id);
+    setMerging({ groupIdx, keepId });
+    setErr('');
+    try {
+      for (const discard_id of discardIds) {
+        await api.post('/ingredients/merge', { keep_id: keepId, discard_id });
+      }
+      setGroups(g => g.filter((_, idx) => idx !== groupIdx));
+      onMerged();
+    } catch (e) {
+      setErr(e.message || 'Merge failed');
+    } finally {
+      setMerging(null);
+    }
+  }
+
+  const isMergingGroup = (idx) => merging?.groupIdx === idx;
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 640 }}>
+        <div className="modal-title">Find Duplicate Ingredients</div>
+
+        {groups === null && !err && (
+          <div style={{ color: 'var(--text-muted)', fontSize: 14, padding: '20px 0' }}>Scanning…</div>
+        )}
+        {err && <div className="error-msg" style={{ marginBottom: 16 }}>{err}</div>}
+
+        {groups !== null && groups.length === 0 && (
+          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No potential duplicates found.</p>
+        )}
+
+        {groups !== null && groups.length > 0 && (
+          <>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>
+              {groups.length} potential duplicate group{groups.length !== 1 ? 's' : ''} found.
+              Click <strong style={{ color: 'var(--text)' }}>Keep</strong> on the ingredient you want to keep — the others will be merged into it and removed.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {groups.map((group, idx) => (
+                <div key={idx} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {group.map(ingredient => (
+                      <div key={ingredient.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{ingredient.item_name}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                            {ingredient.recipe_count} recipe{ingredient.recipe_count !== 1 ? 's' : ''}
+                            {ingredient.purchase_from ? ` · ${ingredient.purchase_from}` : ''}
+                          </div>
+                        </div>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          disabled={isMergingGroup(idx)}
+                          onClick={() => handleKeep(idx, ingredient.id)}
+                        >
+                          {isMergingGroup(idx) && merging.keepId === ingredient.id ? 'Merging…' : 'Keep'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        <div className="modal-actions" style={{ marginTop: 20 }}>
+          <button className="btn btn-secondary" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Delete Confirm ────────────────────────────────────────
 function DeleteConfirm({ ingredient, onConfirm, onCancel }) {
   const [deleting, setDeleting] = useState(false);
@@ -276,6 +365,9 @@ export function IngredientsPage() {
           <div className="page-subtitle">{ingredients.length} ingredient{ingredients.length !== 1 ? 's' : ''}</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={() => setModal({ mode: 'duplicates' })}>
+            Find Duplicates
+          </button>
           <button className="btn btn-secondary" onClick={() => setModal({ mode: 'import' })}>
             ↑ Import
           </button>
@@ -378,6 +470,12 @@ export function IngredientsPage() {
           existingNames={existingNames}
           onImport={handleImport}
           onClose={() => { setModal(null); load(); }}
+        />
+      )}
+      {modal?.mode === 'duplicates' && (
+        <DuplicatesModal
+          onClose={() => setModal(null)}
+          onMerged={load}
         />
       )}
     </div>
