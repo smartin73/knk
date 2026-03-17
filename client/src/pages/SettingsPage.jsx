@@ -16,6 +16,7 @@ const SQUARE_FIELDS = [
 
 const SETTINGS_SCHEMA = [
   {
+    tab: 'integrations',
     category: 'Pushover',
     icon: '🔔',
     settings: [
@@ -24,6 +25,7 @@ const SETTINGS_SCHEMA = [
     ],
   },
   {
+    tab: 'integrations',
     category: 'Gemini',
     icon: '✨',
     settings: [
@@ -31,6 +33,7 @@ const SETTINGS_SCHEMA = [
     ],
   },
   {
+    tab: 'integrations',
     category: 'WordPress',
     icon: '🌐',
     settings: [
@@ -40,44 +43,45 @@ const SETTINGS_SCHEMA = [
       { key: 'woo_consumer_secret',       label: 'WooCommerce Consumer Secret', description: 'WooCommerce REST API consumer secret.', is_encrypted: true },
     ],
   },
-
-{
-  category: 'Cloudinary',
-  icon: '☁️',
-  settings: [
-    { key: 'cloudinary_cloud_name',    label: 'Cloud Name',    description: 'Your Cloudinary cloud name (found in the Cloudinary dashboard).', is_encrypted: false },
-    { key: 'cloudinary_upload_preset', label: 'Upload Preset', description: 'Unsigned upload preset name from Cloudinary Settings → Upload → Upload presets.', is_encrypted: false },
-  ],
-},
-{
-  category: 'Branding',
-  icon: '🎨',
-  settings: [
-    { key: 'logo_url', label: 'Admin Logo', description: 'Shown on the login page and admin sidebar. Recommended: 800×200px.', is_encrypted: false, type: 'image' },
-    { key: 'menu_logo_url', label: 'Menu Display Logo', description: 'Shown in the header of the public menu display pages. Recommended: 800×200px.', is_encrypted: false, type: 'image' },
-    { key: 'sold_out_image_url', label: 'Sold Out Image', description: 'Full-screen image shown on the menu display page when every item on the menu is sold out. Recommended: 1920×1080px landscape.', is_encrypted: false, type: 'image' },
-  ],
-},
-{
-  category: 'Event Menus',
-  icon: '🗒',
-  settings: [
-    { key: 'menu_refresh_interval', label: 'Display Refresh Interval (seconds)', description: 'How often the public menu display page auto-refreshes. Default: 30.', is_encrypted: false },
-  ],
-},
-
-{
-  category: 'Costing',
-  icon: '💰',
-  settings: [
-    { key: 'packaging_cost',         label: 'Packaging Cost ($)',       description: 'Default packaging cost per item (use your most expensive packaging).', is_encrypted: false },
-    { key: 'square_fee_rate',        label: 'In-Person Fee Rate',       description: 'Square in-person rate (e.g. 0.026 = 2.6%).', is_encrypted: false },
-    { key: 'square_fee_flat',        label: 'In-Person Flat Fee ($)',   description: 'Square in-person flat fee per transaction (e.g. 0.15).', is_encrypted: false },
-    { key: 'square_fee_online_rate', label: 'Online Fee Rate',          description: 'Square online rate (e.g. 0.033 = 3.3%).', is_encrypted: false },
-    { key: 'square_fee_online_flat', label: 'Online Flat Fee ($)',      description: 'Square online flat fee per transaction (e.g. 0.30).', is_encrypted: false },
-  ],
-},
-
+  {
+    tab: 'integrations',
+    category: 'Cloudinary',
+    icon: '☁️',
+    settings: [
+      { key: 'cloudinary_cloud_name',    label: 'Cloud Name',    description: 'Your Cloudinary cloud name (found in the Cloudinary dashboard).', is_encrypted: false },
+      { key: 'cloudinary_upload_preset', label: 'Upload Preset', description: 'Unsigned upload preset name from Cloudinary Settings → Upload → Upload presets.', is_encrypted: false },
+    ],
+  },
+  {
+    tab: 'app',
+    category: 'Branding',
+    icon: '🎨',
+    settings: [
+      { key: 'logo_url', label: 'Admin Logo', description: 'Shown on the login page and admin sidebar. Recommended: 800×200px.', is_encrypted: false, type: 'image' },
+      { key: 'menu_logo_url', label: 'Menu Display Logo', description: 'Shown in the header of the public menu display pages. Recommended: 800×200px.', is_encrypted: false, type: 'image' },
+      { key: 'sold_out_image_url', label: 'Sold Out Image', description: 'Full-screen image shown on the menu display page when every item on the menu is sold out. Recommended: 1920×1080px landscape.', is_encrypted: false, type: 'image' },
+    ],
+  },
+  {
+    tab: 'app',
+    category: 'Event Menus',
+    icon: '🗒',
+    settings: [
+      { key: 'menu_refresh_interval', label: 'Display Refresh Interval (seconds)', description: 'How often the public menu display page auto-refreshes. Default: 30.', is_encrypted: false },
+    ],
+  },
+  {
+    tab: 'app',
+    category: 'Costing',
+    icon: '💰',
+    settings: [
+      { key: 'packaging_cost',         label: 'Packaging Cost ($)',       description: 'Default packaging cost per item (use your most expensive packaging).', is_encrypted: false },
+      { key: 'square_fee_rate',        label: 'In-Person Fee Rate',       description: 'Square in-person rate (e.g. 0.026 = 2.6%).', is_encrypted: false },
+      { key: 'square_fee_flat',        label: 'In-Person Flat Fee ($)',   description: 'Square in-person flat fee per transaction (e.g. 0.15).', is_encrypted: false },
+      { key: 'square_fee_online_rate', label: 'Online Fee Rate',          description: 'Square online rate (e.g. 0.033 = 3.3%).', is_encrypted: false },
+      { key: 'square_fee_online_flat', label: 'Online Flat Fee ($)',      description: 'Square online flat fee per transaction (e.g. 0.30).', is_encrypted: false },
+    ],
+  },
 ];
 
 // ── Setting Row ───────────────────────────────────────────
@@ -277,9 +281,15 @@ function SquareSection({ settings, onSave }) {
 }
 
 // ── Settings Page ─────────────────────────────────────────
+const TABS = [
+  { key: 'integrations', label: 'Integrations' },
+  { key: 'app',          label: 'App Settings' },
+];
+
 export function SettingsPage() {
   const [settings, setSettings] = useState({});
   const [loading, setLoading]   = useState(true);
+  const [tab, setTab]           = useState('integrations');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -313,28 +323,62 @@ export function SettingsPage() {
       <div className="page-header">
         <div>
           <div className="page-title">⚙️ Settings</div>
-          <div className="page-subtitle">API keys and integrations</div>
         </div>
+      </div>
+
+      {/* Tab bar */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
+        {TABS.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
+            padding: '8px 18px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+            background: 'none', borderBottom: tab === t.key ? '2px solid var(--accent)' : '2px solid transparent',
+            color: tab === t.key ? 'var(--accent)' : 'var(--text-muted)',
+            marginBottom: -1, borderRadius: 0,
+          }}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {loading ? (
         <div className="loading">Loading…</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          <SquareSection settings={settings} onSave={handleSave} />
-          {SETTINGS_SCHEMA.map(group => (
-            <div key={group.category} className="card">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span style={{ fontSize: 18 }}>{group.icon}</span>
-                <div style={{ fontSize: 15, fontWeight: 700 }}>{group.category}</div>
-              </div>
-              <div>
-                {group.settings.map(def => (
-                  <SettingRow key={def.key} def={def} currentValue={settings[def.key]} onSave={handleSave} />
-                ))}
-              </div>
-            </div>
-          ))}
+          {tab === 'integrations' && (
+            <>
+              <SquareSection settings={settings} onSave={handleSave} />
+              {SETTINGS_SCHEMA.filter(g => g.tab === 'integrations').map(group => (
+                <div key={group.category} className="card">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 18 }}>{group.icon}</span>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>{group.category}</div>
+                  </div>
+                  <div>
+                    {group.settings.map(def => (
+                      <SettingRow key={def.key} def={def} currentValue={settings[def.key]} onSave={handleSave} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+          {tab === 'app' && (
+            <>
+              {SETTINGS_SCHEMA.filter(g => g.tab === 'app').map(group => (
+                <div key={group.category} className="card">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 18 }}>{group.icon}</span>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>{group.category}</div>
+                  </div>
+                  <div>
+                    {group.settings.map(def => (
+                      <SettingRow key={def.key} def={def} currentValue={settings[def.key]} onSave={handleSave} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>

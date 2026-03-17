@@ -445,7 +445,7 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 - [x] Repeating events — Repeat… RowMenu action; frequency (weekly/biweekly/monthly) + end date; live date preview; generates independent Draft events via POST /events/repeat
 - [ ] Event Menus Phase 2 live testing — waiting on next event
 - [x] Recipe version history (covered by Test module)
-- [ ] Notifications on Recipe Steps — when a step has `requires_notification = true`, trigger a Pushover notification during MakeView at the appropriate time
+- [x] Notifications on Recipe Steps — MakeView: steps with requires_notification=true show ⏱ Start button; countdown timer runs for step_time duration; fires POST /notifications/send (Pushover) when timer expires; shows ✓ Notified
 - [x] Menu Specials — is_special flag on event_menu_items; star toggle in admin; MenuSpecialsPage (/menu/:id/specials); /menu/specials auto-redirect; migration: add_menu_specials.sql (run as postgres superuser on DB server)
 - [x] Android TWA — bubblewrap APK; specials APK active (start_url=/menu/specials); Apache fix: `Alias /icons/ "/srv/www/knk/public/icons/"` in knk-le-ssl.conf overrides mod_alias default; icons in client/public/icons/; manifest.json in client/public/; known issue: both APKs can't coexist (same packageId) — fix by changing packageId + name in twa-manifest.json before building second APK
 - [x] Branding — admin logo (login + sidebar) via logo_url; menu display logo via menu_logo_url; sold-out full-screen image via sold_out_image_url; public endpoint GET /public/branding (no auth)
@@ -455,3 +455,6 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 - [ ] Inventory Phase 2: Baking Plan + Shopping List — date-range → events → aggregate menu items → deficit vs freezer → batches → ingredient grams → purchase units (needs unit_label/unit_grams on ingredient_items)
 - [ ] Kitchen Display System (KDS) — `kds_item` flag on item_builder; Square webhooks → SSE → full-screen `/kds` page; order cards with KDS line items + "Done" dismiss; display via Fully Kiosk Browser on Android tablet (no TWA needed)
 - [ ] Monthly Tax Filing (RI) — two AcroForm PDFs auto-filled monthly via pdf-lib + nodemailer + node-cron; STR (str.pdf, 54 fields) + MTM (mtm.pdf, 9 fields) stored in server/tax-forms/; data source TBD (Square API vs income_entries); settings needed: SMTP, EIN, RI account #, business info
+- [ ] Event Menus mobile editing — admin add/edit menu item flows not usable on small screens
+- [ ] Ingredients duplicate detection — fuzzy name match to surface potential dupes (e.g. "Confectioners Sugar" vs "Confectioners Sugar (for decorating)"); user reviews + manually merges (re-points recipe_ingredients rows, soft-deletes duplicate)
+- [ ] Settings screen cleanup — too many sections; reorganize/collapse to reduce visual bloat
