@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.jsx';
+
+const BASE = import.meta.env.VITE_API_URL || '/api';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -9,6 +11,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
+  const [logoUrl, setLogoUrl]   = useState(null);
+
+  useEffect(() => {
+    fetch(`${BASE}/public/branding`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.logo_url) setLogoUrl(d.logo_url); })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,8 +36,10 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-box">
-        <div className="login-logo">🔪</div>
-        <div className="login-title">Knife & Knead</div>
+        {logoUrl
+          ? <img src={logoUrl} alt="Knife & Knead" style={{ width: '100%', maxWidth: 320, height: 'auto', display: 'block', margin: '0 auto 16px', borderRadius: 6 }} />
+          : <><div className="login-logo">🔪</div><div className="login-title">Knife & Knead</div></>
+        }
         <div className="login-sub">Sign in to continue</div>
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="field">

@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate, NavLink, useNavigate, useLocati
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './hooks/useAuth.jsx';
 
+const BASE = import.meta.env.VITE_API_URL || '/api';
+
 import LoginPage        from './pages/LoginPage.jsx';
 import DashboardPage    from './pages/DashboardPage.jsx';
 import { DonationsPage } from './pages/DonationsPage.jsx';
@@ -63,7 +65,15 @@ function Layout() {
   const location = useLocation();
   const [showChangePw, setShowChangePw] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(null);
   const isAdmin = user?.role === 'admin';
+
+  useEffect(() => {
+    fetch(`${BASE}/public/branding`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.logo_url) setLogoUrl(d.logo_url); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => { setNavOpen(false); }, [location.pathname]);
 
@@ -89,8 +99,10 @@ function Layout() {
       {/* Mobile header */}
       <header className="mobile-header">
         <div className="sidebar-logo" style={{ padding: 0, border: 'none' }}>
-          <span>🔪</span>
-          <span>Knife & Knead</span>
+          {logoUrl
+            ? <img src={logoUrl} alt="Knife & Knead" style={{ height: 32, width: 'auto', display: 'block' }} />
+            : <><span>🔪</span><span>Knife & Knead</span></>
+          }
         </div>
         <button className="hamburger" onClick={() => setNavOpen(v => !v)} aria-label="Menu">☰</button>
       </header>
@@ -98,8 +110,10 @@ function Layout() {
       {/* Desktop sidebar */}
       <nav className="sidebar">
         <div className="sidebar-logo">
-          <span>🔪</span>
-          <span>Knife & Knead</span>
+          {logoUrl
+            ? <img src={logoUrl} alt="Knife & Knead" style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 4 }} />
+            : <><span>🔪</span><span>Knife & Knead</span></>
+          }
         </div>
         <NavLinks isAdmin={isAdmin} />
         {footer}
@@ -109,8 +123,10 @@ function Layout() {
       <div className={`nav-drawer-backdrop${navOpen ? ' open' : ''}`} onClick={() => setNavOpen(false)} />
       <nav className={`nav-drawer${navOpen ? ' open' : ''}`}>
         <div className="sidebar-logo">
-          <span>🔪</span>
-          <span>Knife & Knead</span>
+          {logoUrl
+            ? <img src={logoUrl} alt="Knife & Knead" style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 4 }} />
+            : <><span>🔪</span><span>Knife & Knead</span></>
+          }
         </div>
         <NavLinks isAdmin={isAdmin} onClick={() => setNavOpen(false)} />
         {footer}

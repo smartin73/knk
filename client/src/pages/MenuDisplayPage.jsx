@@ -151,6 +151,15 @@ export function MenuDisplayPage() {
     </div>
   );
 
+  const allSoldOut = menu.items && menu.items.length > 0 && menu.items.every(i => i.status === 'sold_out');
+  if (allSoldOut && menu.sold_out_image_url) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <img src={menu.sold_out_image_url} alt="Sold Out" style={{ width: '100%', height: '100vh', objectFit: 'contain' }} />
+      </div>
+    );
+  }
+
   const fmtDate = menu.event_date
     ? new Date(menu.event_date.split('T')[0] + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
     : null;

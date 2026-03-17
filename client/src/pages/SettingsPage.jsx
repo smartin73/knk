@@ -53,7 +53,8 @@ const SETTINGS_SCHEMA = [
   category: 'Branding',
   icon: '🎨',
   settings: [
-    { key: 'logo_url', label: 'Logo', description: 'Logo shown in the header of the public menu display page.', is_encrypted: false, type: 'image' },
+    { key: 'logo_url', label: 'Logo / Banner', description: 'Shown on the login page, admin sidebar, and public menu display pages. Recommended: 800×200px.', is_encrypted: false, type: 'image' },
+    { key: 'sold_out_image_url', label: 'Sold Out Image', description: 'Full-screen image shown on the menu display page when every item on the menu is sold out. Recommended: 1920×1080px landscape.', is_encrypted: false, type: 'image' },
   ],
 },
 {

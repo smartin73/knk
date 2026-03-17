@@ -444,7 +444,8 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 - [ ] Event Menus Phase 2 live testing — waiting on next event
 - [x] Recipe version history (covered by Test module)
 - [ ] Notifications on Recipe Steps — when a step has `requires_notification = true`, trigger a Pushover notification during MakeView at the appropriate time
-- [x] Menu Specials — is_special flag on event_menu_items; star toggle in admin; MenuSpecialsPage (/menu/:id/specials); /menu/specials auto-redirect; TWA plan: two APKs (one /menu, one /menu/specials); migration: add_menu_specials.sql (run as postgres superuser on DB server)
+- [x] Menu Specials — is_special flag on event_menu_items; star toggle in admin; MenuSpecialsPage (/menu/:id/specials); /menu/specials auto-redirect; migration: add_menu_specials.sql (run as postgres superuser on DB server)
+- [x] Android TWA — bubblewrap APK wrapping /menu (start_url) and /menu/specials (second APK); Apache fix required: `Alias /icons/ "/srv/www/knk/public/icons/"` in knk-le-ssl.conf to override mod_alias default; icons in client/public/icons/; manifest.json in client/public/
 - [ ] Event auto-push to WordPress — auto-push on create/save instead of manual button; "Posted to website" indicator driven by woo_id presence
 - [x] Item Builder Favorites — is_favorite boolean on item_builder; star toggle, filter button, sort to top in list; favorites sorted to top + star indicator in Menu Builder item picker
 - [x] Inventory Phase 1: Freezer Stock — freezer_qty on item_builder; inline +/– on ItemBuilder list; "Add to Freezer" button in MakeView pre-fills scaledYield, picks item from item_builder, calls PATCH /items/:id/freezer; migration: add_freezer_qty.sql

@@ -102,6 +102,21 @@ app.use('/webhooks',      webhooksRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/wordpress', wordpressRouter);
 
+// ── Public: branding settings (no auth) ──────────────────
+app.get('/public/branding', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT key, value FROM settings WHERE key IN ('logo_url', 'sold_out_image_url')`
+    );
+    const map = {};
+    rows.forEach(r => { map[r.key] = r.value || null; });
+    res.json({ logo_url: map.logo_url || null, sold_out_image_url: map.sold_out_image_url || null });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // ── Public: menu landing — today's menu or list ──────────
 app.get('/public/menus', async (req, res) => {
   try {
@@ -176,7 +191,7 @@ app.get('/public/menu/:id', async (req, res) => {
          WHERE emi.menu_id=$1 ORDER BY emi.sort_order, ib.item_name`,
         [req.params.id]
       ),
-      pool.query(`SELECT key, value FROM settings WHERE key IN ('menu_refresh_interval', 'logo_url')`),
+      pool.query(`SELECT key, value FROM settings WHERE key IN ('menu_refresh_interval', 'logo_url', 'sold_out_image_url')`),
     ]);
     if (!menuRes.rows[0]) return res.status(404).json({ error: 'Not found' });
 
@@ -191,7 +206,8 @@ app.get('/public/menu/:id', async (req, res) => {
     settingRes.rows.forEach(r => { settingsMap[r.key] = r.value; });
     const refresh_interval = parseInt(settingsMap.menu_refresh_interval || '30');
     const logo_url = settingsMap.logo_url || null;
-    res.json({ ...menuRes.rows[0], items, refresh_interval, logo_url });
+    const sold_out_image_url = settingsMap.sold_out_image_url || null;
+    res.json({ ...menuRes.rows[0], items, refresh_interval, logo_url, sold_out_image_url });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Server error' });
@@ -214,7 +230,7 @@ app.get('/public/menu/:id/specials', async (req, res) => {
          WHERE emi.menu_id=$1 AND emi.is_special=true ORDER BY emi.sort_order, ib.item_name`,
         [req.params.id]
       ),
-      pool.query(`SELECT key, value FROM settings WHERE key IN ('menu_refresh_interval', 'logo_url')`),
+      pool.query(`SELECT key, value FROM settings WHERE key IN ('menu_refresh_interval', 'logo_url', 'sold_out_image_url')`),
     ]);
     if (!menuRes.rows[0]) return res.status(404).json({ error: 'Not found' });
 
@@ -229,7 +245,8 @@ app.get('/public/menu/:id/specials', async (req, res) => {
     settingRes.rows.forEach(r => { settingsMap[r.key] = r.value; });
     const refresh_interval = parseInt(settingsMap.menu_refresh_interval || '30');
     const logo_url = settingsMap.logo_url || null;
-    res.json({ ...menuRes.rows[0], items, refresh_interval, logo_url });
+    const sold_out_image_url = settingsMap.sold_out_image_url || null;
+    res.json({ ...menuRes.rows[0], items, refresh_interval, logo_url, sold_out_image_url });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Server error' });
