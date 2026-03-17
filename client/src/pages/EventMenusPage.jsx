@@ -197,6 +197,84 @@ function ItemPickerModal({ menuId, existingIds, onAdd, onClose }) {
   );
 }
 
+// ── Edit Item Modal ───────────────────────────────────────
+function EditItemModal({ item, menuId, onSave, onClose }) {
+  const [form, setForm] = useState({
+    qty_initial:       item.qty_initial       ?? 0,
+    qty_on_hand:       item.qty_on_hand       ?? 0,
+    limited_threshold: item.limited_threshold ?? 3,
+    is_special:        item.is_special        ?? false,
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const qtySold = Math.max(0, form.qty_initial - form.qty_on_hand);
+
+  async function handleSubmit() {
+    setSaving(true); setErr('');
+    try {
+      const updated = await api.put(`/event-menus/${menuId}/items/${item.id}`, {
+        qty_on_hand:       form.qty_on_hand,
+        qty_initial:       form.qty_initial,
+        limited_threshold: form.limited_threshold,
+        sort_order:        item.sort_order,
+        is_special:        form.is_special,
+      });
+      onSave({ ...item, ...updated, qty_initial: form.qty_initial });
+    } catch (e) {
+      setErr(e.message || 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 380 }}>
+        <div className="modal-title">{item.item_name}</div>
+        <div className="form-grid">
+          <div className="field">
+            <label>Starting Qty</label>
+            <input autoFocus type="number" min="0" value={form.qty_initial}
+              onChange={e => set('qty_initial', parseInt(e.target.value) || 0)} />
+          </div>
+          <div className="field">
+            <label>On Hand</label>
+            <input type="number" min="0" value={form.qty_on_hand}
+              onChange={e => set('qty_on_hand', parseInt(e.target.value) || 0)} />
+          </div>
+          <div className="field">
+            <label>Limited At</label>
+            <input type="number" min="0" value={form.limited_threshold}
+              onChange={e => set('limited_threshold', parseInt(e.target.value) || 0)} />
+          </div>
+          <div className="field">
+            <label>Qty Sold</label>
+            <div style={{ padding: '8px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 14, color: qtySold > 0 ? 'var(--text)' : 'var(--text-muted)' }}>
+              {qtySold}
+            </div>
+          </div>
+          <div className="field full" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <input type="checkbox" id="is_special" checked={form.is_special}
+              onChange={e => set('is_special', e.target.checked)} style={{ width: 'auto' }} />
+            <label htmlFor="is_special" style={{ textTransform: 'none', fontSize: 13, color: 'var(--text)' }}>
+              ★ Mark as Special
+            </label>
+          </div>
+        </div>
+        {err && <div className="error-msg" style={{ marginTop: 8 }}>{err}</div>}
+        <div className="modal-actions" style={{ marginTop: 20 }}>
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Menu Detail ───────────────────────────────────────────
 function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
   const [menu, setMenu] = useState(null);
@@ -205,7 +283,6 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
   const [editing, setEditing] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [savingItem, setSavingItem] = useState(null);
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(() => {
@@ -228,6 +305,11 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
     setMenu(m => ({ ...m, items: [...(m.items || []), item] }));
   }
 
+  function handleItemSaved(updated) {
+    setMenu(m => ({ ...m, items: m.items.map(i => i.id === updated.id ? updated : i) }));
+    setEditingItem(null);
+  }
+
   async function handleRemoveItem(itemId) {
     await api.delete(`/event-menus/${menuId}/items/${itemId}`);
     setMenu(m => ({ ...m, items: m.items.filter(i => i.id !== itemId) }));
@@ -239,29 +321,13 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
     try {
       await api.put(`/event-menus/${menuId}/items/${item.id}`, {
         qty_on_hand:       item.qty_on_hand,
+        qty_initial:       item.qty_initial ?? 0,
         limited_threshold: item.limited_threshold,
         sort_order:        item.sort_order,
         is_special:        next,
       });
     } catch {
       setMenu(m => ({ ...m, items: m.items.map(i => i.id === item.id ? { ...i, is_special: item.is_special } : i) }));
-    }
-  }
-
-  async function saveItemEdit(item) {
-    setSavingItem(item.id);
-    try {
-      const current = menu.items.find(i => i.id === item.id);
-      const updated = await api.put(`/event-menus/${menuId}/items/${item.id}`, {
-        qty_on_hand:       item.qty_on_hand,
-        limited_threshold: item.limited_threshold,
-        sort_order:        item.sort_order,
-        is_special:        current?.is_special ?? false,
-      });
-      setMenu(m => ({ ...m, items: m.items.map(i => i.id === item.id ? { ...i, ...updated } : i) }));
-      setEditingItem(null);
-    } finally {
-      setSavingItem(null);
     }
   }
 
@@ -293,9 +359,9 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
             {menu.event_name && <div className="page-subtitle">{menu.event_name}</div>}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <button className="btn btn-secondary btn-sm" onClick={copyUrl}>
-            {copied ? '✓ Copied!' : '🔗 Copy Display URL'}
+            {copied ? '✓ Copied!' : '🔗 Copy URL'}
           </button>
           <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>Edit</button>
           <button className="btn btn-primary btn-sm" onClick={() => setShowPicker(true)}>+ Add Item</button>
@@ -310,82 +376,61 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
           </div>
         </div>
       ) : (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--surface2)' }}>
-                {['', 'Item', 'Price', 'Qty on Hand', 'Limited At', 'Status', 'Special', ''].map((h, i) => (
-                  <th key={i} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {menu.items.map((item, idx) => {
-                const status = computeStatus(item);
-                const style = STATUS_STYLES[status];
-                const isEditing = editingItem?.id === item.id;
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {menu.items.map(item => {
+            const status = computeStatus(item);
+            const style = STATUS_STYLES[status];
+            const qtySold = Math.max(0, (item.qty_initial ?? 0) - item.qty_on_hand);
+            const hasQtyData = (item.qty_initial ?? 0) > 0;
 
-                return (
-                  <tr key={item.id} style={{ borderTop: idx > 0 ? '1px solid var(--border)' : 'none' }}>
-                    <td style={{ padding: '10px 14px', width: 52 }}>
-                      {item.image_url
-                        ? <img src={item.image_url} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }} />
-                        : <div style={{ width: 40, height: 40, borderRadius: 6, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🧁</div>
-                      }
-                    </td>
-                    <td style={{ padding: '10px 14px', fontWeight: 600 }}>{item.item_name}</td>
-                    <td style={{ padding: '10px 14px', color: 'var(--text-muted)' }}>{fmtPrice(item.retail_price)}</td>
-                    <td style={{ padding: '10px 14px' }}>
-                      {isEditing
-                        ? <input type="number" min="0" value={editingItem.qty_on_hand}
-                            onChange={e => setEditingItem(ei => ({ ...ei, qty_on_hand: parseInt(e.target.value) || 0 }))}
-                            style={{ width: 70, padding: '4px 8px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: 13 }} />
-                        : item.qty_on_hand
-                      }
-                    </td>
-                    <td style={{ padding: '10px 14px' }}>
-                      {isEditing
-                        ? <input type="number" min="0" value={editingItem.limited_threshold}
-                            onChange={e => setEditingItem(ei => ({ ...ei, limited_threshold: parseInt(e.target.value) || 0 }))}
-                            style={{ width: 70, padding: '4px 8px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: 13 }} />
-                        : item.limited_threshold
-                      }
-                    </td>
-                    <td style={{ padding: '10px 14px' }}>
-                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 3, fontWeight: 600, background: `${style.color}22`, color: style.color }}>
-                        {style.label}
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                      <button
-                        onClick={() => handleToggleSpecial(item)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, lineHeight: 1, color: item.is_special ? '#f59e0b' : 'var(--text-muted)', padding: 2 }}
-                        title={item.is_special ? 'Remove from specials' : 'Mark as special'}
-                      >
-                        {item.is_special ? '★' : '☆'}
-                      </button>
-                    </td>
-                    <td style={{ padding: '10px 14px' }}>
-                      {isEditing ? (
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn btn-primary btn-sm" disabled={savingItem === item.id}
-                            onClick={() => saveItemEdit(editingItem)}>
-                            {savingItem === item.id ? '…' : 'Save'}
-                          </button>
-                          <button className="btn btn-secondary btn-sm" onClick={() => setEditingItem(null)}>Cancel</button>
-                        </div>
-                      ) : (
-                        <RowMenu actions={[
-                          { label: 'Edit Qty', onClick: () => setEditingItem({ id: item.id, qty_on_hand: item.qty_on_hand, limited_threshold: item.limited_threshold, sort_order: item.sort_order }) },
-                          { label: 'Remove', danger: true, onClick: () => handleRemoveItem(item.id) },
-                        ]} />
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+            return (
+              <div key={item.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                {/* Thumbnail */}
+                {item.image_url
+                  ? <img src={item.image_url} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                  : <div style={{ width: 48, height: 48, borderRadius: 8, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🧁</div>
+                }
+
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{item.item_name}</span>
+                    {item.is_special && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 700 }}>★ Special</span>}
+                    <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 3, fontWeight: 600, background: `${style.color}22`, color: style.color }}>
+                      {style.label}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    <span>{fmtPrice(item.retail_price)}</span>
+                    {hasQtyData ? (
+                      <>
+                        <span>Started: {item.qty_initial}</span>
+                        <span>On Hand: {item.qty_on_hand}</span>
+                        <span style={{ color: qtySold > 0 ? 'var(--accent)' : 'var(--text-muted)', fontWeight: qtySold > 0 ? 600 : 400 }}>Sold: {qtySold}</span>
+                      </>
+                    ) : (
+                      <span>On Hand: {item.qty_on_hand}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <button
+                    onClick={() => handleToggleSpecial(item)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1, color: item.is_special ? '#f59e0b' : 'var(--text-muted)', padding: 4 }}
+                    title={item.is_special ? 'Remove from specials' : 'Mark as special'}
+                  >
+                    {item.is_special ? '★' : '☆'}
+                  </button>
+                  <RowMenu actions={[
+                    { label: 'Edit', onClick: () => setEditingItem(item) },
+                    { label: 'Remove', danger: true, onClick: () => handleRemoveItem(item.id) },
+                  ]} />
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -400,6 +445,14 @@ function MenuDetail({ menuId, events, onBack, onMenuUpdated }) {
       )}
       {showPicker && (
         <ItemPickerModal menuId={menuId} existingIds={existingIds} onAdd={handleItemAdded} onClose={() => setShowPicker(false)} />
+      )}
+      {editingItem && (
+        <EditItemModal
+          item={editingItem}
+          menuId={menuId}
+          onSave={handleItemSaved}
+          onClose={() => setEditingItem(null)}
+        />
       )}
     </div>
   );

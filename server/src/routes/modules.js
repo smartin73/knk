@@ -432,9 +432,9 @@ eventMenusRouter.post('/:id/items', async (req, res) => {
     [req.params.id]
   );
   const { rows } = await query(
-    `INSERT INTO event_menu_items (menu_id,item_builder_id,sort_order,qty_on_hand,limited_threshold)
-     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-    [req.params.id, f.item_builder_id, parseInt(max)+1, f.qty_on_hand ?? 0, f.limited_threshold ?? 3]
+    `INSERT INTO event_menu_items (menu_id,item_builder_id,sort_order,qty_on_hand,qty_initial,limited_threshold)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+    [req.params.id, f.item_builder_id, parseInt(max)+1, f.qty_on_hand ?? 0, f.qty_initial ?? 0, f.limited_threshold ?? 3]
   );
   res.status(201).json(rows[0]);
 });
@@ -442,9 +442,9 @@ eventMenusRouter.post('/:id/items', async (req, res) => {
 eventMenusRouter.put('/:id/items/:itemId', async (req, res) => {
   const f = req.body;
   const { rows } = await query(
-    `UPDATE event_menu_items SET qty_on_hand=$1,limited_threshold=$2,sort_order=$3,is_special=$4
-     WHERE id=$5 AND menu_id=$6 RETURNING *`,
-    [f.qty_on_hand, f.limited_threshold, f.sort_order, f.is_special ?? false, req.params.itemId, req.params.id]
+    `UPDATE event_menu_items SET qty_on_hand=$1,qty_initial=$2,limited_threshold=$3,sort_order=$4,is_special=$5
+     WHERE id=$6 AND menu_id=$7 RETURNING *`,
+    [f.qty_on_hand, f.qty_initial ?? 0, f.limited_threshold, f.sort_order, f.is_special ?? false, req.params.itemId, req.params.id]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Not found' });
   res.json(rows[0]);
