@@ -503,12 +503,14 @@ export function EventsPage() {
   useEffect(() => { load(); }, [load]);
 
   async function handleSave(form) {
+    let saved;
     if (modal.event?.id) {
-      await api.put(`/events/${modal.event.id}`, form);
+      saved = await api.put(`/events/${modal.event.id}`, form);
     } else {
-      await api.post('/events', form);
+      saved = await api.post('/events', form);
     }
     setModal(null);
+    try { await api.post(`/wordpress/push/${saved.id}`, {}); } catch {}
     load();
   }
 

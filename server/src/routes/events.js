@@ -115,11 +115,11 @@ router.put('/:id', async (req, res) => {
   const { rows } = await query(
     `UPDATE events SET vendor_id=$1,event_name=$2,event_date=$3,start_time=$4,
       end_time=$5,location=$6,description=$7,image_url=$8,ticket_url=$9,
-      map_embed=$10,category=$11,tags=$12,price=$13,status=$14,posted_to_web=$15
-     WHERE id=$16 RETURNING *`,
+      map_embed=$10,category=$11,tags=$12,price=$13,status=$14
+     WHERE id=$15 RETURNING *`,
     [f.vendor_id || null,f.event_name,f.event_date,f.start_time,f.end_time,
      f.location,f.description,f.image_url,f.ticket_url,f.map_embed,
-     f.category,f.tags,f.price,f.status,f.posted_to_web,req.params.id]
+     f.category,f.tags,f.price,f.status,req.params.id]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Not found' });
   res.json(rows[0]);
