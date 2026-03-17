@@ -105,7 +105,6 @@ const EMPTY_FORM = {
   tags: '',
   price: '',
   status: 'draft',
-  posted_to_web: false,
 };
 
 // Import fields — vendor_name is a virtual field resolved to vendor_id on import
@@ -176,7 +175,7 @@ function EventDetail({ event, onEdit, onClose }) {
           <DetailRow label="Vendor" value={event.vendor_name} />
           <DetailRow label="Price" value={event.price ? `$${parseFloat(event.price).toFixed(2)}` : null} />
           <DetailRow label="Tags" value={event.tags} />
-          <DetailRow label="Posted to Web" value={event.posted_to_web ? 'Yes' : 'No'} />
+          <DetailRow label="Posted to Web" value={event.woo_id ? 'Yes' : 'No'} />
           {event.ticket_url && (
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>Ticket URL</div>
@@ -331,18 +330,6 @@ function EventForm({ initial, vendors, onSave, onCancel }) {
               placeholder="Paste Google Maps iframe embed code, or generate from location above…"
               style={{ minHeight: 70 }}
             />
-          </div>
-          <div className="field full" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <input
-              type="checkbox"
-              id="posted_to_web"
-              checked={!!form.posted_to_web}
-              onChange={e => set('posted_to_web', e.target.checked)}
-              style={{ width: 'auto' }}
-            />
-            <label htmlFor="posted_to_web" style={{ textTransform: 'none', fontSize: 13, color: 'var(--text)' }}>
-              Posted to website
-            </label>
           </div>
         </div>
 
@@ -725,7 +712,7 @@ export function EventsPage() {
                         {e.status}
                       </span>
                     </td>
-                    <td>{e.posted_to_web ? '✓' : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                    <td>{e.woo_id ? <span className="badge badge-green" style={{ fontSize: 11 }}>Posted</span> : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
                     <td>
                       <div className="actions">
                         <RowMenu actions={[
