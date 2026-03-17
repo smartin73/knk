@@ -128,7 +128,7 @@ app.get('/public/menus', async (req, res) => {
          WHERE em.is_active = true
          ORDER BY e.event_date ASC`
       ),
-      pool.query(`SELECT value FROM settings WHERE key='logo_url'`),
+      pool.query(`SELECT value FROM settings WHERE key='menu_logo_url'`),
     ]);
 
     const logo_url = settingRes.rows[0]?.value || null;
@@ -157,7 +157,7 @@ app.get('/public/menus/specials', async (req, res) => {
          WHERE em.is_active = true
          ORDER BY e.event_date ASC`
       ),
-      pool.query(`SELECT value FROM settings WHERE key='logo_url'`),
+      pool.query(`SELECT value FROM settings WHERE key='menu_logo_url'`),
     ]);
 
     const logo_url = settingRes.rows[0]?.value || null;
@@ -191,7 +191,7 @@ app.get('/public/menu/:id', async (req, res) => {
          WHERE emi.menu_id=$1 ORDER BY emi.sort_order, ib.item_name`,
         [req.params.id]
       ),
-      pool.query(`SELECT key, value FROM settings WHERE key IN ('menu_refresh_interval', 'logo_url', 'sold_out_image_url')`),
+      pool.query(`SELECT key, value FROM settings WHERE key IN ('menu_refresh_interval', 'menu_logo_url', 'sold_out_image_url')`),
     ]);
     if (!menuRes.rows[0]) return res.status(404).json({ error: 'Not found' });
 
@@ -205,7 +205,7 @@ app.get('/public/menu/:id', async (req, res) => {
     const settingsMap = {};
     settingRes.rows.forEach(r => { settingsMap[r.key] = r.value; });
     const refresh_interval = parseInt(settingsMap.menu_refresh_interval || '30');
-    const logo_url = settingsMap.logo_url || null;
+    const logo_url = settingsMap.menu_logo_url || null;
     const sold_out_image_url = settingsMap.sold_out_image_url || null;
     res.json({ ...menuRes.rows[0], items, refresh_interval, logo_url, sold_out_image_url });
   } catch (e) {
@@ -230,7 +230,7 @@ app.get('/public/menu/:id/specials', async (req, res) => {
          WHERE emi.menu_id=$1 AND emi.is_special=true ORDER BY emi.sort_order, ib.item_name`,
         [req.params.id]
       ),
-      pool.query(`SELECT key, value FROM settings WHERE key IN ('menu_refresh_interval', 'logo_url', 'sold_out_image_url')`),
+      pool.query(`SELECT key, value FROM settings WHERE key IN ('menu_refresh_interval', 'menu_logo_url', 'sold_out_image_url')`),
     ]);
     if (!menuRes.rows[0]) return res.status(404).json({ error: 'Not found' });
 
@@ -244,7 +244,7 @@ app.get('/public/menu/:id/specials', async (req, res) => {
     const settingsMap = {};
     settingRes.rows.forEach(r => { settingsMap[r.key] = r.value; });
     const refresh_interval = parseInt(settingsMap.menu_refresh_interval || '30');
-    const logo_url = settingsMap.logo_url || null;
+    const logo_url = settingsMap.menu_logo_url || null;
     const sold_out_image_url = settingsMap.sold_out_image_url || null;
     res.json({ ...menuRes.rows[0], items, refresh_interval, logo_url, sold_out_image_url });
   } catch (e) {
