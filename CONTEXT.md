@@ -118,7 +118,7 @@ app.use('/square',        squareRouter);
 app.use('/webhooks',      webhooksRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/wordpress',     wordpressRouter);
-// Public (no auth): GET /public/menus, GET /public/menu/:id
+// Public (no auth): GET /public/branding, GET /public/menus, GET /public/menu/:id
 // React routes: /menu → MenuLandingPage, /menu/specials → MenuLandingPage (specials mode) → /menu/:id/specials
 //               /menu/:id → MenuDisplayPage, /menu/:id/specials → MenuSpecialsPage
 ```
@@ -370,7 +370,8 @@ created_at    timestamptz
 updated_at    timestamptz
 ```
 Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url`, `wordpress_api_key`,
-`woo_consumer_key`, `woo_consumer_secret`, `cloudinary_*`, `logo_url`, `menu_refresh_interval`, `packaging_cost`, `square_fee_*`
+`woo_consumer_key`, `woo_consumer_secret`, `cloudinary_*`, `logo_url`, `menu_logo_url`, `sold_out_image_url`,
+`menu_refresh_interval`, `packaging_cost`, `square_fee_*`
 
 ---
 
@@ -413,8 +414,9 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 | Vendors | ✅ Full CRUD + CSV import |
 | Ingredients | ✅ Full CRUD + price history + CSV import |
 | Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage + MakeView + test logging |
-| Settings | ✅ Square, Pushover, WordPress + WooCommerce, Costing, Cloudinary, Branding, Event Menus |
+| Settings | ✅ Square, Pushover, WordPress + WooCommerce, Costing, Cloudinary, Branding (admin logo, menu display logo, sold-out image), Event Menus |
 | ItemBuilder | ✅ Full CRUD + components + costing + variants + Push to Square + Push to WooCommerce + Favorites (star toggle, filter, sort to top, integrated in Menu Builder picker) + Freezer stock (inline +/– in list; "Add to Freezer" from MakeView) + image display in detail modal |
+| Branding | ✅ Admin logo (login + sidebar), Menu Display logo (public menu header), Sold-Out image (full-screen when all items sold out on a menu); all via Cloudinary image upload in Settings → Branding |
 | Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (Phase 2) + Menu Specials (is_special flag, star toggle in admin, MenuSpecialsPage at /menu/:id/specials, auto-redirect at /menu/specials) |
 | Donations | ✅ Full CRUD + CSV export (item-based, linked to events + item builder) |
 | Users | ✅ Admin/member roles + user management + change password |
@@ -445,7 +447,8 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 - [x] Recipe version history (covered by Test module)
 - [ ] Notifications on Recipe Steps — when a step has `requires_notification = true`, trigger a Pushover notification during MakeView at the appropriate time
 - [x] Menu Specials — is_special flag on event_menu_items; star toggle in admin; MenuSpecialsPage (/menu/:id/specials); /menu/specials auto-redirect; migration: add_menu_specials.sql (run as postgres superuser on DB server)
-- [x] Android TWA — bubblewrap APK wrapping /menu (start_url) and /menu/specials (second APK); Apache fix required: `Alias /icons/ "/srv/www/knk/public/icons/"` in knk-le-ssl.conf to override mod_alias default; icons in client/public/icons/; manifest.json in client/public/
+- [x] Android TWA — bubblewrap APK; specials APK active (start_url=/menu/specials); Apache fix: `Alias /icons/ "/srv/www/knk/public/icons/"` in knk-le-ssl.conf overrides mod_alias default; icons in client/public/icons/; manifest.json in client/public/; known issue: both APKs can't coexist (same packageId) — fix by changing packageId + name in twa-manifest.json before building second APK
+- [x] Branding — admin logo (login + sidebar) via logo_url; menu display logo via menu_logo_url; sold-out full-screen image via sold_out_image_url; public endpoint GET /public/branding (no auth)
 - [ ] Event auto-push to WordPress — auto-push on create/save instead of manual button; "Posted to website" indicator driven by woo_id presence
 - [x] Item Builder Favorites — is_favorite boolean on item_builder; star toggle, filter button, sort to top in list; favorites sorted to top + star indicator in Menu Builder item picker
 - [x] Inventory Phase 1: Freezer Stock — freezer_qty on item_builder; inline +/– on ItemBuilder list; "Add to Freezer" button in MakeView pre-fills scaledYield, picks item from item_builder, calls PATCH /items/:id/freezer; migration: add_freezer_qty.sql
