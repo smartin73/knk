@@ -129,12 +129,74 @@ export function ChangePasswordModal({ onClose }) {
   );
 }
 
+// ── Reset Password Modal (admin) ──────────────────────────
+function ResetPasswordModal({ user, onClose }) {
+  const [form, setForm] = useState({ new_password: '', confirm: '' });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+  const [done, setDone] = useState(false);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  async function handleSubmit() {
+    if (!form.new_password) return setErr('Password is required.');
+    if (form.new_password.length < 6) return setErr('Password must be at least 6 characters.');
+    if (form.new_password !== form.confirm) return setErr('Passwords do not match.');
+    setErr(''); setSaving(true);
+    try {
+      await api.put(`/users/${user.id}/password`, { new_password: form.new_password });
+      setDone(true);
+    } catch (e) {
+      setErr(e.message || 'Reset failed.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 380 }}>
+        <div className="modal-title">Reset Password — {user.username}</div>
+        {done ? (
+          <>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Password reset successfully.</p>
+            <div className="modal-actions">
+              <button className="btn btn-primary" onClick={onClose}>Done</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="form-grid">
+              <div className="field full">
+                <label>New Password</label>
+                <input autoFocus type="password" value={form.new_password} onChange={e => set('new_password', e.target.value)} />
+              </div>
+              <div className="field full">
+                <label>Confirm Password</label>
+                <input type="password" value={form.confirm} onChange={e => set('confirm', e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSubmit()} />
+              </div>
+            </div>
+            {err && <div className="error-msg" style={{ marginTop: 8 }}>{err}</div>}
+            <div className="modal-actions" style={{ marginTop: 20 }}>
+              <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
+                {saving ? 'Resetting…' : 'Reset Password'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Users Page ────────────────────────────────────────────
 export function UsersPage() {
   const { user: currentUser } = useAuth();
   const [users, setUsers]   = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal]   = useState(null); // 'create' | 'password'
+  const [modal, setModal]   = useState(null); // 'create' | 'password' | { mode: 'reset', user }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -236,6 +298,7 @@ export function UsersPage() {
                             ...(u.role === 'member' ? [{ label: 'Make Admin', onClick: () => handleSetRole(u, 'admin') }] : []),
                             ...(u.role === 'admin' && !isSelf ? [{ label: 'Make Member', onClick: () => handleSetRole(u, 'member') }] : []),
                             { label: u.is_active ? 'Deactivate' : 'Activate', onClick: () => handleToggleActive(u) },
+                            ...(!isSelf ? [{ label: 'Reset Password', onClick: () => setModal({ mode: 'reset', user: u }) }] : []),
                             ...(!isSelf ? [{ label: 'Delete', onClick: () => handleDelete(u), danger: true }] : []),
                           ]} />
                         </div>
@@ -249,8 +312,9 @@ export function UsersPage() {
         )}
       </div>
 
-      {modal === 'create'   && <CreateUserModal onSave={handleCreate} onCancel={() => setModal(null)} />}
-      {modal === 'password' && <ChangePasswordModal onClose={() => setModal(null)} />}
+      {modal === 'create'                && <CreateUserModal onSave={handleCreate} onCancel={() => setModal(null)} />}
+      {modal === 'password'              && <ChangePasswordModal onClose={() => setModal(null)} />}
+      {modal?.mode === 'reset'           && <ResetPasswordModal user={modal.user} onClose={() => setModal(null)} />}
     </div>
   );
 }

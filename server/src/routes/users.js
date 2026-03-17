@@ -63,6 +63,25 @@ router.post('/', requireAdmin, async (req, res) => {
   }
 });
 
+// PUT /users/:id/password — reset another user's password (admin only)
+router.put('/:id/password', requireAdmin, async (req, res) => {
+  try {
+    const { new_password } = req.body;
+    if (!new_password || new_password.length < 6)
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    const hash = await bcrypt.hash(new_password, 12);
+    const { rows } = await query(
+      'UPDATE users SET password_hash=$1, updated_at=now() WHERE id=$2 RETURNING id',
+      [hash, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'User not found' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // PUT /users/:id — update role or active status (admin only, cannot demote self)
 router.put('/:id', requireAdmin, async (req, res) => {
   try {
