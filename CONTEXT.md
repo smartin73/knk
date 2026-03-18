@@ -429,13 +429,12 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 | WordPress/WooCommerce | ✅ Push events → WP plugin (RowMenu: "Push to Web" / "Sync to Web" / "Unlink from Web"); Push items → WooCommerce REST API; simple + variable products with variants |
 | Mobile Nav | ✅ Hamburger + slide-out drawer, auto-closes on route change |
 | Monthly Tax Filing | ✅ RI STR (Form RI-STR) + MTM (Form MTM) AcroForm PDFs filled via pdf-lib; signature image embedded; auto-send via node-cron on 1st of month at 9am; manual send + preview at `/tax`; Schedule A Providence row filled on MTM page 2; tax settings in Settings → Tax Filing |
+| Event Menus Mobile | ✅ Admin add/edit flows fixed for small screens |
+| Android TWA | ✅ Dual APK fix applied — specials APK uses distinct packageId `com.knifeandknead.specials` |
 
 ---
 
 ## Pending Work
 
-- [ ] Event Menus mobile editing — admin add/edit menu item flows not usable on small screens
 - [ ] Inventory Phase 2: Baking Plan + Shopping List — date-range → events → aggregate menu items → deficit vs freezer → batches → ingredient grams → purchase units (needs unit_label/unit_grams on ingredient_items)
 - [ ] Kitchen Display System (KDS) — `kds_item` flag on item_builder; Square webhooks → SSE → full-screen `/kds` page; order cards with KDS line items + "Done" dismiss; display via Fully Kiosk Browser on Android tablet (no TWA needed)
-- [ ] Android TWA dual APK fix (low priority) — both APKs share `packageId`; fix by changing `packageId` to `com.knifeandknead.specials` and `name` to "KNK Specials" in twa-manifest.json before building specials APK
-- [ ] WordPress storefront (long-term) — replace WooCommerce with ItemBuilder-driven storefront plugin; deferred
