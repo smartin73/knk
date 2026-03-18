@@ -474,8 +474,12 @@ function MakeView({ recipe, onClose }) {
         <AddToFreezerModal
           recipe={{ ...recipe, _multiplier: multiplier }}
           suggestedQty={scaledYield}
-          onClose={(saved) => { setShowFreezer(false); if (saved) api.get(`/recipes/${recipe.id}/makes`).then(setMakes).catch(() => {}); }}
+          onClose={(saved) => {
+            setShowFreezer(false);
+            if (saved) api.get(`/recipes/${recipe.id}/makes`).then(setMakes).catch(console.error);
+          }}
         />
+      )}
     </div>
   );
 }
