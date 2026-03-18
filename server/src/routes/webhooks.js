@@ -83,7 +83,9 @@ router.post('/square', async (req, res) => {
         `UPDATE event_menu_items
          SET qty_on_hand = GREATEST(0, qty_on_hand - $1)
          WHERE item_builder_id IN (
-           SELECT id FROM item_builder WHERE square_variation_id = $2
+           SELECT id FROM item_builder WHERE square_id = $2
+           UNION
+           SELECT item_builder_id FROM item_variants WHERE square_id = $2
          )
          AND menu_id IN (
            SELECT id FROM event_menus WHERE is_active = true

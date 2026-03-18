@@ -125,6 +125,91 @@ router.put('/:id', async (req, res) => {
   res.json(rows[0]);
 });
 
+// GET /events/:id/close-preview — what Close Event will do
+router.get('/:id/close-preview', async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT emi.item_builder_id, emi.qty_initial, emi.qty_on_hand, ib.item_name, ib.retail_price
+       FROM event_menu_items emi
+       JOIN event_menus em ON emi.menu_id = em.id
+       JOIN item_builder ib ON emi.item_builder_id = ib.id
+       WHERE em.event_id = $1 AND emi.item_builder_id IS NOT NULL`,
+      [req.params.id]
+    );
+    // Aggregate by item_builder_id (item may appear in multiple menus)
+    const byItem = {};
+    for (const r of rows) {
+      if (!byItem[r.item_builder_id]) {
+        byItem[r.item_builder_id] = { item_builder_id: r.item_builder_id, item_name: r.item_name, retail_price: r.retail_price, qty_initial: 0, qty_on_hand: 0 };
+      }
+      byItem[r.item_builder_id].qty_initial  += parseInt(r.qty_initial  || 0);
+      byItem[r.item_builder_id].qty_on_hand  += parseInt(r.qty_on_hand  || 0);
+    }
+    const items = Object.values(byItem).map(r => ({
+      ...r,
+      qty_sold:     Math.max(0, r.qty_initial - r.qty_on_hand),
+      qty_leftover: r.qty_on_hand,
+    }));
+    res.json({ items });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /events/:id/close — deduct sold from freezer, create donations for leftovers, mark completed
+router.post('/:id/close', async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const { rows } = await query(
+      `SELECT emi.item_builder_id, emi.qty_initial, emi.qty_on_hand, ib.item_name, ib.retail_price
+       FROM event_menu_items emi
+       JOIN event_menus em ON emi.menu_id = em.id
+       JOIN item_builder ib ON emi.item_builder_id = ib.id
+       WHERE em.event_id = $1 AND emi.item_builder_id IS NOT NULL`,
+      [eventId]
+    );
+
+    // Aggregate by item_builder_id
+    const byItem = {};
+    for (const r of rows) {
+      if (!byItem[r.item_builder_id]) {
+        byItem[r.item_builder_id] = { item_builder_id: r.item_builder_id, retail_price: r.retail_price, qty_initial: 0, qty_on_hand: 0 };
+      }
+      byItem[r.item_builder_id].qty_initial += parseInt(r.qty_initial || 0);
+      byItem[r.item_builder_id].qty_on_hand += parseInt(r.qty_on_hand || 0);
+    }
+
+    let freezer_updates = 0, donations_created = 0;
+    for (const item of Object.values(byItem)) {
+      const sold     = Math.max(0, item.qty_initial - item.qty_on_hand);
+      const leftover = item.qty_on_hand;
+
+      if (sold > 0) {
+        await query(
+          `UPDATE item_builder SET freezer_qty = GREATEST(0, freezer_qty - $1) WHERE id = $2`,
+          [sold, item.item_builder_id]
+        );
+        freezer_updates++;
+      }
+      if (leftover > 0) {
+        await query(
+          `INSERT INTO donations (event_id, item_builder_id, quantity, unit_value, donated_at)
+           VALUES ($1, $2, $3, $4, CURRENT_DATE)`,
+          [eventId, item.item_builder_id, leftover, item.retail_price || 0]
+        );
+        donations_created++;
+      }
+    }
+
+    await query(`UPDATE events SET status = 'completed' WHERE id = $1`, [eventId]);
+    res.json({ ok: true, freezer_updates, donations_created });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // DELETE /events/:id
 router.delete('/:id', async (req, res) => {
   try {

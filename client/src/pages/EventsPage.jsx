@@ -4,6 +4,88 @@ import { ImportModal } from './ImportModal.jsx';
 import { RowMenu } from '../components/RowMenu.jsx';
 import { ImageUpload } from '../components/ImageUpload.jsx';
 
+function CloseEventModal({ event, onClose, onClosed }) {
+  const [preview, setPreview] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [closing, setClosing] = useState(false);
+  const [err, setErr]         = useState('');
+
+  useEffect(() => {
+    api.get(`/events/${event.id}/close-preview`)
+      .then(setPreview)
+      .catch(e => setErr(e.message || 'Failed to load preview'))
+      .finally(() => setLoading(false));
+  }, [event.id]);
+
+  async function handleConfirm() {
+    setClosing(true); setErr('');
+    try {
+      await api.post(`/events/${event.id}/close`, {});
+      onClosed();
+    } catch (e) {
+      setErr(e.message || 'Close failed');
+      setClosing(false);
+    }
+  }
+
+  const hasSomething = preview?.items?.some(r => r.qty_sold > 0 || r.qty_leftover > 0);
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 540 }}>
+        <div className="modal-title">Close Event — {event.event_name}</div>
+
+        {loading ? (
+          <div className="loading">Loading…</div>
+        ) : err ? (
+          <div className="error-msg">{err}</div>
+        ) : (
+          <>
+            {!hasSomething ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No menu items with quantity data found. Event will be marked as completed.</p>
+            ) : (
+              <>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+                  Sold quantities will be deducted from freezer stock. Leftovers will be logged as donations.
+                </p>
+                <div className="table-wrap" style={{ marginBottom: 16 }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th style={{ textAlign: 'right' }}>Brought</th>
+                        <th style={{ textAlign: 'right' }}>Sold</th>
+                        <th style={{ textAlign: 'right' }}>Leftover → Donation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preview.items.map(r => (
+                        <tr key={r.item_builder_id}>
+                          <td style={{ fontWeight: 600 }}>{r.item_name}</td>
+                          <td style={{ textAlign: 'right' }}>{r.qty_initial}</td>
+                          <td style={{ textAlign: 'right', color: r.qty_sold > 0 ? 'var(--accent)' : 'var(--text-muted)' }}>{r.qty_sold}</td>
+                          <td style={{ textAlign: 'right', color: r.qty_leftover > 0 ? 'var(--accent2)' : 'var(--text-muted)' }}>{r.qty_leftover}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+            {err && <div className="error-msg" style={{ marginBottom: 12 }}>{err}</div>}
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleConfirm} disabled={closing}>
+                {closing ? 'Closing…' : 'Confirm & Close Event'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function LogSalesModal({ event, onClose }) {
   const [amount, setAmount] = useState('');
   const [source, setSource] = useState('square');
@@ -721,7 +803,8 @@ export function EventsPage() {
                           { label: 'Edit',      onClick: () => setModal({ mode: 'edit', event: e }) },
                           { label: 'Duplicate', onClick: () => handleDuplicate(e) },
                           { label: 'Repeat…',   onClick: () => handleRepeat(e) },
-                          { label: 'Log Sales', onClick: () => setModal({ mode: 'log-sales', event: e }) },
+                          { label: 'Log Sales',    onClick: () => setModal({ mode: 'log-sales', event: e }) },
+                          ...(!['completed','cancelled'].includes(e.status) ? [{ label: 'Close Event', onClick: () => setModal({ mode: 'close-event', event: e }) }] : []),
                           e.woo_id
                             ? { label: 'Sync to Web',   onClick: () => handleWpPush(e) }
                             : { label: 'Push to Web',   onClick: () => handleWpPush(e) },
@@ -769,6 +852,13 @@ export function EventsPage() {
       )}
       {modal?.mode === 'log-sales' && (
         <LogSalesModal event={modal.event} onClose={() => setModal(null)} />
+      )}
+      {modal?.mode === 'close-event' && (
+        <CloseEventModal
+          event={modal.event}
+          onClose={() => setModal(null)}
+          onClosed={() => { setModal(null); load(); }}
+        />
       )}
       {modal?.mode === 'import' && (
         <ImportModal
