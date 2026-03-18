@@ -45,28 +45,51 @@ function setField(form, name, value) {
   try { form.getTextField(name).setText(String(value)); } catch {}
 }
 
+function splitAmt(amount) {
+  const [dollars, cents = '00'] = amount.toFixed(2).split('.');
+  return { dollars, cents };
+}
+
+function parseCityStateZip(str) {
+  const m = str?.match(/^(.*),\s*([A-Z]{2})\s+(\d[\d-]*)$/);
+  if (m) return { city: m[1].trim(), state: m[2], zip: m[3] };
+  return { city: str || '', state: '', zip: '' };
+}
+
 async function buildSTR(grossSales, month, settings) {
   const pdfBytes = await readFile(path.join(FORMS_DIR, 'str.pdf'));
   const pdfDoc  = await PDFDocument.load(pdfBytes);
   const form    = pdfDoc.getForm();
 
+  const P  = 'topmostSubform[0].Page1[0].';
+  const sf = (name, val) => setField(form, P + name, val);
+
   const [year, mon] = month.split('-');
   const last = new Date(year, parseInt(mon, 10), 0);
   const periodEnd = `${String(last.getMonth() + 1).padStart(2, '0')}/${String(last.getDate()).padStart(2, '0')}/${last.getFullYear()}`;
-  const amt = grossSales.toFixed(2);
+  const today = new Date().toLocaleDateString('en-US');
+  const { city, state, zip } = parseCityStateZip(settings.tax_city_state_zip);
+  const { dollars: gDol, cents: gCent } = splitAmt(grossSales);
 
-  setField(form, 'GrossSales[0]',        amt);
-  setField(form, 'GrossSales-00',         amt);
-  setField(form, 'Exempt[0]',             amt);
-  setField(form, 'Exempt-00',             amt);
-  setField(form, 'TotalDeductions[0]',    amt);
-  setField(form, 'TotalDeductions-00',    amt);
-  setField(form, 'TaxableSales[0]',       '0.00');
-  setField(form, 'TaxableSales-00',       '0.00');
-  setField(form, 'Due[0]',               '0.00');
-  setField(form, 'Due-00',               '0.00');
-  setField(form, 'PeriodEnd[0]',          periodEnd);
-  setField(form, 'AccountID[0]',          settings.tax_ri_account || '');
+  sf('Name[0]',              settings.tax_business_name || '');
+  sf('Address1[0]',          settings.tax_address || '');
+  sf('City[0]',              city);
+  sf('State[0]',             state);
+  sf('ZipCode[0]',           zip);
+  sf('AccountID[0]',         settings.tax_ri_account || '');
+  sf('PeriodEnd[0]',         periodEnd);
+  sf('Date[0]',              today);
+
+  sf('GrossSales[0]',        gDol);
+  sf('GrossSales-00[0]',     gCent);
+  sf('Exempt[0]',            gDol);
+  sf('Exempt-00[0]',         gCent);
+  sf('TotalDeductions[0]',   gDol);
+  sf('TotalDeductions-00[0]', gCent);
+  sf('TaxableSales[0]',      '0');
+  sf('TaxableSales-00[0]',   '00');
+  sf('Due[0]',               '0');
+  sf('Due-00[0]',            '00');
 
   try { form.flatten(); } catch {}
   return pdfDoc.save();
@@ -77,21 +100,24 @@ async function buildMTM(grossSales, month, settings) {
   const pdfDoc  = await PDFDocument.load(pdfBytes);
   const form    = pdfDoc.getForm();
 
+  const P  = 'topmostSubform[0].Page1[0].';
+  const sf = (name, val) => setField(form, P + name, val);
+
   const [year, mon] = month.split('-');
   const monthName = new Date(year, parseInt(mon, 10) - 1, 1)
     .toLocaleString('en-US', { month: 'long' });
   const period = `${monthName} ${year}`;
   const today  = new Date().toLocaleDateString('en-US');
 
-  setField(form, 'Name[0]',           settings.tax_business_name || '');
-  setField(form, 'Address[0]',        settings.tax_address || '');
-  setField(form, 'CityStateZIP[0]',   settings.tax_city_state_zip || '');
-  setField(form, 'FedID[0]',          settings.tax_ein || '');
-  setField(form, 'Period[0]',         period);
-  setField(form, 'AmountDue[0]',      '0');
-  setField(form, 'AmountDueCents[0]', '00');
-  setField(form, 'Title[0]',          settings.tax_owner_title || 'Owner');
-  setField(form, 'SignatureDate[0]',  today);
+  sf('Name[0]',           settings.tax_business_name || '');
+  sf('Address[0]',        settings.tax_address || '');
+  sf('CityStateZIP[0]',   settings.tax_city_state_zip || '');
+  sf('FedID[0]',          settings.tax_ein || '');
+  sf('Period[0]',         period);
+  sf('AmountDue[0]',      '0');
+  sf('AmountDueCents[0]', '00');
+  sf('Title[0]',          settings.tax_owner_title || 'Owner');
+  sf('SignatureDate[0]',  today);
 
   try { form.flatten(); } catch {}
   return pdfDoc.save();
