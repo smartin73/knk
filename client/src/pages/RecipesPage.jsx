@@ -10,7 +10,6 @@ const EMPTY_FORM = {
   recipe_name: '', recipe_type: '', stage: 'production', description: '',
   serving_size: '', prep_time: '', cook_time: '', image_url: '',
   ingredient_label: '', contains_label: '', square_id: '', woo_id: '', notes: '',
-  item_builder_id: '',
 };
 const EMPTY_ING  = { ingredient_id: '', ingredient: '', amount: '', measurement: '' };
 const EMPTY_STEP = { step_number: 1, step_type: 'regular', step_description: '', step_time: '',
@@ -97,26 +96,11 @@ function fmtCountdown(ms) {
 
 // ── Make View ─────────────────────────────────────────────
 function AddToFreezerModal({ recipe, suggestedQty, onClose }) {
-  const [items, setItems]   = useState([]);
-  const [search, setSearch] = useState('');
-  const [itemId, setItemId] = useState(recipe.item_builder_id || '');
   const [qty, setQty]       = useState(String(Math.round(suggestedQty)));
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState('');
 
-  const hasLinkedItem = !!recipe.item_builder_id;
-
-  useEffect(() => {
-    if (!hasLinkedItem) api.get('/items').then(setItems).catch(() => {});
-  }, [hasLinkedItem]);
-
-  const filtered = items.filter(i => !search || i.item_name.toLowerCase().includes(search.toLowerCase()));
-  const linkedItemName = hasLinkedItem
-    ? (items.find(i => i.id === recipe.item_builder_id)?.item_name || recipe.item_name || 'Linked item')
-    : null;
-
   async function handleSave() {
-    if (!itemId) return setErr('Select an item.');
     const n = parseFloat(qty);
     if (!n || n <= 0) return setErr('Enter a quantity > 0.');
     setSaving(true); setErr('');
@@ -124,7 +108,6 @@ function AddToFreezerModal({ recipe, suggestedQty, onClose }) {
       await api.post(`/recipes/${recipe.id}/make`, {
         multiplier: recipe._multiplier || 1,
         yield_qty: n,
-        item_builder_id: itemId,
         made_at: new Date().toISOString().slice(0, 10),
       });
       onClose(true);
@@ -137,42 +120,14 @@ function AddToFreezerModal({ recipe, suggestedQty, onClose }) {
 
   return (
     <div className="modal-backdrop" style={{ zIndex: 300 }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 420 }}>
+      <div className="modal" style={{ maxWidth: 360 }}>
         <div className="modal-title">Add to Freezer</div>
         <div className="form-grid">
-          {hasLinkedItem ? (
-            <div className="field full">
-              <label>Item</label>
-              <div style={{ padding: '8px 10px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 14, color: 'var(--text)' }}>
-                {linkedItemName}
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="field full">
-                <label>Search Item</label>
-                <input autoFocus placeholder="Filter items…" value={search} onChange={e => setSearch(e.target.value)} />
-              </div>
-              <div className="field full">
-                <label>Item</label>
-                <select value={itemId} onChange={e => setItemId(e.target.value)}
-                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', color: 'var(--text)', fontSize: 14, width: '100%' }}>
-                  <option value="">— Select item —</option>
-                  {filtered.map(i => <option key={i.id} value={i.id}>{i.item_name}</option>)}
-                </select>
-              </div>
-            </>
-          )}
-          <div className="field">
+          <div className="field full">
             <label>Qty to Add</label>
-            <input autoFocus={hasLinkedItem} type="number" min="0.5" step="0.5" value={qty} onChange={e => setQty(e.target.value)} />
+            <input autoFocus type="number" min="0.5" step="0.5" value={qty} onChange={e => setQty(e.target.value)} />
           </div>
         </div>
-        {!hasLinkedItem && (
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-            Tip: Link this recipe to an item in the recipe's edit form to skip this step next time.
-          </div>
-        )}
         {err && <div className="error-msg" style={{ marginTop: 8 }}>{err}</div>}
         <div className="modal-actions">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -445,7 +400,7 @@ function MakeView({ recipe, onClose }) {
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
                   <tr>
-                    {['Date','Batch','Qty','Item'].map(h => (
+                    {['Date','Batch','Qty'].map(h => (
                       <th key={h} style={{ textAlign:'left', fontSize:11, color:'var(--text-muted)', fontWeight:600, padding:'3px 8px 6px 0', textTransform:'uppercase' }}>{h}</th>
                     ))}
                   </tr>
@@ -455,8 +410,7 @@ function MakeView({ recipe, onClose }) {
                     <tr key={m.id} style={{ borderBottom:'1px solid var(--border)' }}>
                       <td style={{ padding:'5px 8px 5px 0', fontSize:13 }}>{m.made_at}</td>
                       <td style={{ padding:'5px 8px 5px 0', fontSize:13, color:'var(--text-muted)', fontFamily:'monospace' }}>{m.multiplier}x</td>
-                      <td style={{ padding:'5px 8px 5px 0', fontSize:13, color:'var(--accent2)', fontFamily:'monospace', fontWeight:600 }}>{m.yield_qty ?? '—'}</td>
-                      <td style={{ padding:'5px 0', fontSize:13, color:'var(--text-muted)' }}>{m.item_name || '—'}</td>
+                      <td style={{ padding:'5px 0', fontSize:13, color:'var(--accent2)', fontFamily:'monospace', fontWeight:600 }}>{m.yield_qty ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -599,14 +553,11 @@ function RecipeForm({ initial, allIngredients: initialAllIngredients, onSave, on
   const [ingredients, setIngredients] = useState(initial?.ingredients || []);
   const [steps, setSteps]             = useState(initial?.steps || []);
   const [allIngredients, setAllIngredients] = useState(initialAllIngredients || []);
-  const [allItems, setAllItems]       = useState([]);
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState('');
   const [quickAdd, setQuickAdd] = useState(false);
   const [tab, setTab]       = useState('details');
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  useEffect(() => { api.get('/items').then(setAllItems).catch(() => {}); }, []);
 
   function addIngredient() { setIngredients(i => [...i, { ...EMPTY_ING, sort_order: i.length }]); }
   function setIng(idx, k, v) {
@@ -688,14 +639,6 @@ function RecipeForm({ initial, allIngredients: initialAllIngredients, onSave, on
                 <div className="field"><label>Contains Label</label><input value={form.contains_label||''} onChange={e=>set('contains_label',e.target.value)} placeholder="e.g. Wheat, Eggs, Dairy" /></div>
                 <div className="field full"><label>Image</label><ImageUpload value={form.image_url||''} onChange={v=>set('image_url',v)} /></div>
                 <div className="field"><label>Square ID</label><input value={form.square_id||''} onChange={e=>set('square_id',e.target.value)} /></div>
-                <div className="field full">
-                  <label>Links to Item</label>
-                  <select value={form.item_builder_id||''} onChange={e=>set('item_builder_id',e.target.value)}
-                    style={{ background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:4, padding:'5px 8px', color:'var(--text)', fontSize:13, width:'100%' }}>
-                    <option value="">— None —</option>
-                    {allItems.map(i=><option key={i.id} value={i.id}>{i.item_name}</option>)}
-                  </select>
-                </div>
               </div>
             )}
             {tab==='ingredients' && (

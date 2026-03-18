@@ -292,12 +292,12 @@ router.post('/', async (req, res) => {
   const { rows } = await query(
     `INSERT INTO recipes (recipe_name,recipe_type,description,serving_size,
       prep_time,cook_time,image_url,ingredient_label,
-      contains_label,square_id,woo_id,notes,stage,item_builder_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+      contains_label,square_id,woo_id,notes,stage)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
     [f.recipe_name,f.recipe_type,f.description,f.serving_size,
      f.prep_time,f.cook_time,f.image_url,
      f.ingredient_label,f.contains_label,f.square_id,f.woo_id,f.notes,
-     f.stage || 'production', f.item_builder_id || null]
+     f.stage || 'production']
   );
   res.status(201).json(rows[0]);
 });
@@ -309,12 +309,12 @@ router.put('/:id', async (req, res) => {
     `UPDATE recipes SET recipe_name=$1,recipe_type=$2,description=$3,
       serving_size=$4,prep_time=$5,cook_time=$6,
       image_url=$7,ingredient_label=$8,contains_label=$9,
-      square_id=$10,woo_id=$11,notes=$12,is_active=$13,stage=$14,item_builder_id=$15
-     WHERE id=$16 RETURNING *`,
+      square_id=$10,woo_id=$11,notes=$12,is_active=$13,stage=$14
+     WHERE id=$15 RETURNING *`,
     [f.recipe_name,f.recipe_type,f.description,f.serving_size,
      f.prep_time,f.cook_time,f.image_url,
      f.ingredient_label,f.contains_label,f.square_id,f.woo_id,
-     f.notes,f.is_active,f.stage, f.item_builder_id || null, req.params.id]
+     f.notes,f.is_active,f.stage,req.params.id]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Not found' });
   res.json(rows[0]);
@@ -337,43 +337,23 @@ router.delete('/:id', async (req, res) => {
 // GET /recipes/:id/makes — make history
 router.get('/:id/makes', async (req, res) => {
   const { rows } = await query(
-    `SELECT rm.*, ib.item_name
-     FROM recipe_makes rm
-     LEFT JOIN item_builder ib ON rm.item_builder_id = ib.id
-     WHERE rm.recipe_id = $1
-     ORDER BY rm.made_at DESC, rm.created_at DESC`,
+    `SELECT * FROM recipe_makes WHERE recipe_id = $1 ORDER BY made_at DESC, created_at DESC`,
     [req.params.id]
   );
   res.json(rows);
 });
 
-// POST /recipes/:id/make — record a make + increment freezer
+// POST /recipes/:id/make — record a make
 router.post('/:id/make', async (req, res) => {
   try {
-    const { multiplier, yield_qty, item_builder_id, notes, made_at } = req.body;
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const { rows: [make] } = await client.query(
-        `INSERT INTO recipe_makes (recipe_id, multiplier, yield_qty, item_builder_id, notes, made_at)
-         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-        [req.params.id, multiplier || 1, yield_qty || null, item_builder_id || null,
-         notes || null, made_at || new Date().toISOString().slice(0, 10)]
-      );
-      if (item_builder_id && yield_qty) {
-        await client.query(
-          `UPDATE item_builder SET freezer_qty = COALESCE(freezer_qty,0) + $1 WHERE id = $2`,
-          [yield_qty, item_builder_id]
-        );
-      }
-      await client.query('COMMIT');
-      res.status(201).json(make);
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
+    const { multiplier, yield_qty, notes, made_at } = req.body;
+    const { rows: [make] } = await query(
+      `INSERT INTO recipe_makes (recipe_id, multiplier, yield_qty, notes, made_at)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [req.params.id, multiplier || 1, yield_qty || null, notes || null,
+       made_at || new Date().toISOString().slice(0, 10)]
+    );
+    res.status(201).json(make);
   } catch (e) {
     console.error('Make recipe error:', e);
     res.status(500).json({ error: e.message });
