@@ -311,7 +311,8 @@ updated_at  timestamptz
 id               uuid  PK  DEFAULT gen_random_uuid()
 menu_id          uuid  FK → event_menus.id  ON DELETE CASCADE
 item_builder_id  uuid  FK → item_builder.id
-qty_on_hand      integer  DEFAULT 0
+qty_initial      integer  DEFAULT 0   ← starting stock brought to event (fixed)
+qty_on_hand      integer  DEFAULT 0   ← counts down via Square webhook as items sell
 limited_threshold integer  DEFAULT 0
 sort_order       integer  DEFAULT 0
 is_special       boolean  DEFAULT false   ← migration: add_menu_specials.sql
@@ -415,14 +416,14 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 
 | Module | Status |
 |--------|--------|
-| Events | ✅ Full CRUD + CSV import + Repeat + Push to Web / Sync to Web / Unlink from Web (WordPress Simple Events plugin); "Generate from Location" button auto-fills map embed |
+| Events | ✅ Full CRUD + CSV import + Repeat + Push to Web / Sync to Web / Unlink from Web (WordPress Simple Events plugin); "Generate from Location" button auto-fills map embed; **Close Event** (RowMenu) — deducts sold qty from freezer, auto-creates donation records for leftovers, marks event completed |
 | Vendors | ✅ Full CRUD + CSV import |
 | Ingredients | ✅ Full CRUD + price history + CSV import |
 | Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage + MakeView + test logging |
 | Settings | ✅ Square, Pushover, WordPress + WooCommerce, Costing, Cloudinary, Branding (admin logo, menu display logo, sold-out image), Event Menus |
 | ItemBuilder | ✅ Full CRUD + components + costing + variants + Push to Square + Push to WooCommerce + Favorites (star toggle, filter, sort to top, integrated in Menu Builder picker) + Freezer stock (inline +/– in list; "Add to Freezer" from MakeView) + image display in detail modal |
 | Branding | ✅ Admin logo (login + sidebar), Menu Display logo (public menu header), Sold-Out image (full-screen when all items sold out on a menu); all via Cloudinary image upload in Settings → Branding |
-| Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (Phase 2) + Menu Specials (is_special flag, star toggle in admin, MenuSpecialsPage at /menu/:id/specials, auto-redirect at /menu/specials) |
+| Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (Phase 2, fixed: uses square_id + item_variants lookup) + Menu Specials (is_special flag, star toggle in admin, MenuSpecialsPage at /menu/:id/specials, auto-redirect at /menu/specials); admin shows Started / On Hand / Sold per item |
 | Donations | ✅ Full CRUD + CSV export (item-based, linked to events + item builder) |
 | Users | ✅ Admin/member roles + user management + change password |
 | Income/Expenses | ✅ Income + Expenses CRUD + CSV export (donations auto-included) + Log Sales action on Events |
@@ -438,3 +439,10 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 
 - [ ] Inventory Phase 2: Baking Plan + Shopping List — date-range → events → aggregate menu items → deficit vs freezer → batches → ingredient grams → purchase units (needs unit_label/unit_grams on ingredient_items)
 - [ ] Kitchen Display System (KDS) — `kds_item` flag on item_builder; Square webhooks → SSE → full-screen `/kds` page; order cards with KDS line items + "Done" dismiss; display via Fully Kiosk Browser on Android tablet (no TWA needed)
+
+## Inventory Loop (how it all connects)
+1. Bake → add to freezer (Item Builder inline +/– or MakeView "Add to Freezer")
+2. Build event menu → set qty_initial (how many you're bringing)
+3. At event → Square webhook decrements qty_on_hand as sales come in
+4. After event → Log Sales (revenue), then Close Event (deducts sold from freezer, creates donation records for leftovers, marks event completed)
+5. Inventory Planner (Phase 2) → date range → events → deficit vs freezer → baking plan + shopping list

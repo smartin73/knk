@@ -18,19 +18,20 @@ router.get('/baking-plan', async (req, res) => {
       [start, end]
     );
 
-    // Aggregate qty_on_hand per item across all menus in range
+    // Aggregate qty_initial per item across all menus in range
     const { rows: itemRows } = await query(
       `SELECT
          ib.id,
          ib.item_name,
-         COALESCE(ib.batch_qty, 1)    AS batch_qty,
-         COALESCE(ib.freezer_qty, 0)  AS freezer_qty,
-         SUM(emi.qty_on_hand)::int    AS total_qty_needed
+         COALESCE(ib.batch_qty, 1)     AS batch_qty,
+         COALESCE(ib.freezer_qty, 0)   AS freezer_qty,
+         SUM(emi.qty_initial)::int     AS total_qty_needed
        FROM event_menu_items emi
        JOIN event_menus em ON emi.menu_id = em.id
        JOIN events e       ON em.event_id = e.id
        JOIN item_builder ib ON emi.item_builder_id = ib.id
        WHERE e.event_date BETWEEN $1 AND $2
+         AND e.status != 'cancelled'
          AND emi.item_builder_id IS NOT NULL
        GROUP BY ib.id, ib.item_name, ib.batch_qty, ib.freezer_qty`,
       [start, end]
