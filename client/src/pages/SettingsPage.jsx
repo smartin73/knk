@@ -81,6 +81,7 @@ const SETTINGS_SCHEMA = [
       { key: 'tax_ein',            label: 'Federal EIN',          description: 'Employer Identification Number (e.g. 12-3456789).', is_encrypted: true },
       { key: 'tax_ri_account',     label: 'RI Account Number',    description: 'Rhode Island Division of Taxation account number.', is_encrypted: false },
       { key: 'tax_owner_title',    label: 'Owner / Title',        description: 'Name and title for signature line (e.g. Jane Smith, Owner).', is_encrypted: false },
+      { key: 'tax_signature_url', label: 'Signature Image URL',  description: 'Upload your signature via the image upload button, then paste the URL here. PNG with transparent background works best.', is_encrypted: false },
       { key: 'smtp_host',          label: 'SMTP Host',            description: 'Outgoing mail server (e.g. smtp.gmail.com).', is_encrypted: false },
       { key: 'smtp_port',          label: 'SMTP Port',            description: '587 for TLS, 465 for SSL, 25 for plain.', is_encrypted: false },
       { key: 'smtp_user',          label: 'SMTP Username',        description: 'Email account username / address.', is_encrypted: false },

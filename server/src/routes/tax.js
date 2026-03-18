@@ -20,7 +20,7 @@ async function getSettings() {
     `SELECT key, value FROM settings WHERE key IN (
       'smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_to',
       'tax_business_name','tax_address','tax_city_state_zip',
-      'tax_ein','tax_ri_account','tax_owner_title'
+      'tax_ein','tax_ri_account','tax_owner_title','tax_signature_url'
     )`
   );
   const map = {};
@@ -48,6 +48,32 @@ function setField(form, name, value) {
 function splitAmt(amount) {
   const [dollars, cents = '00'] = amount.toFixed(2).split('.');
   return { dollars, cents };
+}
+
+async function loadSignatureImage(url) {
+  if (!url) return null;
+  try {
+    let bytes;
+    if (url.startsWith('/uploads/')) {
+      bytes = await readFile(path.join(__dirname, '..', '..', 'uploads', path.basename(url)));
+    } else {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      bytes = Buffer.from(await res.arrayBuffer());
+    }
+    return bytes;
+  } catch { return null; }
+}
+
+async function embedSignature(pdfDoc, page, sigBytes, x, y, maxW, maxH) {
+  if (!sigBytes) return;
+  let img;
+  try { img = await pdfDoc.embedPng(sigBytes); } catch {
+    try { img = await pdfDoc.embedJpg(sigBytes); } catch { return; }
+  }
+  const { width: iw, height: ih } = img.size();
+  const scale = Math.min(maxW / iw, maxH / ih, 1);
+  page.drawImage(img, { x, y, width: iw * scale, height: ih * scale });
 }
 
 function parseCityStateZip(str) {
@@ -91,6 +117,10 @@ async function buildSTR(grossSales, month, settings) {
   sf('Due[0]',               '0');
   sf('Due-00[0]',            '00');
 
+  // Signature image — placed above the AuthorizedName field (y=131)
+  const sigBytes = await loadSignatureImage(settings.tax_signature_url);
+  await embedSignature(pdfDoc, pdfDoc.getPages()[0], sigBytes, 36, 148, 150, 38);
+
   return pdfDoc.save();
 }
 
@@ -117,6 +147,10 @@ async function buildMTM(grossSales, month, settings) {
   sf('AmountDueCents[0]', '00');
   sf('Title[0]',          settings.tax_owner_title || 'Owner');
   sf('SignatureDate[0]',  today);
+
+  // Signature image — placed above the Title/SignatureDate fields (y=573)
+  const sigBytes = await loadSignatureImage(settings.tax_signature_url);
+  await embedSignature(pdfDoc, pdfDoc.getPages()[0], sigBytes, 21, 590, 200, 45);
 
   return pdfDoc.save();
 }
