@@ -79,7 +79,6 @@ const SETTINGS_SCHEMA = [
       { key: 'tax_address',        label: 'Street Address',       description: 'Business street address.', is_encrypted: false },
       { key: 'tax_city_state_zip', label: 'City, State, ZIP',     description: 'e.g. Providence, RI 02903', is_encrypted: false },
       { key: 'tax_ein',            label: 'Federal EIN',          description: 'Employer Identification Number (e.g. 12-3456789).', is_encrypted: true },
-      { key: 'tax_ri_account',     label: 'RI Account Number',    description: 'Rhode Island Division of Taxation account number.', is_encrypted: false },
       { key: 'tax_owner_name',     label: 'Authorized Officer Name', description: 'Full name of the authorized officer signing the forms (e.g. Jane Smith).', is_encrypted: false },
       { key: 'tax_owner_title',    label: 'Authorized Officer Title', description: 'Job title of the authorized officer (e.g. Owner, Partner).', is_encrypted: false },
       { key: 'tax_owner_phone',    label: 'Authorized Officer Phone', description: 'Phone number for the authorized officer (STR form).', is_encrypted: false },

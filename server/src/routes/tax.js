@@ -20,7 +20,7 @@ async function getSettings() {
     `SELECT key, value FROM settings WHERE key IN (
       'smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_to',
       'tax_business_name','tax_address','tax_city_state_zip',
-      'tax_ein','tax_ri_account','tax_owner_name','tax_owner_title','tax_owner_phone','tax_signature_url'
+      'tax_ein','tax_owner_name','tax_owner_title','tax_owner_phone','tax_signature_url'
     )`
   );
   const map = {};
@@ -112,7 +112,8 @@ async function buildSTR(grossSales, month, settings) {
   sf('City[0]',              city);
   sf('State[0]',             state);
   sf('ZipCode[0]',           zip);
-  sf('AccountID[0]',         settings.tax_ri_account || '');
+  sf('AccountID[0]',         settings.tax_ein || '');
+  sf('EmailAddress[0]',      settings.smtp_from || '');
   sf('PeriodEnd[0]',         periodEnd);
   sf('Date[0]',              today);
   sf('AuthorizedName[0]',    settings.tax_owner_name || '');
@@ -129,9 +130,9 @@ async function buildSTR(grossSales, month, settings) {
   sf('Due[0]',               '0');
   sf('Due-00[0]',            '00');
 
-  // Signature image — authorized officer cell: x=36–194, y=131, h=12 (matches field row height)
+  // Signature image — authorized officer row at y=131; drop 6pts to sit on the line, height=20
   const sigBytes = await loadSignatureImage(settings.tax_signature_url);
-  await embedSignature(pdfDoc, pdfDoc.getPages()[0], sigBytes, 36, 131, 155, 12);
+  await embedSignature(pdfDoc, pdfDoc.getPages()[0], sigBytes, 36, 125, 155, 20);
 
   return pdfDoc.save();
 }
