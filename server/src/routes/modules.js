@@ -88,9 +88,9 @@ ingredientsRouter.get('/:id', async (req, res) => {
 ingredientsRouter.post('/', async (req, res) => {
   const f = req.body;
   const { rows } = await query(
-    `INSERT INTO ingredient_items (item_name,purchase_from,grams,current_price)
-     VALUES ($1,$2,$3,$4) RETURNING *`,
-    [f.item_name, f.purchase_from, f.grams, f.current_price]
+    `INSERT INTO ingredient_items (item_name,purchase_from,grams,current_price,unit_label)
+     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+    [f.item_name, f.purchase_from, f.grams, f.current_price, f.unit_label || null]
   );
   if (f.current_price) {
     await query('INSERT INTO ingredient_price_history (ingredient_id,price) VALUES ($1,$2)',
@@ -101,9 +101,9 @@ ingredientsRouter.post('/', async (req, res) => {
 ingredientsRouter.put('/:id', async (req, res) => {
   const f = req.body;
   const { rows } = await query(
-    `UPDATE ingredient_items SET item_name=$1,purchase_from=$2,grams=$3,current_price=$4
-     WHERE id=$5 RETURNING *`,
-    [f.item_name, f.purchase_from, f.grams, f.current_price, req.params.id]
+    `UPDATE ingredient_items SET item_name=$1,purchase_from=$2,grams=$3,current_price=$4,unit_label=$5
+     WHERE id=$6 RETURNING *`,
+    [f.item_name, f.purchase_from, f.grams, f.current_price, f.unit_label || null, req.params.id]
   );
   if (f.current_price) {
     await query('INSERT INTO ingredient_price_history (ingredient_id,price) VALUES ($1,$2)',

@@ -29,6 +29,7 @@ import webhooksRouter from './routes/webhooks.js';
 import notificationsRouter from './routes/notifications.js';
 import wordpressRouter from './routes/wordpress.js';
 import taxRouter, { sendTaxForms } from './routes/tax.js';
+import inventoryRouter from './routes/inventory.js';
 import cron from 'node-cron';
 
 
@@ -104,6 +105,7 @@ app.use('/webhooks',      webhooksRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/wordpress', wordpressRouter);
 app.use('/tax',       taxRouter);
+app.use('/inventory', inventoryRouter);
 
 // ── Public: branding settings (no auth) ──────────────────
 app.get('/public/branding', async (req, res) => {

@@ -8,6 +8,7 @@ const EMPTY_FORM = {
   purchase_from: '',
   grams: '',
   current_price: '',
+  unit_label: '',
 };
 
 // Import field definitions for Ingredients
@@ -57,6 +58,7 @@ function IngredientDetail({ ingredient, onEdit, onClose }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 24px', marginBottom: 24 }}>
           <DetailRow label="Purchase From" value={ingredient.purchase_from} />
           <DetailRow label="Package Size" value={ingredient.grams ? `${ingredient.grams}g` : null} />
+          <DetailRow label="Unit Label" value={ingredient.unit_label} />
           <DetailRow label="Current Price" value={fmtCurrency(ingredient.current_price)} />
           <DetailRow label="Cost Per Gram" value={ingredient.cost_per_gram ? `$${fmt4(ingredient.cost_per_gram)}` : null} />
         </div>
@@ -158,6 +160,10 @@ function IngredientForm({ initial, onSave, onCancel }) {
           <div className="field">
             <label>Current Price ($)</label>
             <input type="number" step="0.01" value={form.current_price || ''} onChange={e => set('current_price', e.target.value)} placeholder="0.00" />
+          </div>
+          <div className="field full">
+            <label>Unit Label</label>
+            <input value={form.unit_label || ''} onChange={e => set('unit_label', e.target.value)} placeholder="e.g. 5lb bag, 1 gallon jug" />
           </div>
           {costPerGram && (
             <div className="field full">
@@ -402,6 +408,7 @@ export function IngredientsPage() {
                   <th>Item</th>
                   <th>Purchase From</th>
                   <th>Package Size</th>
+                  <th>Unit Label</th>
                   <th>Price</th>
                   <th>Cost/gram</th>
                   <th></th>
@@ -420,6 +427,7 @@ export function IngredientsPage() {
                     </td>
                     <td style={{ color: 'var(--text-muted)' }}>{i.purchase_from || '—'}</td>
                     <td style={{ color: 'var(--text-muted)' }}>{i.grams ? `${i.grams}g` : '—'}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{i.unit_label || '—'}</td>
                     <td>{fmtCurrency(i.current_price)}</td>
                     <td style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 12 }}>
                       {i.cost_per_gram ? `$${fmt4(i.cost_per_gram)}` : '—'}
