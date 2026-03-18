@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import nodemailer from 'nodemailer';
 import { query } from '../db/pool.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
@@ -42,7 +42,17 @@ async function getGrossSales(month) {
 }
 
 function setField(form, name, value) {
-  try { form.getTextField(name).setText(String(value)); } catch {}
+  try {
+    const field = form.getTextField(name);
+    let str = String(value);
+    const max = field.getMaxLength();
+    if (max !== undefined && str.length > max) str = str.slice(0, max);
+    field.setText(str);
+  } catch {}
+}
+
+function digitsOnly(str) {
+  return (str || '').replace(/\D/g, '');
 }
 
 function splitAmt(amount) {
@@ -106,7 +116,7 @@ async function buildSTR(grossSales, month, settings) {
   sf('PeriodEnd[0]',         periodEnd);
   sf('Date[0]',              today);
   sf('AuthorizedName[0]',    settings.tax_owner_name || '');
-  sf('PhoneNumber[0]',       settings.tax_owner_phone || '');
+  sf('PhoneNumber[0]',       digitsOnly(settings.tax_owner_phone));
 
   sf('GrossSales[0]',        gDol);
   sf('GrossSales-00[0]',     gCent);
@@ -119,9 +129,9 @@ async function buildSTR(grossSales, month, settings) {
   sf('Due[0]',               '0');
   sf('Due-00[0]',            '00');
 
-  // Signature image — sits in the authorized officer signature box (left of AuthorizedName at x=194, y=131)
+  // Signature image — authorized officer cell: x=36–194, y=131, h=12 (matches field row height)
   const sigBytes = await loadSignatureImage(settings.tax_signature_url);
-  await embedSignature(pdfDoc, pdfDoc.getPages()[0], sigBytes, 36, 131, 155, 28);
+  await embedSignature(pdfDoc, pdfDoc.getPages()[0], sigBytes, 36, 131, 155, 12);
 
   return pdfDoc.save();
 }
@@ -150,9 +160,16 @@ async function buildMTM(grossSales, month, settings) {
   sf('Title[0]',          settings.tax_owner_title || 'Owner');
   sf('SignatureDate[0]',  today);
 
-  // Signature image — sits above the Title/SignatureDate fields (y=573.5); image bottom at y=586
+  // Signature image — sits above the Title/SignatureDate fields (y=573.5); image bottom at y=592
   const sigBytes = await loadSignatureImage(settings.tax_signature_url);
-  await embedSignature(pdfDoc, pdfDoc.getPages()[0], sigBytes, 21, 586, 175, 25);
+  await embedSignature(pdfDoc, pdfDoc.getPages()[0], sigBytes, 21, 592, 175, 18);
+
+  // Page 2 Schedule A — fill Providence row (city 28) with the total amount
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const { dollars: aDol, cents: aCent } = splitAmt(0); // always 0 (baked goods exempt)
+  const page2 = pdfDoc.getPages()[1];
+  page2.drawText(aDol,  { x: 565, y: 720, size: 8, font, color: rgb(0, 0, 0) });
+  page2.drawText(aCent, { x: 582, y: 720, size: 8, font, color: rgb(0, 0, 0) });
 
   return pdfDoc.save();
 }
