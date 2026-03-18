@@ -64,6 +64,7 @@ server/src/
     ├── notifications.js
     ├── users.js
     ├── webhooks.js
+    ├── tax.js            (RI STR + MTM AcroForm PDFs; pdf-lib fill + nodemailer send; node-cron auto-send 1st of month at 9am)
     └── modules.js        (ingredients, itemBuilder, eventMenus, donations, vendors)
 
 client/src/
@@ -88,7 +89,8 @@ client/src/
     ├── EventMenusPage.jsx
     ├── MenuDisplayPage.jsx
     ├── MenuLandingPage.jsx   (handles both /menu and /menu/specials; specials prop → redirects to /menu/:id/specials)
-    └── MenuSpecialsPage.jsx  (specials-only display for second tablet TWA)
+    ├── MenuSpecialsPage.jsx  (specials-only display for second tablet TWA)
+    └── TaxPage.jsx           (month picker, preview STR+MTM PDFs, download, manual send)
 ```
 
 ---
@@ -118,6 +120,7 @@ app.use('/square',        squareRouter);
 app.use('/webhooks',      webhooksRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/wordpress',     wordpressRouter);
+app.use('/tax',           taxRouter);
 // Public (no auth): GET /public/branding, GET /public/menus, GET /public/menu/:id
 // React routes: /menu → MenuLandingPage, /menu/specials → MenuLandingPage (specials mode) → /menu/:id/specials
 //               /menu/:id → MenuDisplayPage, /menu/:id/specials → MenuSpecialsPage
@@ -371,7 +374,9 @@ updated_at    timestamptz
 ```
 Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url`, `wordpress_api_key`,
 `woo_consumer_key`, `woo_consumer_secret`, `cloudinary_*`, `logo_url`, `menu_logo_url`, `sold_out_image_url`,
-`menu_refresh_interval`, `packaging_cost`, `square_fee_*`
+`menu_refresh_interval`, `packaging_cost`, `square_fee_*`,
+`tax_business_name`, `tax_address`, `tax_city_state_zip`, `tax_ein`, `tax_owner_name`, `tax_owner_title`, `tax_owner_phone`, `tax_signature_url`,
+`smtp_host`, `smtp_port`, `smtp_user`, `smtp_pass`, `smtp_from`, `smtp_to`
 
 ---
 
@@ -423,40 +428,14 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 | Income/Expenses | ✅ Income + Expenses CRUD + CSV export (donations auto-included) + Log Sales action on Events |
 | WordPress/WooCommerce | ✅ Push events → WP plugin (RowMenu: "Push to Web" / "Sync to Web" / "Unlink from Web"); Push items → WooCommerce REST API; simple + variable products with variants |
 | Mobile Nav | ✅ Hamburger + slide-out drawer, auto-closes on route change |
+| Monthly Tax Filing | ✅ RI STR (Form RI-STR) + MTM (Form MTM) AcroForm PDFs filled via pdf-lib; signature image embedded; auto-send via node-cron on 1st of month at 9am; manual send + preview at `/tax`; Schedule A Providence row filled on MTM page 2; tax settings in Settings → Tax Filing |
 
 ---
 
 ## Pending Work
 
-- [x] Recipe detail/edit: fetch full recipe (with steps) before opening edit form
-- [x] ItemBuilder CSV import
-- [x] Actions overflow menu (hamburger) when 3+ actions
-- [x] Event Menus module (Phase 1 + Phase 2 webhook)
-- [x] Square production credentials
-- [x] Pushover notifications
-- [x] Recipe test logging
-- [x] Cloudinary image upload
-- [x] Users module (roles: admin/member) — security foundation for multi-user access
-- [x] Donations module (needs schema rebuild) — prerequisite for Income/Expenses
-- [x] Income vs Expenses module — needs Donations done first
-- [x] Mobile nav / full mobile pass
-- [x] Item variations — per-item variants with name, price override, Square ID
-- [x] WordPress integration — Push to WooCommerce on ItemBuilder (simple + variable products with variants); Push events to WP plugin already existed
-- [x] Repeating events — Repeat… RowMenu action; frequency (weekly/biweekly/monthly) + end date; live date preview; generates independent Draft events via POST /events/repeat
-- [ ] Event Menus Phase 2 live testing — waiting on next event
-- [x] Recipe version history (covered by Test module)
-- [x] Notifications on Recipe Steps — MakeView: steps with requires_notification=true show ⏱ Start button; countdown timer runs for step_time duration; fires POST /notifications/send (Pushover) when timer expires; shows ✓ Notified
-- [x] Menu Specials — is_special flag on event_menu_items; star toggle in admin; MenuSpecialsPage (/menu/:id/specials); /menu/specials auto-redirect; migration: add_menu_specials.sql (run as postgres superuser on DB server)
-- [x] Android TWA — bubblewrap APK; specials APK active (start_url=/menu/specials); Apache fix: `Alias /icons/ "/srv/www/knk/public/icons/"` in knk-le-ssl.conf overrides mod_alias default; icons in client/public/icons/; manifest.json in client/public/; known issue: both APKs can't coexist (same packageId) — fix by changing packageId + name in twa-manifest.json before building second APK
-- [x] Branding — admin logo (login + sidebar) via logo_url; menu display logo via menu_logo_url; sold-out full-screen image via sold_out_image_url; public endpoint GET /public/branding (no auth)
-- [x] "Posted to website" indicator — Web column in Events table shows green "Posted" badge when woo_id is set; checkbox removed from edit form (woo_id is source of truth)
-- [x] Event auto-push to WordPress — auto-pushes on create/save (silent, swallows errors); manual "Sync to Web" still available in RowMenu
-- [x] Item Builder Favorites — is_favorite boolean on item_builder; star toggle, filter button, sort to top in list; favorites sorted to top + star indicator in Menu Builder item picker
-- [x] Inventory Phase 1: Freezer Stock — freezer_qty on item_builder; inline +/– on ItemBuilder list; "Add to Freezer" button in MakeView pre-fills scaledYield, picks item from item_builder, calls PATCH /items/:id/freezer; migration: add_freezer_qty.sql
+- [ ] Event Menus mobile editing — admin add/edit menu item flows not usable on small screens
 - [ ] Inventory Phase 2: Baking Plan + Shopping List — date-range → events → aggregate menu items → deficit vs freezer → batches → ingredient grams → purchase units (needs unit_label/unit_grams on ingredient_items)
 - [ ] Kitchen Display System (KDS) — `kds_item` flag on item_builder; Square webhooks → SSE → full-screen `/kds` page; order cards with KDS line items + "Done" dismiss; display via Fully Kiosk Browser on Android tablet (no TWA needed)
-- [ ] Monthly Tax Filing (RI) — two AcroForm PDFs auto-filled monthly via pdf-lib + nodemailer + node-cron; STR (str.pdf, 54 fields) + MTM (mtm.pdf, 9 fields) stored in server/tax-forms/; data source TBD (Square API vs income_entries); settings needed: SMTP, EIN, RI account #, business info
-- [ ] Event Menus mobile editing — admin add/edit menu item flows not usable on small screens
-- [x] Ingredients duplicate detection — GET /ingredients/duplicates (substring containment match, returns groups + recipe_count); POST /ingredients/merge (re-points recipe_ingredients in transaction, soft-deletes discard); "Find Duplicates" button on IngredientsPage
-- [x] Admin reset user password — PUT /users/:id/password (requireAdmin, no current password needed); "Reset Password" RowMenu item on UsersPage (hidden for self)
-- [x] Settings screen cleanup — split into two tabs: Integrations (Square, Pushover, Gemini, WordPress, Cloudinary) and App Settings (Branding, Event Menus, Costing)
+- [ ] Android TWA dual APK fix (low priority) — both APKs share `packageId`; fix by changing `packageId` to `com.knifeandknead.specials` and `name` to "KNK Specials" in twa-manifest.json before building specials APK
+- [ ] WordPress storefront (long-term) — replace WooCommerce with ItemBuilder-driven storefront plugin; deferred
