@@ -20,7 +20,7 @@ async function getSettings() {
     `SELECT key, value FROM settings WHERE key IN (
       'smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_to',
       'tax_business_name','tax_address','tax_city_state_zip',
-      'tax_ein','tax_ri_account','tax_owner_title','tax_signature_url'
+      'tax_ein','tax_ri_account','tax_owner_name','tax_owner_title','tax_owner_phone','tax_signature_url'
     )`
   );
   const map = {};
@@ -105,6 +105,8 @@ async function buildSTR(grossSales, month, settings) {
   sf('AccountID[0]',         settings.tax_ri_account || '');
   sf('PeriodEnd[0]',         periodEnd);
   sf('Date[0]',              today);
+  sf('AuthorizedName[0]',    settings.tax_owner_name || '');
+  sf('PhoneNumber[0]',       settings.tax_owner_phone || '');
 
   sf('GrossSales[0]',        gDol);
   sf('GrossSales-00[0]',     gCent);
@@ -117,9 +119,9 @@ async function buildSTR(grossSales, month, settings) {
   sf('Due[0]',               '0');
   sf('Due-00[0]',            '00');
 
-  // Signature image — placed above the AuthorizedName field (y=131)
+  // Signature image — sits in the authorized officer signature box (left of AuthorizedName at x=194, y=131)
   const sigBytes = await loadSignatureImage(settings.tax_signature_url);
-  await embedSignature(pdfDoc, pdfDoc.getPages()[0], sigBytes, 36, 148, 150, 38);
+  await embedSignature(pdfDoc, pdfDoc.getPages()[0], sigBytes, 36, 131, 155, 28);
 
   return pdfDoc.save();
 }
@@ -148,9 +150,9 @@ async function buildMTM(grossSales, month, settings) {
   sf('Title[0]',          settings.tax_owner_title || 'Owner');
   sf('SignatureDate[0]',  today);
 
-  // Signature image — placed above the Title/SignatureDate fields (y=573)
+  // Signature image — sits above the Title/SignatureDate fields (y=573.5); image bottom at y=586
   const sigBytes = await loadSignatureImage(settings.tax_signature_url);
-  await embedSignature(pdfDoc, pdfDoc.getPages()[0], sigBytes, 21, 590, 200, 45);
+  await embedSignature(pdfDoc, pdfDoc.getPages()[0], sigBytes, 21, 586, 175, 25);
 
   return pdfDoc.save();
 }
