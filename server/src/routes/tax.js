@@ -91,7 +91,6 @@ async function buildSTR(grossSales, month, settings) {
   sf('Due[0]',               '0');
   sf('Due-00[0]',            '00');
 
-  try { form.flatten(); } catch {}
   return pdfDoc.save();
 }
 
@@ -119,7 +118,6 @@ async function buildMTM(grossSales, month, settings) {
   sf('Title[0]',          settings.tax_owner_title || 'Owner');
   sf('SignatureDate[0]',  today);
 
-  try { form.flatten(); } catch {}
   return pdfDoc.save();
 }
 
