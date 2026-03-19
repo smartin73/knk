@@ -273,7 +273,7 @@ router.get('/:id', async (req, res) => {
     const [recipe, steps, ingredients] = await Promise.all([
       query('SELECT * FROM recipes WHERE id = $1', [req.params.id]),
       query('SELECT *, step_time::text as step_time FROM recipe_steps WHERE recipe_id = $1 ORDER BY step_number', [req.params.id]),
-      query(`SELECT ri.*, ii.item_name as ingredient_item_name, ii.cost_per_gram
+      query(`SELECT ri.*, COALESCE(ii.item_name, ri.ingredient) as ingredient, ii.cost_per_gram
              FROM recipe_ingredients ri
              LEFT JOIN ingredient_items ii ON ri.ingredient_id = ii.id
              WHERE ri.recipe_id = $1 ORDER BY ri.sort_order`, [req.params.id]),
@@ -411,7 +411,7 @@ router.put('/:id/ingredients', async (req, res) => {
     );
   }
   const { rows } = await query(
-    `SELECT ri.*, ii.item_name, ii.cost_per_gram FROM recipe_ingredients ri
+    `SELECT ri.*, COALESCE(ii.item_name, ri.ingredient) as ingredient, ii.cost_per_gram FROM recipe_ingredients ri
      LEFT JOIN ingredient_items ii ON ri.ingredient_id = ii.id
      WHERE ri.recipe_id=$1 ORDER BY ri.sort_order`, [req.params.id]
   );

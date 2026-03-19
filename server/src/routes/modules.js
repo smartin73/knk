@@ -78,12 +78,16 @@ ingredientsRouter.post('/merge', async (req, res) => {
 });
 
 ingredientsRouter.get('/:id', async (req, res) => {
-  const [item, history] = await Promise.all([
+  const [item, history, recipes] = await Promise.all([
     query('SELECT * FROM ingredient_items WHERE id=$1', [req.params.id]),
     query('SELECT * FROM ingredient_price_history WHERE ingredient_id=$1 ORDER BY recorded_at DESC', [req.params.id]),
+    query(`SELECT DISTINCT r.id, r.recipe_name FROM recipe_ingredients ri
+           JOIN recipes r ON ri.recipe_id = r.id
+           WHERE ri.ingredient_id=$1 AND r.is_active=true
+           ORDER BY r.recipe_name`, [req.params.id]),
   ]);
   if (!item.rows[0]) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...item.rows[0], price_history: history.rows });
+  res.json({ ...item.rows[0], price_history: history.rows, used_in_recipes: recipes.rows });
 });
 ingredientsRouter.post('/', async (req, res) => {
   const f = req.body;

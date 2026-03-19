@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SearchInput } from '../components/SearchInput.jsx';
 import { api } from '../lib/api.js';
 import { RecipesImportModal } from './RecipesImportModal.jsx';
@@ -870,6 +870,7 @@ export function RecipesPage() {
   const [modal, setModal]                   = useState(null);
   const [makeRecipe, setMakeRecipe]         = useState(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [selected, setSelected]             = useState(new Set());
 
   const load = useCallback(async () => {
@@ -882,6 +883,12 @@ export function RecipesPage() {
       if (stageFilter) params.set('stage', stageFilter);
       const [recs, ings] = await Promise.all([api.get(`/recipes?${params}`), api.get('/ingredients')]);
       setRecipes(recs); setAllIngredients(ings);
+      const openId = searchParams.get('id');
+      if (openId) {
+        const match = recs.find(r => r.id === openId);
+        if (match) setModal({ mode: 'detail', recipe: match });
+        navigate('/recipes', { replace: true });
+      }
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
   }, [search, typeFilter, stageFilter]);

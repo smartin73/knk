@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { ImportModal } from './ImportModal.jsx';
 import { SearchInput } from '../components/SearchInput.jsx';
@@ -38,13 +39,17 @@ function fmtDateTime(ts) {
 }
 
 // ── Detail Modal ──────────────────────────────────────────
-function IngredientDetail({ ingredient, onEdit, onClose }) {
+function IngredientDetail({ ingredient, onEdit, onClose, onNavigate }) {
   const [history, setHistory] = useState([]);
+  const [recipes, setRecipes] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
   useEffect(() => {
     api.get(`/ingredients/${ingredient.id}`)
-      .then(data => setHistory(data.price_history || []))
+      .then(data => {
+        setHistory(data.price_history || []);
+        setRecipes(data.used_in_recipes || []);
+      })
       .catch(console.error)
       .finally(() => setLoadingHistory(false));
   }, [ingredient.id]);
@@ -94,6 +99,22 @@ function IngredientDetail({ ingredient, onEdit, onClose }) {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 10 }}>Used In Recipes</div>
+          {loadingHistory ? null : recipes.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Not used in any recipes.</div>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {recipes.map(r => (
+                <button key={r.id} onClick={() => onNavigate(r.id)}
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', fontSize: 13, color: 'var(--accent2)', cursor: 'pointer' }}>
+                  {r.recipe_name}
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -303,6 +324,7 @@ function DeleteConfirm({ ingredient, onConfirm, onCancel }) {
 
 // ── Ingredients Page ──────────────────────────────────────
 export function IngredientsPage() {
+  const navigate = useNavigate();
   const [ingredients, setIngredients] = useState([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
@@ -450,6 +472,7 @@ export function IngredientsPage() {
           ingredient={modal.ingredient}
           onEdit={() => setModal({ mode: 'edit', ingredient: modal.ingredient })}
           onClose={() => setModal(null)}
+          onNavigate={recipeId => { setModal(null); navigate(`/recipes?id=${recipeId}`); }}
         />
       )}
       {(modal?.mode === 'new' || modal?.mode === 'edit') && (
