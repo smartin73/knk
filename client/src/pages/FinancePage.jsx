@@ -314,7 +314,7 @@ export function FinancePage() {
   const [expenses, setExpenses] = useState([]);
   const [events,   setEvents]   = useState([]);
   const [loading,  setLoading]  = useState(true);
-  const [tab,      setTab]      = useState('income'); // 'income' | 'expenses' | 'dashboard'
+  const [tab,      setTab]      = useState('dashboard'); // 'income' | 'expenses' | 'dashboard'
   const [modal,    setModal]    = useState(null); // null | 'income' | 'expense' | entry object
 
   // dashboard state

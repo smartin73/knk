@@ -36,7 +36,7 @@ const NAV = [
   { to: '/freezer',        label: 'Freezer',           icon: '🧊' },
   { to: '/inventory',     label: 'Inventory Planner', icon: '📦' },
   { to: '/donations',      label: 'Donations',   icon: '💛' },
-  { to: '/finance',        label: 'Income & Expenses', icon: '💰', financeOnly: true },
+  { to: '/finance',        label: 'Finance',           icon: '💰', financeOnly: true },
   { to: '/tax',            label: 'Tax Filing',        icon: '🧾', adminOnly: true },
   { to: '/users',          label: 'Users',       icon: '👤', adminOnly: true },
   { to: '/settings',       label: 'Settings',    icon: '⚙️', adminOnly: true },
