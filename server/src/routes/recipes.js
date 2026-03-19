@@ -343,7 +343,7 @@ router.get('/:id/makes', async (req, res) => {
   res.json(rows);
 });
 
-// POST /recipes/:id/make — record a make
+// POST /recipes/:id/make — record a make, auto-update freezer if 1 IB item uses this recipe
 router.post('/:id/make', async (req, res) => {
   try {
     const { multiplier, yield_qty, notes, made_at } = req.body;
@@ -353,7 +353,28 @@ router.post('/:id/make', async (req, res) => {
       [req.params.id, multiplier || 1, yield_qty || null, notes || null,
        made_at || new Date().toISOString().slice(0, 10)]
     );
-    res.status(201).json(make);
+
+    // Auto-update freezer_qty if exactly one IB item uses this recipe as a component
+    let freezer_updated = null;
+    if (yield_qty) {
+      const { rows: linked } = await query(
+        `SELECT ibi.item_builder_id, ib.item_name
+         FROM item_builder_items ibi
+         JOIN item_builder ib ON ibi.item_builder_id = ib.id
+         WHERE ibi.recipe_id = $1 AND ib.is_active = true`,
+        [req.params.id]
+      );
+      if (linked.length === 1) {
+        const { rows: [updated] } = await query(
+          `UPDATE item_builder SET freezer_qty = COALESCE(freezer_qty, 0) + $1
+           WHERE id = $2 RETURNING id, item_name, freezer_qty`,
+          [yield_qty, linked[0].item_builder_id]
+        );
+        freezer_updated = updated;
+      }
+    }
+
+    res.status(201).json({ ...make, freezer_updated });
   } catch (e) {
     console.error('Make recipe error:', e);
     res.status(500).json({ error: e.message });

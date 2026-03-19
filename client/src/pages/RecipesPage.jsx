@@ -97,20 +97,22 @@ function fmtCountdown(ms) {
 
 // ── Make View ─────────────────────────────────────────────
 function AddToFreezerModal({ recipe, suggestedQty, onClose }) {
-  const [qty, setQty]       = useState(String(Math.round(suggestedQty)));
-  const [saving, setSaving] = useState(false);
-  const [err, setErr]       = useState('');
+  const [qty, setQty]             = useState(String(Math.round(suggestedQty)));
+  const [saving, setSaving]       = useState(false);
+  const [err, setErr]             = useState('');
+  const [freezerUpdated, setFreezerUpdated] = useState(null);
 
   async function handleSave() {
     const n = parseFloat(qty);
     if (!n || n <= 0) return setErr('Enter a quantity > 0.');
     setSaving(true); setErr('');
     try {
-      await api.post(`/recipes/${recipe.id}/make`, {
+      const result = await api.post(`/recipes/${recipe.id}/make`, {
         multiplier: recipe._multiplier || 1,
         yield_qty: n,
         made_at: new Date().toISOString().slice(0, 10),
       });
+      setFreezerUpdated(result.freezer_updated || null);
       onClose(true);
     } catch (e) {
       setErr(e.message || 'Save failed.');
@@ -129,6 +131,11 @@ function AddToFreezerModal({ recipe, suggestedQty, onClose }) {
             <input autoFocus type="number" min="0.5" step="0.5" value={qty} onChange={e => setQty(e.target.value)} />
           </div>
         </div>
+        {freezerUpdated && (
+          <div style={{ marginTop: 8, fontSize: 13, color: 'var(--success, #4caf82)' }}>
+            ✓ Freezer updated — {freezerUpdated.item_name}: {freezerUpdated.freezer_qty} in stock
+          </div>
+        )}
         {err && <div className="error-msg" style={{ marginTop: 8 }}>{err}</div>}
         <div className="modal-actions">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
