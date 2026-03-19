@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { SearchInput } from '../components/SearchInput.jsx';
 import { api } from '../lib/api.js';
 import { ItemBuilderImportModal } from './ItemBuilderImportModal.jsx';
 import { RowMenu } from '../components/RowMenu.jsx';
@@ -906,12 +907,7 @@ export function ItemBuilderPage() {
       </div>
 
       <div className="search-bar">
-        <input
-          style={{ flex: 1, maxWidth: 320, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 14 }}
-          placeholder="Search items…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+        <SearchInput value={search} onChange={setSearch} placeholder="Search items…" />
         <button
           className={`btn btn-sm ${favOnly ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setFavOnly(f => !f)}

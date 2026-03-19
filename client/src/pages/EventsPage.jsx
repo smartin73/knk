@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { ImportModal } from './ImportModal.jsx';
+import { SearchInput } from '../components/SearchInput.jsx';
 import { RowMenu } from '../components/RowMenu.jsx';
 import { ImageUpload } from '../components/ImageUpload.jsx';
 
@@ -737,12 +738,7 @@ export function EventsPage() {
 
       {/* Search + filter */}
       <div className="search-bar">
-        <input
-          style={{ flex: 1, maxWidth: 320, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 14 }}
-          placeholder="Search events…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+        <SearchInput value={search} onChange={setSearch} placeholder="Search events…" />
         <select
           style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 14 }}
           value={statusFilter}

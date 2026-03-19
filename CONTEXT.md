@@ -90,7 +90,8 @@ client/src/
     ├── MenuDisplayPage.jsx
     ├── MenuLandingPage.jsx   (handles both /menu and /menu/specials; specials prop → redirects to /menu/:id/specials)
     ├── MenuSpecialsPage.jsx  (specials-only display for second tablet TWA)
-    └── TaxPage.jsx           (month picker, preview STR+MTM PDFs, download, manual send)
+    ├── TaxPage.jsx           (month picker, preview STR+MTM PDFs, download, manual send)
+    └── FreezerPage.jsx       (all IB items: inline +/– delta, click-to-set-exact-qty, out-of-stock sorted last)
 ```
 
 ---
@@ -421,7 +422,8 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 | Ingredients | ✅ Full CRUD + price history + CSV import |
 | Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage + MakeView + test logging |
 | Settings | ✅ Square, Pushover, WordPress + WooCommerce, Costing, Cloudinary, Branding (admin logo, menu display logo, sold-out image), Event Menus |
-| ItemBuilder | ✅ Full CRUD + components + costing + variants + Push to Square + Push to WooCommerce + Favorites (star toggle, filter, sort to top, integrated in Menu Builder picker) + Freezer stock (inline +/– in list; "Add to Freezer" from MakeView) + image display in detail modal |
+| ItemBuilder | ✅ Full CRUD + components + costing + variants + Push to Square + Push to WooCommerce + Favorites (star toggle, filter, sort to top, integrated in Menu Builder picker) + Freezer stock (inline +/– in list; "Add to Freezer" from MakeView updates freezer_qty) + image display in detail modal |
+| Freezer | ✅ Dedicated `/freezer` page — all IB items with inline +/– and click-to-set-exact-qty; stats bar (total / in-stock / out-of-stock); out-of-stock items sorted to bottom |
 | Branding | ✅ Admin logo (login + sidebar), Menu Display logo (public menu header), Sold-Out image (full-screen when all items sold out on a menu); all via Cloudinary image upload in Settings → Branding |
 | Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (Phase 2, fixed: uses square_id + item_variants lookup) + Menu Specials (is_special flag, star toggle in admin, MenuSpecialsPage at /menu/:id/specials, auto-redirect at /menu/specials); admin shows Started / On Hand / Sold per item |
 | Donations | ✅ Full CRUD + CSV export (item-based, linked to events + item builder) |
@@ -439,6 +441,10 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 
 - [ ] Inventory Phase 2: Baking Plan + Shopping List — date-range → events → aggregate menu items → deficit vs freezer → batches → ingredient grams → purchase units (needs unit_label/unit_grams on ingredient_items)
 - [ ] Kitchen Display System (KDS) — `kds_item` flag on item_builder; Square webhooks → SSE → full-screen `/kds` page; order cards with KDS line items + "Done" dismiss; display via Fully Kiosk Browser on Android tablet (no TWA needed)
+
+## Recently Completed
+
+- **Make → Freezer qty gap fixed** — "+ Freezer" in MakeView now updates `freezer_qty` on the linked IB item; dedicated Freezer page at `/freezer`
 
 ## Inventory Loop (how it all connects)
 1. Bake → add to freezer (Item Builder inline +/– or MakeView "Add to Freezer")

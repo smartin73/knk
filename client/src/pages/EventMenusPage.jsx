@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { RowMenu } from '../components/RowMenu.jsx';
+import { SearchInput } from '../components/SearchInput.jsx';
 
 // ── Helpers ───────────────────────────────────────────────
 function computeStatus(item) {
@@ -154,12 +155,12 @@ function ItemPickerModal({ menuId, existingIds, onAdd, onClose }) {
       <div className="modal" style={{ maxWidth: 500 }}>
         <div className="modal-title">Add Item from Item Builder</div>
         <div style={{ marginBottom: 12 }}>
-          <input
-            placeholder="Search items…"
+          <SearchInput
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={setSearch}
+            placeholder="Search items…"
             autoFocus
-            style={{ width: '100%', boxSizing: 'border-box' }}
+            style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}
           />
         </div>
         <div style={{ maxHeight: 360, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>

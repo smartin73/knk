@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
+import { SearchInput } from '../components/SearchInput.jsx';
 
 export function FreezerPage() {
   const [items, setItems]   = useState([]);
@@ -79,12 +80,7 @@ export function FreezerPage() {
 
       {/* Search */}
       <div className="search-bar">
-        <input
-          style={{ flex: 1, maxWidth: 320, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', color: 'var(--text)', fontSize: 14 }}
-          placeholder="Search items…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+        <SearchInput value={search} onChange={setSearch} placeholder="Search items…" />
       </div>
 
       <div className="card" style={{ padding: 0 }}>
