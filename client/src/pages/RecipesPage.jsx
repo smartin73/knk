@@ -411,8 +411,8 @@ function MakeView({ recipe, onClose }) {
                 <tbody>
                   {makes.map(m => (
                     <tr key={m.id} style={{ borderBottom:'1px solid var(--border)' }}>
-                      <td style={{ padding:'5px 8px 5px 0', fontSize:13 }}>{m.made_at}</td>
-                      <td style={{ padding:'5px 8px 5px 0', fontSize:13, color:'var(--text-muted)', fontFamily:'monospace' }}>{m.multiplier}x</td>
+                      <td style={{ padding:'5px 8px 5px 0', fontSize:13 }}>{String(m.made_at).slice(0, 10)}</td>
+                      <td style={{ padding:'5px 8px 5px 0', fontSize:13, color:'var(--text-muted)', fontFamily:'monospace' }}>{parseFloat(m.multiplier)}x</td>
                       <td style={{ padding:'5px 0', fontSize:13, color:'var(--accent2)', fontFamily:'monospace', fontWeight:600 }}>{m.yield_qty ?? '—'}</td>
                     </tr>
                   ))}
