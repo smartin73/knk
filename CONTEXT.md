@@ -65,6 +65,7 @@ server/src/
     ├── users.js
     ├── webhooks.js
     ├── tax.js            (RI STR + MTM AcroForm PDFs; pdf-lib fill + nodemailer send; node-cron auto-send 1st of month at 9am)
+    ├── inventory.js      (GET /inventory/baking-plan — date range → events → deficit vs freezer → batches → ingredient grams → shopping list)
     └── modules.js        (ingredients, itemBuilder, eventMenus, donations, vendors)
 
 client/src/
@@ -91,7 +92,12 @@ client/src/
     ├── MenuLandingPage.jsx   (handles both /menu and /menu/specials; specials prop → redirects to /menu/:id/specials)
     ├── MenuSpecialsPage.jsx  (specials-only display for second tablet TWA)
     ├── TaxPage.jsx           (month picker, preview STR+MTM PDFs, download, manual send)
-    └── FreezerPage.jsx       (all IB items: inline +/– delta, click-to-set-exact-qty, out-of-stock sorted last)
+    ├── FreezerPage.jsx       (all IB items: inline +/– delta, click-to-set-exact-qty, out-of-stock sorted last)
+    └── InventoryPage.jsx     (date range → baking plan + shopping list; uses GET /inventory/baking-plan)
+└── components/
+    ├── RowMenu.jsx           (portal-based dropdown; see rowmenu_fix.md for gotcha)
+    ├── ImageUpload.jsx       (Cloudinary upload widget)
+    └── SearchInput.jsx       (reusable search field with × clear button)
 ```
 
 ---
@@ -122,7 +128,8 @@ app.use('/webhooks',      webhooksRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/wordpress',     wordpressRouter);
 app.use('/tax',           taxRouter);
-// Public (no auth): GET /public/branding, GET /public/menus, GET /public/menu/:id
+app.use('/inventory',     inventoryRouter);
+// Public (no auth): GET /public/branding, GET /public/menus, GET /public/menu/:id, GET /public/menus/specials
 // React routes: /menu → MenuLandingPage, /menu/specials → MenuLandingPage (specials mode) → /menu/:id/specials
 //               /menu/:id → MenuDisplayPage, /menu/:id/specials → MenuSpecialsPage
 ```
@@ -171,11 +178,25 @@ created_at            timestamptz
 updated_at            timestamptz
 ```
 
+### recipe_makes
+```
+id          uuid  PK  DEFAULT gen_random_uuid()
+recipe_id   uuid  FK → recipes.id
+multiplier  numeric  DEFAULT 1
+yield_qty   numeric
+notes       text
+made_at     date  DEFAULT CURRENT_DATE
+created_at  timestamptz
+```
+Migration: `server/migrations/add_recipe_make_tracking.sql`
+API: `POST /recipes/:id/make` — records a make; auto-updates `item_builder.freezer_qty` if exactly one IB item uses this recipe
+     `GET  /recipes/:id/makes` — returns make history
+
 ### recipe_ingredients
 ```
 id             uuid  PK
 recipe_id      uuid  FK → recipes.id
-ingredient_id  uuid  FK → ingredient_items.id
+ingredient_id  uuid  FK → ingredient_items.id   ← may be null on older/imported rows; backfill with merge SQL
 ingredient     text
 amount         numeric
 measurement    text
@@ -189,14 +210,15 @@ updated_at     timestamptz
 id             uuid  PK
 item_name      text
 purchase_from  text
-grams          numeric
+grams          numeric    ← package size in grams; used by Inventory Planner for units_needed calc
 current_price  numeric
-cost_per_gram  numeric  (generated column)
+cost_per_gram  numeric    (generated column)
+unit_label     text       ← e.g. "5lb bag", "1 gallon jug"; shown on shopping list
 is_active      boolean  DEFAULT true
 created_at     timestamptz
 updated_at     timestamptz
 ```
-Migration: `server/migrations/add_ingredient_soft_delete.sql`
+Migrations: `server/migrations/add_ingredient_soft_delete.sql`, `server/migrations/add_ingredient_unit_label.sql`
 
 ### ingredient_price_history
 ```
@@ -300,11 +322,14 @@ Migration: `server/migrations/add_item_variants.sql`
 
 ### event_menus
 ```
-id          uuid  PK  DEFAULT gen_random_uuid()
-event_id    uuid  FK → events.id  ON DELETE CASCADE
-menu_name   text  NOT NULL
-created_at  timestamptz
-updated_at  timestamptz
+id             uuid  PK  DEFAULT gen_random_uuid()
+event_id       uuid  FK → events.id  ON DELETE CASCADE
+menu_name      text  NOT NULL
+tagline        text
+tagline_color  varchar(20)  DEFAULT '#e85d26'
+is_active      boolean  DEFAULT true
+created_at     timestamptz
+updated_at     timestamptz
 ```
 
 ### event_menu_items
@@ -419,8 +444,8 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 |--------|--------|
 | Events | ✅ Full CRUD + CSV import + Repeat + Push to Web / Sync to Web / Unlink from Web (WordPress Simple Events plugin); "Generate from Location" button auto-fills map embed; **Close Event** (RowMenu) — deducts sold qty from freezer, auto-creates donation records for leftovers, marks event completed |
 | Vendors | ✅ Full CRUD + CSV import |
-| Ingredients | ✅ Full CRUD + price history + CSV import |
-| Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage + MakeView + test logging |
+| Ingredients | ✅ Full CRUD + price history + CSV import + duplicate detection + merge tool + "Used In Recipes" cross-reference in detail modal |
+| Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage filter + MakeView (multiplier, fold tracking, ingredient checkboxes, make history, "+ Freezer") + test logging |
 | Settings | ✅ Square, Pushover, WordPress + WooCommerce, Costing, Cloudinary, Branding (admin logo, menu display logo, sold-out image), Event Menus |
 | ItemBuilder | ✅ Full CRUD + components + costing + variants + Push to Square + Push to WooCommerce + Favorites (star toggle, filter, sort to top, integrated in Menu Builder picker) + Freezer stock (inline +/– in list; "Add to Freezer" from MakeView updates freezer_qty) + image display in detail modal |
 | Freezer | ✅ Dedicated `/freezer` page — all IB items with inline +/– and click-to-set-exact-qty; stats bar (total / in-stock / out-of-stock); out-of-stock items sorted to bottom |
@@ -434,17 +459,13 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 | Monthly Tax Filing | ✅ RI STR (Form RI-STR) + MTM (Form MTM) AcroForm PDFs filled via pdf-lib; signature image embedded; auto-send via node-cron on 1st of month at 9am; manual send + preview at `/tax`; Schedule A Providence row filled on MTM page 2; tax settings in Settings → Tax Filing |
 | Event Menus Mobile | ✅ Admin add/edit flows fixed for small screens |
 | Android TWA | ✅ Dual APK fix applied — specials APK uses distinct packageId `com.knifeandknead.specials` |
+| Inventory Planner | ✅ `/inventory` — date range → events → baking plan (deficit vs freezer, batches needed) + shopping list (ingredient grams → units to buy, est. cost) |
 
 ---
 
 ## Pending Work
 
-- [ ] Inventory Phase 2: Baking Plan + Shopping List — date-range → events → aggregate menu items → deficit vs freezer → batches → ingredient grams → purchase units (needs unit_label/unit_grams on ingredient_items)
 - [ ] Kitchen Display System (KDS) — `kds_item` flag on item_builder; Square webhooks → SSE → full-screen `/kds` page; order cards with KDS line items + "Done" dismiss; display via Fully Kiosk Browser on Android tablet (no TWA needed)
-
-## Recently Completed
-
-- **Make → Freezer qty gap fixed** — "+ Freezer" in MakeView now updates `freezer_qty` on the linked IB item; dedicated Freezer page at `/freezer`
 
 ## Inventory Loop (how it all connects)
 1. Bake → add to freezer (Item Builder inline +/– or MakeView "Add to Freezer")
