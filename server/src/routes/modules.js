@@ -83,7 +83,12 @@ ingredientsRouter.get('/:id', async (req, res) => {
     query('SELECT * FROM ingredient_price_history WHERE ingredient_id=$1 ORDER BY recorded_at DESC', [req.params.id]),
     query(`SELECT DISTINCT r.id, r.recipe_name FROM recipe_ingredients ri
            JOIN recipes r ON ri.recipe_id = r.id
-           WHERE ri.ingredient_id=$1 AND r.is_active=true
+           WHERE r.is_active = true
+             AND (ri.ingredient_id = $1
+                  OR (ri.ingredient_id IS NULL
+                      AND LOWER(TRIM(ri.ingredient)) = (
+                        SELECT LOWER(TRIM(item_name)) FROM ingredient_items WHERE id = $1
+                      )))
            ORDER BY r.recipe_name`, [req.params.id]),
   ]);
   if (!item.rows[0]) return res.status(404).json({ error: 'Not found' });
