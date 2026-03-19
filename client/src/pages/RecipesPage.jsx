@@ -433,7 +433,7 @@ function MakeView({ recipe, onClose }) {
           suggestedQty={scaledYield}
           onClose={(saved) => {
             setShowFreezer(false);
-            if (saved) onClose();
+            if (saved) api.get(`/recipes/${recipe.id}/makes`).then(setMakes).catch(console.error);
           }}
         />
       )}
@@ -784,7 +784,7 @@ function RecipeDetail({ recipe: initialRecipe, onEdit, onMake, onClose }) {
                     return (<tr key={i.id} style={{borderBottom:'1px solid var(--border)'}}>
                       <td style={{padding:'6px 8px 6px 0',fontSize:13}}>{i.ingredient}</td>
                       <td style={{padding:'6px 0',fontSize:13,color:'var(--text-muted)',textAlign:'right'}}>{i.amount?`${fmtNum(i.amount)} ${i.measurement||''}`.trim():'—'}</td>
-                      {c&&<td style={{padding:'6px 0 6px 12px',fontSize:11,color:'var(--text-muted)',fontFamily:'monospace',textAlign:'right'}}>${c.toFixed(4)}</td>}
+                      {c > 0 &&<td style={{padding:'6px 0 6px 12px',fontSize:11,color:'var(--text-muted)',fontFamily:'monospace',textAlign:'right'}}>${c.toFixed(4)}</td>}
                     </tr>);
                   })}
                 </tbody></table>
