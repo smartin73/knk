@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import { RowMenu } from '../components/RowMenu.jsx';
 
 const EMPTY_FORM = { username: '', password: '', role: 'member' };
-const ROLES = ['admin', 'member'];
+const ROLES = ['admin', 'finance', 'member'];
 
 // ── Create User Modal ─────────────────────────────────────
 function CreateUserModal({ onSave, onCancel }) {

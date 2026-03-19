@@ -1,9 +1,55 @@
 import { Router } from 'express';
 import { query } from '../db/pool.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireFinanceAccess } from '../middleware/auth.js';
 
 const router = Router();
 router.use(requireAuth);
+router.use(requireFinanceAccess);
+
+// ── Summary aggregations ──────────────────────────────────
+router.get('/summary', async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const ISO = /^\d{4}-\d{2}-\d{2}$/;
+    if ((from && !ISO.test(from)) || (to && !ISO.test(to)))
+      return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD.' });
+
+    const p = [from || null, to || null];
+    const df = col => `($1::date IS NULL OR ${col} >= $1::date) AND ($2::date IS NULL OR ${col} <= $2::date)`;
+
+    const [inc, incSrc, exp, expCat, don, series] = await Promise.all([
+      query(`SELECT COALESCE(SUM(amount),0) AS total FROM income_entries WHERE ${df('date')}`, p),
+      query(`SELECT source, COALESCE(SUM(amount),0) AS total FROM income_entries WHERE ${df('date')} GROUP BY source ORDER BY total DESC`, p),
+      query(`SELECT COALESCE(SUM(amount),0) AS total FROM expense_entries WHERE ${df('date')}`, p),
+      query(`SELECT category, COALESCE(SUM(amount),0) AS total FROM expense_entries WHERE ${df('date')} GROUP BY category ORDER BY total DESC`, p),
+      query(`SELECT COALESCE(SUM(quantity * unit_value),0) AS total FROM donations WHERE ${df('donated_at')}`, p),
+      query(`SELECT month, SUM(income) AS income, SUM(expenses) AS expenses FROM (
+               SELECT DATE_TRUNC('month', date) AS month, SUM(amount) AS income, 0 AS expenses FROM income_entries WHERE ${df('date')} GROUP BY 1
+               UNION ALL
+               SELECT DATE_TRUNC('month', date) AS month, 0 AS income, SUM(amount) AS expenses FROM expense_entries WHERE ${df('date')} GROUP BY 1
+             ) t GROUP BY month ORDER BY month`, p),
+    ]);
+
+    const totalIncome   = Number(inc.rows[0].total);
+    const totalExpenses = Number(exp.rows[0].total);
+    res.json({
+      totalIncome,
+      totalExpenses,
+      totalDonations: Number(don.rows[0].total),
+      net: totalIncome - totalExpenses,
+      incomeBySource:     incSrc.rows.map(r => ({ source: r.source, total: Number(r.total) })),
+      expensesByCategory: expCat.rows.map(r => ({ category: r.category, total: Number(r.total) })),
+      timeSeries: series.rows.map(r => ({
+        month:    r.month.toISOString().slice(0, 7),
+        income:   Number(r.income),
+        expenses: Number(r.expenses),
+      })),
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // ── CSV export (must be before /:id style routes) ─────────
 router.get('/export', async (req, res) => {

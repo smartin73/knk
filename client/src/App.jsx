@@ -36,7 +36,7 @@ const NAV = [
   { to: '/freezer',        label: 'Freezer',           icon: '🧊' },
   { to: '/inventory',     label: 'Inventory Planner', icon: '📦' },
   { to: '/donations',      label: 'Donations',   icon: '💛' },
-  { to: '/finance',        label: 'Income & Expenses', icon: '💰' },
+  { to: '/finance',        label: 'Income & Expenses', icon: '💰', financeOnly: true },
   { to: '/tax',            label: 'Tax Filing',        icon: '🧾', adminOnly: true },
   { to: '/users',          label: 'Users',       icon: '👤', adminOnly: true },
   { to: '/settings',       label: 'Settings',    icon: '⚙️', adminOnly: true },
@@ -48,11 +48,11 @@ function RequireAuth({ children }) {
   return user ? children : <Navigate to="/login" replace />;
 }
 
-function NavLinks({ isAdmin, onClick }) {
+function NavLinks({ isAdmin, isFinance, onClick }) {
   return (
     <>
       <ul className="sidebar-nav">
-        {NAV.filter(n => !n.adminOnly || isAdmin).map(n => (
+        {NAV.filter(n => (!n.adminOnly || isAdmin) && (!n.financeOnly || isFinance)).map(n => (
           <li key={n.to}>
             <NavLink to={n.to} end={n.to === '/'} className={({ isActive }) => isActive ? 'active' : ''} onClick={onClick}>
               <span className="nav-icon">{n.icon}</span>
@@ -72,7 +72,8 @@ function Layout() {
   const [showChangePw, setShowChangePw] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
-  const isAdmin = user?.role === 'admin';
+  const isAdmin   = user?.role === 'admin';
+  const isFinance = user?.role === 'admin' || user?.role === 'finance';
 
   useEffect(() => {
     fetch(`${BASE}/public/branding`)
@@ -121,7 +122,7 @@ function Layout() {
             : <><span>🔪</span><span>Knife & Knead</span></>
           }
         </div>
-        <NavLinks isAdmin={isAdmin} />
+        <NavLinks isAdmin={isAdmin} isFinance={isFinance} />
         {footer}
       </nav>
 

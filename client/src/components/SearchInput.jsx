@@ -7,7 +7,6 @@ export function SearchInput({ value, onChange, placeholder = 'Search…', style 
         value={value}
         onChange={e => onChange(e.target.value)}
         style={{
-          width: '100%',
           background: 'var(--surface2)',
           border: '1px solid var(--border)',
           borderRadius: 6,
