@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { RecipesImportModal } from './RecipesImportModal.jsx';
 import { RecipeTestLogModal } from './RecipeTestLogModal.jsx';
@@ -555,10 +556,11 @@ function RecipeForm({ initial, allIngredients: initialAllIngredients, onSave, on
   const [ingredients, setIngredients] = useState(initial?.ingredients || []);
   const [steps, setSteps]             = useState(initial?.steps || []);
   const [allIngredients, setAllIngredients] = useState(initialAllIngredients || []);
-  const [saving, setSaving] = useState(false);
-  const [err, setErr]       = useState('');
-  const [quickAdd, setQuickAdd] = useState(false);
-  const [tab, setTab]       = useState('details');
+  const [saving, setSaving]         = useState(false);
+  const [err, setErr]               = useState('');
+  const [quickAdd, setQuickAdd]     = useState(false);
+  const [tab, setTab]               = useState('details');
+  const [createIBItem, setCreateIBItem] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   function addIngredient() { setIngredients(i => [...i, { ...EMPTY_ING, sort_order: i.length }]); }
@@ -598,7 +600,7 @@ function RecipeForm({ initial, allIngredients: initialAllIngredients, onSave, on
     const bad = ingredients.find(i => !i.ingredient_id);
     if (bad) { setTab('ingredients'); return setErr('All ingredient rows must have an ingredient selected.'); }
     setErr(''); setSaving(true);
-    try { await onSave(form, ingredients, steps); }
+    try { await onSave(form, ingredients, steps, createIBItem); }
     catch(e) { setErr(e.message||'Save failed.'); }
     finally { setSaving(false); }
   }
@@ -710,6 +712,12 @@ function RecipeForm({ initial, allIngredients: initialAllIngredients, onSave, on
           </div>
           {err&&<div className="error-msg" style={{marginTop:12}}>{err}</div>}
           <div className="modal-actions" style={{marginTop:20}}>
+            {!initial?.id && (
+              <label style={{fontSize:13,display:'flex',alignItems:'center',gap:6,color:'var(--text-muted)',marginRight:'auto',cursor:'pointer'}}>
+                <input type="checkbox" checked={createIBItem} onChange={e=>setCreateIBItem(e.target.checked)} />
+                Also create Item Builder item
+              </label>
+            )}
             <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
             <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>{saving?'Saving…':'Save Recipe'}</button>
           </div>
@@ -853,6 +861,7 @@ export function RecipesPage() {
   const [stageFilter, setStageFilter]       = useState('');
   const [modal, setModal]                   = useState(null);
   const [makeRecipe, setMakeRecipe]         = useState(null);
+  const navigate = useNavigate();
   const [selected, setSelected]             = useState(new Set());
 
   const load = useCallback(async () => {
@@ -880,15 +889,31 @@ export function RecipesPage() {
     load();
   }
 
-  async function handleSave(form, ingredients, steps) {
+  async function handleSave(form, ingredients, steps, createIBItem) {
+    const isNew = !modal.recipe?.id;
     let saved;
-    if (modal.recipe?.id) { saved = await api.put(`/recipes/${modal.recipe.id}`, form); }
+    if (!isNew) { saved = await api.put(`/recipes/${modal.recipe.id}`, form); }
     else { saved = await api.post('/recipes', form); }
     await Promise.all([
       api.put(`/recipes/${saved.id}/ingredients`, { ingredients }),
       api.put(`/recipes/${saved.id}/steps`, { steps }),
     ]);
-    setModal(null); load();
+    setModal(null);
+    if (isNew && createIBItem) {
+      navigate('/items', { state: { createFromRecipe: {
+        item_name:        saved.recipe_name,
+        description:      saved.description,
+        image_url:        saved.image_url,
+        ingredient_label: saved.ingredient_label,
+        contains_label:   saved.contains_label,
+        components: [{
+          type: 'recipe', recipe_id: saved.id,
+          item_name: saved.recipe_name, quantity: 1, unit: '', sort_order: 0,
+        }],
+      }}});
+    } else {
+      load();
+    }
   }
 
   async function handleDelete() { await api.delete(`/recipes/${modal.recipe.id}`); setModal(null); load(); }

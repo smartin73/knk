@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { ItemBuilderImportModal } from './ItemBuilderImportModal.jsx';
 import { RowMenu } from '../components/RowMenu.jsx';
@@ -766,6 +767,16 @@ export function ItemBuilderPage() {
   const [search, setSearch]             = useState('');
   const [favOnly, setFavOnly]           = useState(false);
   const [modal, setModal]               = useState(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Pre-fill from recipe → IB flow
+  useEffect(() => {
+    if (location.state?.createFromRecipe) {
+      setModal({ mode: 'new', item: location.state.createFromRecipe });
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);

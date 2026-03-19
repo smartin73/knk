@@ -134,9 +134,11 @@ function ItemPickerModal({ menuId, existingIds, onAdd, onClose }) {
   async function handleAdd(item) {
     setAdding(item.id);
     try {
+      const qty = item.freezer_qty > 0 ? item.freezer_qty : 0;
       const result = await api.post(`/event-menus/${menuId}/items`, {
         item_builder_id: item.id,
-        qty_on_hand: 0,
+        qty_on_hand: qty,
+        qty_initial: qty,
         limited_threshold: 3,
       });
       onAdd({ ...result, item_name: item.item_name, description: item.description, retail_price: item.retail_price, image_url: item.image_url });
