@@ -394,9 +394,11 @@ function MakeView({ recipe, onClose }) {
           )}
 
           {/* Make history */}
-          {makes.length > 0 && (
-            <div style={{ borderTop:'1px solid var(--border)', paddingTop:16, marginTop:8 }}>
-              <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:8 }}>Make History</div>
+          <div style={{ borderTop:'1px solid var(--border)', paddingTop:16, marginTop:8 }}>
+            <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:8 }}>Make History</div>
+            {makes.length === 0 ? (
+              <div style={{ fontSize:13, color:'var(--text-muted)' }}>No makes recorded yet.</div>
+            ) : (
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
                   <tr>
@@ -415,8 +417,8 @@ function MakeView({ recipe, onClose }) {
                   ))}
                 </tbody>
               </table>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="modal-actions" style={{ marginTop:16 }}>
@@ -430,7 +432,7 @@ function MakeView({ recipe, onClose }) {
           suggestedQty={scaledYield}
           onClose={(saved) => {
             setShowFreezer(false);
-            if (saved) api.get(`/recipes/${recipe.id}/makes`).then(setMakes).catch(console.error);
+            if (saved) onClose();
           }}
         />
       )}
