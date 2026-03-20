@@ -8,4 +8,13 @@ export default defineConfig({
       '/api': { target: 'http://localhost:3001', rewrite: path => path.replace(/^\/api/, ''), changeOrigin: true },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          recharts: ['recharts'],
+        },
+      },
+    },
+  },
 });
