@@ -36,7 +36,7 @@ router.post('/square', async (req, res) => {
     // Verify signature if key is configured
     if (webhookKey) {
       const signature = req.headers['x-square-hmacsha256-signature'];
-      const notificationUrl = `${req.protocol}://${req.get('host')}/webhooks/square`;
+      const notificationUrl = `${req.protocol}://${req.get('host')}/api/webhooks/square`;
       console.log('[webhook] verifying sig, url:', notificationUrl, 'sig present:', !!signature);
       if (!signature || !verifySignature(req.rawBody, signature, webhookKey, notificationUrl)) {
         console.error('[webhook] signature mismatch. URL used:', notificationUrl);
