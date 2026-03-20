@@ -295,8 +295,9 @@ export function UsersPage() {
                       <td>
                         <div className="actions">
                           <RowMenu actions={[
-                            ...(u.role === 'member' ? [{ label: 'Make Admin', onClick: () => handleSetRole(u, 'admin') }] : []),
-                            ...(u.role === 'admin' && !isSelf ? [{ label: 'Make Member', onClick: () => handleSetRole(u, 'member') }] : []),
+                            ...(u.role !== 'admin'    ? [{ label: 'Make Admin',   onClick: () => handleSetRole(u, 'admin')   }] : []),
+                            ...(u.role !== 'finance'  ? [{ label: 'Make Finance', onClick: () => handleSetRole(u, 'finance') }] : []),
+                            ...((u.role !== 'member' && !isSelf) ? [{ label: 'Make Member', onClick: () => handleSetRole(u, 'member') }] : []),
                             { label: u.is_active ? 'Deactivate' : 'Activate', onClick: () => handleToggleActive(u) },
                             ...(!isSelf ? [{ label: 'Reset Password', onClick: () => setModal({ mode: 'reset', user: u }) }] : []),
                             ...(!isSelf ? [{ label: 'Delete', onClick: () => handleDelete(u), danger: true }] : []),
