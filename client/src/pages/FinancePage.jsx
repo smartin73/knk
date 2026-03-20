@@ -28,7 +28,7 @@ const EMPTY_EXPENSE = { category: '', amount: '', date: '', description: '', not
 
 function fmtDate(val) {
   if (!val) return '—';
-  return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(val + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 function fmtMoney(val) {
   return Number(val || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
