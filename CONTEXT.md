@@ -452,8 +452,8 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 | Branding | ✅ Admin logo (login + sidebar), Menu Display logo (public menu header), Sold-Out image (full-screen when all items sold out on a menu); all via Cloudinary image upload in Settings → Branding |
 | Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (Phase 2, fixed: uses square_id + item_variants lookup) + Menu Specials (is_special flag, star toggle in admin, MenuSpecialsPage at /menu/:id/specials, auto-redirect at /menu/specials); admin shows Started / On Hand / Sold per item |
 | Donations | ✅ Full CRUD + CSV export (item-based, linked to events + item builder) |
-| Users | ✅ Admin/member roles + user management + change password |
-| Income/Expenses | ✅ Income + Expenses CRUD + CSV export (donations auto-included) + Log Sales action on Events |
+| Users | ✅ Admin/finance/member roles + user management + change password + role change via RowMenu (Make Admin / Make Finance / Make Member) |
+| Finance | ✅ Income + Expenses CRUD + CSV export (donations auto-included) + Log Sales action on Events + Dashboard tab (KPI cards, bar chart, donut chart, date range filter: This Month / This Year / All Time / Custom); `finance` role restricts access; nav label "Finance"; defaults to Dashboard tab |
 | WordPress/WooCommerce | ✅ Push events → WP plugin (RowMenu: "Push to Web" / "Sync to Web" / "Unlink from Web"); Push items → WooCommerce REST API; simple + variable products with variants |
 | Mobile Nav | ✅ Hamburger + slide-out drawer, auto-closes on route change |
 | Monthly Tax Filing | ✅ RI STR (Form RI-STR) + MTM (Form MTM) AcroForm PDFs filled via pdf-lib; signature image embedded; auto-send via node-cron on 1st of month at 9am; manual send + preview at `/tax`; Schedule A Providence row filled on MTM page 2; tax settings in Settings → Tax Filing |
