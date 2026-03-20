@@ -45,6 +45,37 @@ async function squareFetch(path, method, body, settings) {
   return data;
 }
 
+// Upload an image to a Square catalog object (multipart — no squareFetch)
+async function pushImageToSquare(squareId, imageUrl, settings) {
+  const imgRes = await fetch(imageUrl);
+  if (!imgRes.ok) throw new Error(`Could not fetch image from URL: ${imgRes.status}`);
+  const imgBuffer = await imgRes.arrayBuffer();
+  const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+  const ext = contentType.split('/')[1]?.split(';')[0] || 'jpg';
+
+  const fd = new FormData();
+  fd.append('request', JSON.stringify({
+    idempotency_key: `knk-img-${squareId}-${Date.now()}`,
+    object_id: squareId,
+    image: { type: 'IMAGE', id: `#img-${squareId}`, image_data: {} },
+  }));
+  fd.append('image_file', new Blob([imgBuffer], { type: contentType }), `item.${ext}`);
+
+  const base = squareBaseUrl(settings.square_environment);
+  const res = await fetch(`${base}/v2/catalog/images`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${settings.square_access_token}`,
+      'Square-Version': '2024-01-18',
+      // No Content-Type — let fetch set it with the multipart boundary
+    },
+    body: fd,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.errors?.[0]?.detail || 'Square image upload failed');
+  return data.catalog_object?.id; // square_image_id
+}
+
 // POST /square/push/:itemId  — push a single item to Square catalog
 router.post('/push/:itemId', async (req, res) => {
   try {
@@ -105,7 +136,18 @@ router.post('/push/:itemId', async (req, res) => {
       const squareId = result.catalog_object?.id;
       const variationId = result.catalog_object?.item_data?.variations?.[0]?.id;
 
-      await query('UPDATE item_builder SET square_id=$1, square_variation_id=$2, updated_at=now() WHERE id=$3', [squareId, variationId, item.id]);
+      // Upload image if item has one and hasn't been pushed yet
+      let squareImageId = item.square_image_id || null;
+      if (item.image_url && !squareImageId) {
+        try {
+          squareImageId = await pushImageToSquare(squareId, item.image_url, settings);
+        } catch (e) {
+          console.error('Square image upload failed (non-fatal):', e.message);
+        }
+      }
+
+      await query('UPDATE item_builder SET square_id=$1, square_variation_id=$2, square_image_id=$3, updated_at=now() WHERE id=$4',
+        [squareId, variationId, squareImageId, item.id]);
       return res.json({ ok: true, action: 'updated', square_id: squareId });
 
     } else {
@@ -140,7 +182,18 @@ router.post('/push/:itemId', async (req, res) => {
       const squareId = result.catalog_object?.id;
       const variationId = result.catalog_object?.item_data?.variations?.[0]?.id;
 
-      await query('UPDATE item_builder SET square_id=$1, square_variation_id=$2, updated_at=now() WHERE id=$3', [squareId, variationId, item.id]);
+      // Upload image immediately after create
+      let squareImageId = null;
+      if (item.image_url) {
+        try {
+          squareImageId = await pushImageToSquare(squareId, item.image_url, settings);
+        } catch (e) {
+          console.error('Square image upload failed (non-fatal):', e.message);
+        }
+      }
+
+      await query('UPDATE item_builder SET square_id=$1, square_variation_id=$2, square_image_id=$3, updated_at=now() WHERE id=$4',
+        [squareId, variationId, squareImageId, item.id]);
       return res.json({ ok: true, action: 'created', square_id: squareId });
     }
 
@@ -150,9 +203,9 @@ router.post('/push/:itemId', async (req, res) => {
   }
 });
 
-// DELETE /square/unlink/:itemId  — remove Square ID from item (does not delete from Square)
+// DELETE /square/unlink/:itemId  — remove Square IDs from item (does not delete from Square)
 router.delete('/unlink/:itemId', async (req, res) => {
-  await query('UPDATE item_builder SET square_id=NULL WHERE id=$1', [req.params.itemId]);
+  await query('UPDATE item_builder SET square_id=NULL, square_variation_id=NULL, square_image_id=NULL WHERE id=$1', [req.params.itemId]);
   res.json({ ok: true });
 });
 
