@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { query } from '../db/pool.js';
 import { requireAuth, requireFinanceAccess } from '../middleware/auth.js';
 
@@ -189,12 +190,12 @@ router.get('/expenses', async (req, res) => {
 
 router.post('/expenses', async (req, res) => {
   try {
-    const { category, amount, date, description, notes } = req.body;
+    const { category, amount, date, vendor, description, notes, receipt_url } = req.body;
     if (!category || !amount || !date) return res.status(400).json({ error: 'category, amount, and date are required' });
     const { rows } = await query(
-      `INSERT INTO expense_entries (category, amount, date, description, notes)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [category, amount, date, description || null, notes || null]
+      `INSERT INTO expense_entries (category, amount, date, vendor, description, notes, receipt_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [category, amount, date, vendor || null, description || null, notes || null, receipt_url || null]
     );
     res.status(201).json(rows[0]);
   } catch (e) {
@@ -205,12 +206,12 @@ router.post('/expenses', async (req, res) => {
 
 router.put('/expenses/:id', async (req, res) => {
   try {
-    const { category, amount, date, description, notes } = req.body;
+    const { category, amount, date, vendor, description, notes, receipt_url } = req.body;
     const { rows } = await query(
-      `UPDATE expense_entries SET category=$1, amount=$2, date=$3,
-              description=$4, notes=$5, updated_at=now()
-       WHERE id=$6 RETURNING *`,
-      [category, amount, date, description || null, notes || null, req.params.id]
+      `UPDATE expense_entries SET category=$1, amount=$2, date=$3, vendor=$4,
+              description=$5, notes=$6, receipt_url=$7, updated_at=now()
+       WHERE id=$8 RETURNING *`,
+      [category, amount, date, vendor || null, description || null, notes || null, receipt_url || null, req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Not found' });
     res.json(rows[0]);
@@ -227,6 +228,252 @@ router.delete('/expenses/:id', async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ── Receipt / CSV import helpers ──────────────────────────
+const EXPENSE_CATS = ['Ingredients', 'Packaging', 'Supplies', 'Equipment', 'Fees', 'Marketing', 'Other'];
+
+const VENDOR_CATEGORIES = {
+  'restaurant depot': 'Ingredients',
+  "bj's": 'Ingredients',
+  'walmart': 'Ingredients',
+  'aldi': 'Ingredients',
+  'costco': 'Ingredients',
+  'amazon': 'Supplies',
+};
+
+function suggestCategory(vendor, aiCategory) {
+  if (vendor) {
+    const v = vendor.toLowerCase();
+    for (const [name, cat] of Object.entries(VENDOR_CATEGORIES)) {
+      if (v.includes(name)) return cat;
+    }
+  }
+  if (aiCategory && EXPENSE_CATS.includes(aiCategory)) return aiCategory;
+  return 'Other';
+}
+
+async function getCloudinarySettings() {
+  const { rows } = await query(
+    `SELECT key, value FROM settings WHERE key IN ('cloudinary_cloud_name', 'cloudinary_upload_preset')`
+  );
+  const map = {};
+  rows.forEach(r => { map[r.key] = r.value; });
+  return { cloudName: map.cloudinary_cloud_name, uploadPreset: map.cloudinary_upload_preset };
+}
+
+async function uploadToCloudinary(buffer, mimeType, filename, cloudName, uploadPreset) {
+  const resourceType = mimeType === 'application/pdf' ? 'raw' : 'image';
+  const fd = new FormData();
+  fd.append('file', new Blob([buffer], { type: mimeType }), filename);
+  fd.append('upload_preset', uploadPreset);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
+    method: 'POST', body: fd,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error?.message || 'Cloudinary upload failed');
+  return data.secure_url;
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (ch === ',' && !inQuotes) {
+      result.push(current.trim()); current = '';
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function findColIdx(headers, ...opts) {
+  for (const opt of opts) {
+    const idx = headers.findIndex(h => h.toLowerCase().includes(opt.toLowerCase()));
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
+
+// ── Parse receipt (photo or PDF) ──────────────────────────
+const parseUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+router.post('/parse-receipt', parseUpload.array('files', 10), async (req, res) => {
+  try {
+    if (!req.files?.length) return res.status(400).json({ error: 'No files uploaded.' });
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured on the server.' });
+
+    const SUPPORTED = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+    for (const f of req.files) {
+      if (!SUPPORTED.includes(f.mimetype)) {
+        return res.status(400).json({ error: `Unsupported file type: ${f.mimetype}. Use JPEG, PNG, or PDF. For iPhone photos, share as JPEG.` });
+      }
+    }
+
+    // Upload first file to Cloudinary (non-fatal if it fails)
+    let receipt_url = null;
+    try {
+      const { cloudName, uploadPreset } = await getCloudinarySettings();
+      if (cloudName && uploadPreset) {
+        receipt_url = await uploadToCloudinary(
+          req.files[0].buffer, req.files[0].mimetype,
+          req.files[0].originalname, cloudName, uploadPreset
+        );
+      }
+    } catch (e) {
+      console.error('Cloudinary upload failed (non-fatal):', e.message);
+    }
+
+    // Build Anthropic content blocks (one per file)
+    const contentBlocks = req.files.map(f => {
+      if (f.mimetype === 'application/pdf') {
+        return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.buffer.toString('base64') } };
+      }
+      return { type: 'image', source: { type: 'base64', media_type: f.mimetype, data: f.buffer.toString('base64') } };
+    });
+    contentBlocks.push({
+      type: 'text',
+      text: `You are parsing a receipt or invoice for business expense tracking.
+Extract the following fields and return ONLY valid JSON, no markdown, no preamble:
+
+{
+  "vendor": "store or supplier name",
+  "date": "YYYY-MM-DD",
+  "amount": total amount as a number,
+  "category": one of ${JSON.stringify(EXPENSE_CATS)},
+  "line_items": []
+}
+
+If a field cannot be determined, use null.
+Focus on: vendor name, purchase date, and total amount paid.`,
+    });
+
+    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 512,
+        messages: [{ role: 'user', content: contentBlocks }],
+      }),
+    });
+
+    if (!anthropicRes.ok) {
+      const err = await anthropicRes.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `Anthropic API error ${anthropicRes.status}`);
+    }
+
+    const anthropicData = await anthropicRes.json();
+    const rawText = anthropicData.content?.[0]?.text || '{}';
+    let parsed = {};
+    try { parsed = JSON.parse(rawText); } catch { parsed = {}; }
+
+    parsed.category = suggestCategory(parsed.vendor, parsed.category);
+    res.json({ parsed, receipt_url });
+  } catch (e) {
+    console.error('parse-receipt error:', e);
+    res.status(500).json({ error: e.message || 'Receipt parsing failed.' });
+  }
+});
+
+// ── Amazon Business CSV import ────────────────────────────
+const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+
+router.post('/import-amazon-csv', csvUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
+
+    const text = req.file.buffer.toString('utf-8');
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return res.status(400).json({ error: 'CSV appears empty.' });
+
+    const headers = parseCSVLine(lines[0]);
+    const dateIdx   = findColIdx(headers, 'order date', 'date');
+    const vendorIdx = findColIdx(headers, 'seller', 'vendor', 'supplier');
+    const amountIdx = findColIdx(headers, 'item total', 'total charged', 'order total', 'amount');
+    const titleIdx  = findColIdx(headers, 'title', 'item name', 'description', 'product name');
+
+    if (dateIdx === -1 || amountIdx === -1) {
+      return res.status(400).json({ error: 'Could not find required columns (date, amount). Make sure this is an Amazon Business order history export.' });
+    }
+
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseCSVLine(lines[i]);
+      if (cols.length < 2) continue;
+
+      const rawAmount = (cols[amountIdx] || '').replace(/[$,]/g, '');
+      const amount = parseFloat(rawAmount);
+      if (isNaN(amount) || amount <= 0) continue;
+
+      let date = (cols[dateIdx] || '').trim();
+      if (date) {
+        const d = new Date(date);
+        if (!isNaN(d.getTime())) date = d.toISOString().split('T')[0];
+      }
+      if (!date) continue;
+
+      const vendor = vendorIdx !== -1 ? (cols[vendorIdx]?.trim() || 'Amazon') : 'Amazon';
+      const title  = titleIdx  !== -1 ? (cols[titleIdx]?.trim().slice(0, 200) || '') : '';
+
+      rows.push({
+        date, vendor, amount,
+        category: suggestCategory(vendor, null),
+        description: title || `Amazon order`,
+        notes: '',
+        receipt_url: null,
+      });
+    }
+
+    if (rows.length === 0) return res.status(400).json({ error: 'No valid expense rows found in this CSV.' });
+    res.json({ rows });
+  } catch (e) {
+    console.error('import-amazon-csv error:', e);
+    res.status(500).json({ error: e.message || 'CSV import failed.' });
+  }
+});
+
+router.post('/import-amazon-csv/confirm', async (req, res) => {
+  try {
+    const { rows } = req.body;
+    if (!Array.isArray(rows) || rows.length === 0) return res.status(400).json({ error: 'No rows to import.' });
+
+    let inserted = 0;
+    let skipped  = 0;
+    for (const row of rows) {
+      // Skip duplicates: same date + amount + description
+      const { rows: existing } = await query(
+        `SELECT id FROM expense_entries WHERE date=$1 AND amount=$2 AND description=$3 LIMIT 1`,
+        [row.date, row.amount, row.description]
+      );
+      if (existing.length > 0) { skipped++; continue; }
+
+      await query(
+        `INSERT INTO expense_entries (category, amount, date, vendor, description, notes, receipt_url)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [row.category, row.amount, row.date, row.vendor || null,
+         row.description || null, row.notes || null, row.receipt_url || null]
+      );
+      inserted++;
+    }
+    res.json({ inserted, skipped });
+  } catch (e) {
+    console.error('import-amazon-csv/confirm error:', e);
+    res.status(500).json({ error: e.message || 'Import failed.' });
   }
 });
 

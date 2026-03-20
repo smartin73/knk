@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { RowMenu } from '../components/RowMenu.jsx';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
@@ -24,7 +24,7 @@ function fmtMonth(m) {
 }
 
 const EMPTY_INCOME  = { source: 'square', amount: '', date: '', event_id: '', description: '', notes: '' };
-const EMPTY_EXPENSE = { category: '', amount: '', date: '', description: '', notes: '' };
+const EMPTY_EXPENSE = { category: '', amount: '', date: '', vendor: '', description: '', notes: '', receipt_url: '' };
 
 function fmtDate(val) {
   if (!val) return '—';
@@ -114,27 +114,113 @@ function ExpenseModal({ entry, onSave, onCancel }) {
     category:    entry.category,
     amount:      entry.amount,
     date:        entry.date?.split('T')[0] || '',
+    vendor:      entry.vendor || '',
     description: entry.description || '',
     notes:       entry.notes || '',
+    receipt_url: entry.receipt_url || '',
   } : { ...EMPTY_EXPENSE, date: today() });
-  const [saving, setSaving] = useState(false);
-  const [err, setErr]       = useState('');
+  const [saving,   setSaving]   = useState(false);
+  const [parsing,  setParsing]  = useState(false);
+  const [parseErr, setParseErr] = useState('');
+  const [err,      setErr]      = useState('');
+  const fileInputRef = React.useRef();
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  async function handleReceiptFile(files) {
+    if (!files?.length) return;
+    setParseErr(''); setParsing(true);
+    try {
+      const fd = new FormData();
+      for (const f of files) fd.append('files', f);
+      const res = await fetch('/api/finance/parse-receipt', {
+        method: 'POST', body: fd, credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Parse failed');
+      const { parsed, receipt_url } = data;
+      setForm(f => ({
+        ...f,
+        vendor:      parsed.vendor  || f.vendor,
+        date:        parsed.date    || f.date,
+        amount:      parsed.amount  != null ? parsed.amount : f.amount,
+        category:    parsed.category || f.category,
+        receipt_url: receipt_url || f.receipt_url,
+      }));
+    } catch (e) {
+      setParseErr(e.message || 'Could not parse receipt.');
+    } finally {
+      setParsing(false);
+    }
+  }
 
   async function handleSubmit() {
     if (!form.category.trim()) return setErr('Category is required.');
     if (!form.amount || Number(form.amount) <= 0) return setErr('Amount is required.');
     if (!form.date) return setErr('Date is required.');
+    if (!form.description.trim()) return setErr('Description is required (brief note for accountant).');
     setErr(''); setSaving(true);
     try { await onSave(form); } catch (e) { setErr(e.message || 'Save failed.'); } finally { setSaving(false); }
   }
 
+  const dropZoneStyle = {
+    border: `2px dashed var(--border)`,
+    borderRadius: 8,
+    padding: '14px 16px',
+    textAlign: 'center',
+    cursor: 'pointer',
+    marginBottom: 16,
+    color: 'var(--text-muted)',
+    fontSize: 13,
+    background: 'var(--surface2)',
+    transition: 'border-color 0.15s',
+  };
+
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onCancel()}>
-      <div className="modal" style={{ maxWidth: 480 }}>
+      <div className="modal" style={{ maxWidth: 500 }}>
         <div className="modal-title">{entry ? 'Edit Expense' : 'Add Expense'}</div>
+
+        {/* Receipt drop zone */}
+        <div
+          style={dropZoneStyle}
+          onClick={() => fileInputRef.current.click()}
+          onDragOver={e => e.preventDefault()}
+          onDrop={e => { e.preventDefault(); handleReceiptFile(e.dataTransfer.files); }}
+        >
+          {parsing ? (
+            <span>Scanning receipt…</span>
+          ) : form.receipt_url ? (
+            <span style={{ color: 'var(--text)' }}>
+              ✓ Receipt attached —{' '}
+              <a href={form.receipt_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ color: 'var(--accent)' }}>view</a>
+              {' · '}
+              <span style={{ textDecoration: 'underline' }}>replace</span>
+            </span>
+          ) : (
+            <span>
+              📷 Drop receipt / invoice here, or <span style={{ textDecoration: 'underline' }}>click to upload</span>
+              <br />
+              <span style={{ fontSize: 11, marginTop: 4, display: 'block' }}>JPEG, PNG, PDF · Fields auto-filled via AI · Long receipt? Use a PDF for best results.</span>
+            </span>
+          )}
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
+          multiple
+          capture="environment"
+          style={{ display: 'none' }}
+          onChange={e => handleReceiptFile(e.target.files)}
+        />
+        {parseErr && <div className="error-msg" style={{ marginBottom: 8 }}>{parseErr}</div>}
+
         <div className="form-grid">
+          <div className="field full">
+            <label>Vendor</label>
+            <input value={form.vendor} onChange={e => set('vendor', e.target.value)} placeholder="e.g. Restaurant Depot" />
+          </div>
           <div className="field">
             <label>Category</label>
             <input list="expense-cats" value={form.category} onChange={e => set('category', e.target.value)} placeholder="e.g. Ingredients" />
@@ -151,8 +237,8 @@ function ExpenseModal({ entry, onSave, onCancel }) {
             <input type="date" value={form.date} onChange={e => set('date', e.target.value)} />
           </div>
           <div className="field full">
-            <label>Description</label>
-            <input value={form.description} onChange={e => set('description', e.target.value)} placeholder="e.g. Flour from Bob's Mill" />
+            <label>Description <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(brief note for accountant)</span></label>
+            <input value={form.description} onChange={e => set('description', e.target.value)} placeholder="e.g. Flour and butter for March stock" />
           </div>
           <div className="field full">
             <label>Notes</label>
@@ -162,10 +248,143 @@ function ExpenseModal({ entry, onSave, onCancel }) {
         {err && <div className="error-msg" style={{ marginTop: 8 }}>{err}</div>}
         <div className="modal-actions" style={{ marginTop: 20 }}>
           <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={saving || parsing}>
             {saving ? 'Saving…' : entry ? 'Save Changes' : 'Add Expense'}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Amazon CSV Import Modal ────────────────────────────
+function AmazonImportModal({ onClose, onImported }) {
+  const [rows,      setRows]      = useState(null);
+  const [selected,  setSelected]  = useState(new Set());
+  const [loading,   setLoading]   = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [result,    setResult]    = useState(null);
+  const [err,       setErr]       = useState('');
+  const fileInputRef = React.useRef();
+
+  async function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setErr(''); setLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/finance/import-amazon-csv', {
+        method: 'POST', body: fd, credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Parse failed');
+      setRows(data.rows);
+      setSelected(new Set(data.rows.map((_, i) => i)));
+    } catch (e) {
+      setErr(e.message || 'Could not parse CSV.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleConfirm() {
+    const toImport = rows.filter((_, i) => selected.has(i));
+    if (toImport.length === 0) return setErr('No rows selected.');
+    setImporting(true); setErr('');
+    try {
+      const res = await fetch('/api/finance/import-amazon-csv/confirm', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ rows: toImport }),
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Import failed');
+      setResult(data);
+      onImported();
+    } catch (e) {
+      setErr(e.message || 'Import failed.');
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function toggleRow(i) {
+    setSelected(s => {
+      const n = new Set(s);
+      n.has(i) ? n.delete(i) : n.add(i);
+      return n;
+    });
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 720 }}>
+        <div className="modal-title">Import Amazon Business CSV</div>
+
+        {result ? (
+          <>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+              Done — <strong style={{ color: 'var(--text)' }}>{result.inserted}</strong> imported,{' '}
+              <strong style={{ color: 'var(--text)' }}>{result.skipped}</strong> skipped (duplicates).
+            </p>
+            <div className="modal-actions"><button className="btn btn-primary" onClick={onClose}>Close</button></div>
+          </>
+        ) : !rows ? (
+          <>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 12 }}>
+              Export your order history from Amazon Business → Orders → Order History Reports, then upload the CSV here.
+            </p>
+            {err && <div className="error-msg" style={{ marginBottom: 8 }}>{err}</div>}
+            <input ref={fileInputRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={handleFile} />
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+              <button className="btn btn-primary" onClick={() => fileInputRef.current.click()} disabled={loading}>
+                {loading ? 'Parsing…' : 'Choose CSV File'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
+              {rows.length} rows found. Uncheck any you want to skip (e.g. personal orders or duplicates), then confirm.
+            </p>
+            <div className="table-wrap" style={{ maxHeight: 360, overflowY: 'auto', marginBottom: 12 }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th style={{ width: 32 }}></th>
+                    <th>Date</th>
+                    <th>Vendor</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th style={{ textAlign: 'right' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, i) => (
+                    <tr key={i} style={{ opacity: selected.has(i) ? 1 : 0.4 }}>
+                      <td><input type="checkbox" checked={selected.has(i)} onChange={() => toggleRow(i)} /></td>
+                      <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{fmtDate(r.date)}</td>
+                      <td style={{ fontSize: 13 }}>{r.vendor}</td>
+                      <td style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.description}</td>
+                      <td><span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: 'var(--surface2)', color: 'var(--text-muted)' }}>{r.category}</span></td>
+                      <td style={{ textAlign: 'right', color: 'var(--red)', fontWeight: 600 }}>{fmtMoney(r.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {err && <div className="error-msg" style={{ marginBottom: 8 }}>{err}</div>}
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleConfirm} disabled={importing}>
+                {importing ? 'Importing…' : `Import ${selected.size} row${selected.size !== 1 ? 's' : ''}`}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -314,8 +533,9 @@ export function FinancePage() {
   const [expenses, setExpenses] = useState([]);
   const [events,   setEvents]   = useState([]);
   const [loading,  setLoading]  = useState(true);
-  const [tab,      setTab]      = useState('dashboard'); // 'income' | 'expenses' | 'dashboard'
-  const [modal,    setModal]    = useState(null); // null | 'income' | 'expense' | entry object
+  const [tab,         setTab]         = useState('dashboard');
+  const [modal,       setModal]       = useState(null);
+  const [amazonModal, setAmazonModal] = useState(false);
 
   // dashboard state
   const [dashRange,      setDashRange]      = useState('ytd');
@@ -444,6 +664,11 @@ export function FinancePage() {
             {exporting ? 'Exporting…' : 'Export CSV'}
           </button>
         </div>
+        {tab === 'expenses' && (
+          <button className="btn btn-secondary" onClick={() => setAmazonModal(true)}>
+            Import Amazon CSV
+          </button>
+        )}
         {tab !== 'dashboard' && (
           <button className="btn btn-primary"
             onClick={() => setModal(tab === 'income' ? 'income' : 'expense')}>
@@ -521,6 +746,7 @@ export function FinancePage() {
                 <thead>
                   <tr>
                     <th>Date</th>
+                    <th>Vendor</th>
                     <th>Category</th>
                     <th>Description</th>
                     <th style={{ textAlign: 'right' }}>Amount</th>
@@ -531,6 +757,14 @@ export function FinancePage() {
                   {expenses.map(r => (
                     <tr key={r.id}>
                       <td style={{ color: 'var(--text-muted)', fontSize: 13, whiteSpace: 'nowrap' }}>{fmtDate(r.date)}</td>
+                      <td style={{ fontSize: 13 }}>
+                        {r.vendor || '—'}
+                        {r.receipt_url && (
+                          <a href={r.receipt_url} target="_blank" rel="noreferrer"
+                            style={{ marginLeft: 6, fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}
+                            title="View receipt">🧾</a>
+                        )}
+                      </td>
                       <td>
                         <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 700,
                           background: 'var(--surface2)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -584,6 +818,12 @@ export function FinancePage() {
           entry={modal === 'expense' ? null : modal}
           onSave={handleSaveExpense}
           onCancel={() => setModal(null)}
+        />
+      )}
+      {amazonModal && (
+        <AmazonImportModal
+          onClose={() => setAmazonModal(false)}
+          onImported={() => { load(); }}
         />
       )}
     </div>
