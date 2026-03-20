@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { query } from '../db/pool.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -26,6 +27,52 @@ function verifySignature(rawBody, signatureHeader, webhookKey, notificationUrl) 
   }
 }
 
+async function processOrderId(orderId, settings) {
+  const env = settings.square_environment || 'sandbox';
+  const token = env === 'production' ? settings.square_production_token : settings.square_sandbox_token;
+  const base = env === 'production' ? 'https://connect.squareup.com' : 'https://connect.squareupsandbox.com';
+
+  const orderRes = await fetch(`${base}/v2/orders/${orderId}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Square-Version': '2024-01-18',
+    },
+  });
+
+  if (!orderRes.ok) {
+    const text = await orderRes.text();
+    throw new Error(`Square order fetch failed: ${text}`);
+  }
+
+  const orderData = await orderRes.json();
+  const lineItems = orderData.order?.line_items || [];
+
+  const results = [];
+  for (const item of lineItems) {
+    const variationId = item.catalog_object_id;
+    if (!variationId) continue;
+
+    const qty = parseInt(item.quantity || '1', 10);
+
+    const { rowCount } = await query(
+      `UPDATE event_menu_items
+       SET qty_on_hand = GREATEST(0, qty_on_hand - $1)
+       WHERE item_builder_id IN (
+         SELECT id FROM item_builder WHERE square_variation_id = $2
+         UNION
+         SELECT item_builder_id FROM item_variants WHERE square_id = $2
+       )
+       AND menu_id IN (
+         SELECT id FROM event_menus WHERE is_active = true
+       )`,
+      [qty, variationId]
+    );
+    results.push({ variationId, qty, rowsUpdated: rowCount });
+  }
+
+  return { orderId, lineItems: results };
+}
+
 // POST /webhooks/square — receives Square sale events, decrements qty_on_hand
 router.post('/square', async (req, res) => {
   try {
@@ -33,7 +80,6 @@ router.post('/square', async (req, res) => {
     const settings = await getSquareSettings();
     const webhookKey = settings.square_webhook_key;
 
-    // Verify signature if key is configured
     if (webhookKey) {
       const signature = req.headers['x-square-hmacsha256-signature'];
       const notificationUrl = `${req.protocol}://${req.get('host')}/api/webhooks/square`;
@@ -42,71 +88,50 @@ router.post('/square', async (req, res) => {
         console.error('[webhook] signature mismatch. URL used:', notificationUrl);
         return res.status(401).json({ error: 'Invalid signature' });
       }
-    } else {
-      console.warn('[webhook] no webhook key configured, skipping sig check');
     }
 
     const eventType = req.body.type;
     const payment = req.body.data?.object?.payment;
-    console.log('[webhook] eventType:', eventType, 'payment status:', payment?.status);
 
-    // Only process payments that have reached COMPLETED status
     if (eventType !== 'payment.updated' || payment?.status !== 'COMPLETED') {
       return res.json({ ok: true, skipped: true });
     }
 
     const orderId = payment?.order_id;
-    console.log('[webhook] orderId:', orderId);
     if (!orderId) return res.json({ ok: true, skipped: true });
 
-    // Fetch the order from Square to get line items with variation IDs
-    const env = settings.square_environment || 'sandbox';
-    const token = env === 'production' ? settings.square_production_token : settings.square_sandbox_token;
-    const base = env === 'production' ? 'https://connect.squareup.com' : 'https://connect.squareupsandbox.com';
-
-    const orderRes = await fetch(`${base}/v2/orders/${orderId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Square-Version': '2024-01-18',
-      },
-    });
-
-    if (!orderRes.ok) {
-      console.error('Square order fetch failed:', await orderRes.text());
-      return res.json({ ok: true, skipped: true });
-    }
-
-    const orderData = await orderRes.json();
-    const lineItems = orderData.order?.line_items || [];
-    console.log('[webhook] line items:', lineItems.map(i => ({ variationId: i.catalog_object_id, qty: i.quantity })));
-
-    // Decrement qty_on_hand for each sold item in any active menu
-    for (const item of lineItems) {
-      const variationId = item.catalog_object_id;
-      if (!variationId) continue;
-
-      const qty = parseInt(item.quantity || '1', 10);
-      console.log('[webhook] decrementing variationId:', variationId, 'qty:', qty);
-
-      await query(
-        `UPDATE event_menu_items
-         SET qty_on_hand = GREATEST(0, qty_on_hand - $1)
-         WHERE item_builder_id IN (
-           SELECT id FROM item_builder WHERE square_variation_id = $2
-           UNION
-           SELECT item_builder_id FROM item_variants WHERE square_id = $2
-         )
-         AND menu_id IN (
-           SELECT id FROM event_menus WHERE is_active = true
-         )`,
-        [qty, variationId]
-      );
-    }
-
+    const result = await processOrderId(orderId, settings);
+    console.log('[webhook] processed:', result);
     res.json({ ok: true });
   } catch (e) {
     console.error('Square webhook error:', e);
     res.status(500).json({ error: 'Webhook processing error' });
+  }
+});
+
+// POST /webhooks/replay — admin tool to reprocess missed Square orders
+router.post('/replay', requireAuth, async (req, res) => {
+  try {
+    const { order_ids } = req.body;
+    if (!Array.isArray(order_ids) || order_ids.length === 0) {
+      return res.status(400).json({ error: 'order_ids array required' });
+    }
+
+    const settings = await getSquareSettings();
+    const results = [];
+
+    for (const orderId of order_ids) {
+      try {
+        const result = await processOrderId(orderId.trim(), settings);
+        results.push({ ...result, ok: true });
+      } catch (e) {
+        results.push({ orderId, ok: false, error: e.message });
+      }
+    }
+
+    res.json({ results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
