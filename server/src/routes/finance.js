@@ -310,8 +310,9 @@ router.post('/parse-receipt', parseUpload.array('files', 10), async (req, res) =
   try {
     if (!req.files?.length) return res.status(400).json({ error: 'No files uploaded.' });
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured on the server.' });
+    const { rows: keyRows } = await query(`SELECT value FROM settings WHERE key='anthropic_api_key' LIMIT 1`);
+    const apiKey = keyRows[0]?.value;
+    if (!apiKey) return res.status(500).json({ error: 'Anthropic API key not configured. Add it in Settings → Integrations → Anthropic.' });
 
     const SUPPORTED = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
     for (const f of req.files) {

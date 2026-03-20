@@ -26,6 +26,14 @@ const SETTINGS_SCHEMA = [
   },
   {
     tab: 'integrations',
+    category: 'Anthropic',
+    icon: '🤖',
+    settings: [
+      { key: 'anthropic_api_key', label: 'API Key', description: 'Anthropic API key for AI receipt parsing (Finance → Add Expense). Get a key at console.anthropic.com.', is_encrypted: true },
+    ],
+  },
+  {
+    tab: 'integrations',
     category: 'Gemini',
     icon: '✨',
     settings: [
