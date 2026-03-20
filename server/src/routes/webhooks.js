@@ -29,6 +29,7 @@ function verifySignature(rawBody, signatureHeader, webhookKey, notificationUrl) 
 // POST /webhooks/square — receives Square sale events, decrements qty_on_hand
 router.post('/square', async (req, res) => {
   try {
+    console.log('[webhook] received type:', req.body.type);
     const settings = await getSquareSettings();
     const webhookKey = settings.square_webhook_key;
 
@@ -36,14 +37,18 @@ router.post('/square', async (req, res) => {
     if (webhookKey) {
       const signature = req.headers['x-square-hmacsha256-signature'];
       const notificationUrl = `${req.protocol}://${req.get('host')}/webhooks/square`;
+      console.log('[webhook] verifying sig, url:', notificationUrl, 'sig present:', !!signature);
       if (!signature || !verifySignature(req.rawBody, signature, webhookKey, notificationUrl)) {
-        console.error('Square webhook signature mismatch. URL used:', notificationUrl);
+        console.error('[webhook] signature mismatch. URL used:', notificationUrl);
         return res.status(401).json({ error: 'Invalid signature' });
       }
+    } else {
+      console.warn('[webhook] no webhook key configured, skipping sig check');
     }
 
     const eventType = req.body.type;
     const payment = req.body.data?.object?.payment;
+    console.log('[webhook] eventType:', eventType, 'payment status:', payment?.status);
 
     // Only process payments that have reached COMPLETED status
     if (eventType !== 'payment.updated' || payment?.status !== 'COMPLETED') {
@@ -51,6 +56,7 @@ router.post('/square', async (req, res) => {
     }
 
     const orderId = payment?.order_id;
+    console.log('[webhook] orderId:', orderId);
     if (!orderId) return res.json({ ok: true, skipped: true });
 
     // Fetch the order from Square to get line items with variation IDs
@@ -72,6 +78,7 @@ router.post('/square', async (req, res) => {
 
     const orderData = await orderRes.json();
     const lineItems = orderData.order?.line_items || [];
+    console.log('[webhook] line items:', lineItems.map(i => ({ variationId: i.catalog_object_id, qty: i.quantity })));
 
     // Decrement qty_on_hand for each sold item in any active menu
     for (const item of lineItems) {
@@ -79,6 +86,7 @@ router.post('/square', async (req, res) => {
       if (!variationId) continue;
 
       const qty = parseInt(item.quantity || '1', 10);
+      console.log('[webhook] decrementing variationId:', variationId, 'qty:', qty);
 
       await query(
         `UPDATE event_menu_items
