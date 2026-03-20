@@ -869,6 +869,16 @@ export function ItemBuilderPage() {
     }
   }
 
+  async function handleSquareUnlink(item) {
+    if (!confirm('Unlink this item from Square? It will NOT be deleted from Square.')) return;
+    try {
+      await api.delete(`/square/unlink/${item.id}`);
+      load();
+    } catch (e) {
+      alert(`Error: ${e.message}`);
+    }
+  }
+
   async function handleWooPush(item) {
     try {
       await api.post(`/wordpress/push-item/${item.id}`, {});
@@ -988,6 +998,7 @@ export function ItemBuilderPage() {
                           { label: 'Edit',      onClick: () => handleOpenEdit(i) },
                           { label: 'Duplicate', onClick: () => handleDuplicate(i) },
                           { label: i.square_id ? '↑ Push to Square' : '→ Push to Square', onClick: () => handleSquarePush(i) },
+                          ...(i.square_id ? [{ label: 'Unlink from Square', onClick: () => handleSquareUnlink(i) }] : []),
                           { label: i.woo_id ? '↑ Push to WooCommerce' : '→ Push to WooCommerce', onClick: () => handleWooPush(i) },
                           { label: 'Delete',    onClick: () => setModal({ mode: 'delete', item: i }), danger: true },
                         ]} />
