@@ -94,7 +94,7 @@ export function InventoryPage() {
             </div>
             {plan.baking_plan.length === 0 ? (
               <div style={{ padding: '24px 20px', color: 'var(--text-muted)', fontSize: 14 }}>
-                All items are covered by freezer stock — nothing to bake.
+                All items are covered by inventory — nothing to bake.
               </div>
             ) : (
               <div className="table-wrap">
@@ -103,7 +103,7 @@ export function InventoryPage() {
                     <tr>
                       <th>Item</th>
                       <th style={{ textAlign: 'right' }}>Needed</th>
-                      <th style={{ textAlign: 'right' }}>In Freezer</th>
+                      <th style={{ textAlign: 'right' }}>In Inventory</th>
                       <th style={{ textAlign: 'right' }}>Deficit</th>
                       <th style={{ textAlign: 'right' }}>Batch Size</th>
                       <th style={{ textAlign: 'right' }}>Batches to Bake</th>
@@ -114,7 +114,7 @@ export function InventoryPage() {
                       <tr key={row.id}>
                         <td style={{ fontWeight: 600 }}>{row.item_name}</td>
                         <td style={{ textAlign: 'right' }}>{fmt(row.total_qty_needed)}</td>
-                        <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{fmt(row.freezer_qty)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{fmt(row.inventory_qty)}</td>
                         <td style={{ textAlign: 'right' }}>{fmt(row.deficit)}</td>
                         <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{fmt(row.batch_qty)}</td>
                         <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--accent2)' }}>{fmt(row.batches_needed)}</td>

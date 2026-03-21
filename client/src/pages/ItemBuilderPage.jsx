@@ -821,13 +821,13 @@ export function ItemBuilderPage() {
   }
 
   async function handleFreezerAdjust(item, delta) {
-    const prev = item.freezer_qty || 0;
+    const prev = item.inventory_qty || 0;
     const next = Math.max(0, prev + delta);
-    setItems(its => its.map(i => i.id === item.id ? { ...i, freezer_qty: next } : i));
+    setItems(its => its.map(i => i.id === item.id ? { ...i, inventory_qty: next } : i));
     try {
-      await api.patch(`/items/${item.id}/freezer`, { delta });
+      await api.patch(`/items/${item.id}/inventory`, { delta });
     } catch {
-      setItems(its => its.map(i => i.id === item.id ? { ...i, freezer_qty: prev } : i));
+      setItems(its => its.map(i => i.id === item.id ? { ...i, inventory_qty: prev } : i));
     }
   }
 
@@ -945,7 +945,7 @@ export function ItemBuilderPage() {
                   <th>Retail</th>
                   <th>Packaging</th>
                   <th>Fees</th>
-                  <th>Freezer</th>
+                  <th>Inventory</th>
                   <th>Square</th>
                   <th>Woo</th>
                   <th></th>
@@ -976,9 +976,9 @@ export function ItemBuilderPage() {
                     <td style={{ color: 'var(--text-muted)' }}>{i.include_packaging ? '✓' : '—'}</td>
                     <td style={{ color: 'var(--text-muted)' }}>{i.include_fees ? '✓' : '—'}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      <button onClick={() => handleFreezerAdjust(i, -1)} disabled={(i.freezer_qty || 0) === 0}
+                      <button onClick={() => handleFreezerAdjust(i, -1)} disabled={(i.inventory_qty || 0) === 0}
                         style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', color: 'var(--text-muted)', padding: '1px 6px', fontSize: 13, lineHeight: 1 }}>−</button>
-                      <span style={{ display: 'inline-block', minWidth: 28, textAlign: 'center', fontWeight: 600, fontSize: 13 }}>{i.freezer_qty || 0}</span>
+                      <span style={{ display: 'inline-block', minWidth: 28, textAlign: 'center', fontWeight: 600, fontSize: 13 }}>{i.inventory_qty || 0}</span>
                       <button onClick={() => handleFreezerAdjust(i, 1)}
                         style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', color: 'var(--text-muted)', padding: '1px 6px', fontSize: 13, lineHeight: 1 }}>+</button>
                     </td>

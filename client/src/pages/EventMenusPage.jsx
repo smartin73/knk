@@ -135,7 +135,7 @@ function ItemPickerModal({ menuId, existingIds, onAdd, onClose }) {
   async function handleAdd(item) {
     setAdding(item.id);
     try {
-      const qty = item.freezer_qty > 0 ? item.freezer_qty : 0;
+      const qty = item.inventory_qty > 0 ? item.inventory_qty : 0;
       const result = await api.post(`/event-menus/${menuId}/items`, {
         item_builder_id: item.id,
         qty_on_hand: qty,
@@ -180,7 +180,13 @@ function ItemPickerModal({ menuId, existingIds, onAdd, onClose }) {
                   {item.is_favorite && <span style={{ color: '#f5a623', marginRight: 4 }}>★</span>}
                   {item.item_name}
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtPrice(item.retail_price)}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  {fmtPrice(item.retail_price)}
+                  {(item.inventory_qty || 0) === 0
+                    ? <span style={{ marginLeft: 6, color: 'var(--red, #e55)', fontWeight: 600 }}>⚠ Needs to be made</span>
+                    : <span style={{ marginLeft: 6, color: 'var(--text-muted)' }}>{item.inventory_qty} in stock</span>
+                  }
+                </div>
               </div>
               <button
                 className="btn btn-primary btn-sm"

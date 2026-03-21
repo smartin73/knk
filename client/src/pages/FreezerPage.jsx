@@ -20,22 +20,22 @@ export function FreezerPage() {
   useEffect(() => { load(); }, [load]);
 
   async function handleDelta(item, delta) {
-    const prev = item.freezer_qty || 0;
+    const prev = item.inventory_qty || 0;
     const next = Math.max(0, prev + delta);
-    setItems(its => its.map(i => i.id === item.id ? { ...i, freezer_qty: next } : i));
+    setItems(its => its.map(i => i.id === item.id ? { ...i, inventory_qty: next } : i));
     try {
-      await api.patch(`/items/${item.id}/freezer`, { delta });
+      await api.patch(`/items/${item.id}/inventory`, { delta });
     } catch {
-      setItems(its => its.map(i => i.id === item.id ? { ...i, freezer_qty: prev } : i));
+      setItems(its => its.map(i => i.id === item.id ? { ...i, inventory_qty: prev } : i));
     }
   }
 
   async function handleSetQty(item, val) {
     const qty = Math.max(0, parseInt(val) || 0);
-    setItems(its => its.map(i => i.id === item.id ? { ...i, freezer_qty: qty } : i));
+    setItems(its => its.map(i => i.id === item.id ? { ...i, inventory_qty: qty } : i));
     setEditingQty(null);
     try {
-      await api.patch(`/items/${item.id}/freezer`, { qty });
+      await api.patch(`/items/${item.id}/inventory`, { qty });
     } catch (e) {
       console.error(e);
       load();
@@ -46,20 +46,20 @@ export function FreezerPage() {
     !search || i.item_name.toLowerCase().includes(search.toLowerCase())
   ).sort((a, b) => {
     // Out of stock to bottom
-    if ((a.freezer_qty || 0) === 0 && (b.freezer_qty || 0) > 0) return 1;
-    if ((b.freezer_qty || 0) === 0 && (a.freezer_qty || 0) > 0) return -1;
+    if ((a.inventory_qty || 0) === 0 && (b.inventory_qty || 0) > 0) return 1;
+    if ((b.inventory_qty || 0) === 0 && (a.inventory_qty || 0) > 0) return -1;
     return a.item_name.localeCompare(b.item_name);
   });
 
   const total    = items.length;
-  const inStock  = items.filter(i => (i.freezer_qty || 0) > 0).length;
-  const outOf    = items.filter(i => (i.freezer_qty || 0) === 0).length;
+  const inStock  = items.filter(i => (i.inventory_qty || 0) > 0).length;
+  const outOf    = items.filter(i => (i.inventory_qty || 0) === 0).length;
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <div className="page-title">🧊 Freezer Stock</div>
+          <div className="page-title">📦 Inventory</div>
           <div className="page-subtitle">{inStock} of {total} items in stock</div>
         </div>
       </div>
@@ -86,7 +86,7 @@ export function FreezerPage() {
       <div className="card" style={{ padding: 0 }}>
         {loading ? <div className="loading">Loading…</div> : filtered.length === 0 ? (
           <div className="empty-state">
-            <div style={{ fontSize: 48 }}>🧊</div>
+            <div style={{ fontSize: 48 }}>📦</div>
             <p>{search ? 'No items match.' : 'No items yet.'}</p>
           </div>
         ) : (
@@ -96,12 +96,12 @@ export function FreezerPage() {
                 <tr>
                   <th>Item</th>
                   <th style={{ textAlign: 'right' }}>Batch Qty</th>
-                  <th style={{ textAlign: 'center' }}>Freezer Stock</th>
+                  <th style={{ textAlign: 'center' }}>Inventory</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(item => {
-                  const qty = item.freezer_qty || 0;
+                  const qty = item.inventory_qty || 0;
                   const isOut = qty === 0;
                   const isEditing = editingQty?.id === item.id;
                   return (

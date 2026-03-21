@@ -157,7 +157,7 @@ router.get('/:id/close-preview', async (req, res) => {
   }
 });
 
-// POST /events/:id/close — deduct sold from freezer, create donations for leftovers, mark completed
+// POST /events/:id/close — deduct sold from inventory, create donations for leftovers, mark completed
 router.post('/:id/close', async (req, res) => {
   try {
     const eventId = req.params.id;
@@ -180,17 +180,17 @@ router.post('/:id/close', async (req, res) => {
       byItem[r.item_builder_id].qty_on_hand += parseInt(r.qty_on_hand || 0);
     }
 
-    let freezer_updates = 0, donations_created = 0;
+    let inventory_updates = 0, donations_created = 0;
     for (const item of Object.values(byItem)) {
       const sold     = Math.max(0, item.qty_initial - item.qty_on_hand);
       const leftover = item.qty_on_hand;
 
       if (sold > 0) {
         await query(
-          `UPDATE item_builder SET freezer_qty = GREATEST(0, freezer_qty - $1) WHERE id = $2`,
+          `UPDATE item_builder SET inventory_qty = GREATEST(0, inventory_qty - $1) WHERE id = $2`,
           [sold, item.item_builder_id]
         );
-        freezer_updates++;
+        inventory_updates++;
       }
       if (leftover > 0) {
         await query(
@@ -234,7 +234,7 @@ router.post('/:id/close', async (req, res) => {
       }
     }
 
-    res.json({ ok: true, freezer_updates, donations_created });
+    res.json({ ok: true, inventory_updates, donations_created });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });

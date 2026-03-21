@@ -24,7 +24,7 @@ router.get('/baking-plan', async (req, res) => {
          ib.id,
          ib.item_name,
          COALESCE(ib.batch_qty, 1)     AS batch_qty,
-         COALESCE(ib.freezer_qty, 0)   AS freezer_qty,
+         COALESCE(ib.inventory_qty, 0) AS inventory_qty,
          SUM(emi.qty_initial)::int     AS total_qty_needed
        FROM event_menu_items emi
        JOIN event_menus em ON emi.menu_id = em.id
@@ -33,13 +33,13 @@ router.get('/baking-plan', async (req, res) => {
        WHERE e.event_date BETWEEN $1 AND $2
          AND e.status != 'cancelled'
          AND emi.item_builder_id IS NOT NULL
-       GROUP BY ib.id, ib.item_name, ib.batch_qty, ib.freezer_qty`,
+       GROUP BY ib.id, ib.item_name, ib.batch_qty, ib.inventory_qty`,
       [start, end]
     );
 
     // Compute deficit and batches needed
     const bakingPlan = itemRows.map(row => {
-      const deficit = Math.max(0, row.total_qty_needed - row.freezer_qty);
+      const deficit = Math.max(0, row.total_qty_needed - row.inventory_qty);
       const batches_needed = row.batch_qty > 0 ? Math.ceil(deficit / row.batch_qty) : 0;
       return { ...row, deficit, batches_needed };
     }).filter(r => r.batches_needed > 0);

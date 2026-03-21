@@ -343,7 +343,7 @@ router.get('/:id/makes', async (req, res) => {
   res.json(rows);
 });
 
-// POST /recipes/:id/make — record a make, auto-update freezer if 1 IB item uses this recipe
+// POST /recipes/:id/make — record a make, auto-update inventory if 1 IB item uses this recipe
 router.post('/:id/make', async (req, res) => {
   try {
     const { multiplier, yield_qty, notes, made_at } = req.body;
@@ -354,7 +354,7 @@ router.post('/:id/make', async (req, res) => {
        made_at || new Date().toISOString().slice(0, 10)]
     );
 
-    // Auto-update freezer_qty if exactly one IB item uses this recipe as a component
+    // Auto-update inventory_qty if exactly one IB item uses this recipe as a component
     let freezer_updated = null;
     if (yield_qty) {
       const { rows: linked } = await query(
@@ -366,8 +366,8 @@ router.post('/:id/make', async (req, res) => {
       );
       if (linked.length === 1) {
         const { rows: [updated] } = await query(
-          `UPDATE item_builder SET freezer_qty = COALESCE(freezer_qty, 0) + $1
-           WHERE id = $2 RETURNING id, item_name, freezer_qty`,
+          `UPDATE item_builder SET inventory_qty = COALESCE(inventory_qty, 0) + $1
+           WHERE id = $2 RETURNING id, item_name, inventory_qty`,
           [yield_qty, linked[0].item_builder_id]
         );
         freezer_updated = updated;

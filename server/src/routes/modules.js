@@ -335,16 +335,16 @@ itemBuilderRouter.patch('/:id/favorite', async (req, res) => {
   }
 });
 
-// PATCH /items/:id/freezer — adjust freezer stock by delta, or set absolute qty
-itemBuilderRouter.patch('/:id/freezer', async (req, res) => {
+// PATCH /items/:id/inventory — adjust inventory stock by delta, or set absolute qty
+itemBuilderRouter.patch('/:id/inventory', async (req, res) => {
   try {
     const { delta, qty } = req.body;
     let sql, params;
     if (qty !== undefined) {
-      sql = 'UPDATE item_builder SET freezer_qty=$1 WHERE id=$2 RETURNING id, freezer_qty';
+      sql = 'UPDATE item_builder SET inventory_qty=$1 WHERE id=$2 RETURNING id, inventory_qty';
       params = [Math.max(0, parseInt(qty) || 0), req.params.id];
     } else {
-      sql = 'UPDATE item_builder SET freezer_qty=GREATEST(0, freezer_qty+$1) WHERE id=$2 RETURNING id, freezer_qty';
+      sql = 'UPDATE item_builder SET inventory_qty=GREATEST(0, inventory_qty+$1) WHERE id=$2 RETURNING id, inventory_qty';
       params = [parseInt(delta) || 0, req.params.id];
     }
     const { rows } = await query(sql, params);

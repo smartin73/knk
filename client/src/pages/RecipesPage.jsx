@@ -125,7 +125,7 @@ function AddToFreezerModal({ recipe, suggestedQty, onClose }) {
   return (
     <div className="modal-backdrop" style={{ zIndex: 300 }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ maxWidth: 360 }}>
-        <div className="modal-title">Add to Freezer</div>
+        <div className="modal-title">Add to Inventory</div>
         <div className="form-grid">
           <div className="field full">
             <label>Qty to Add</label>
@@ -134,13 +134,13 @@ function AddToFreezerModal({ recipe, suggestedQty, onClose }) {
         </div>
         {freezerUpdated && (
           <div style={{ marginTop: 8, fontSize: 13, color: 'var(--success, #4caf82)' }}>
-            ✓ Freezer updated — {freezerUpdated.item_name}: {freezerUpdated.freezer_qty} in stock
+            ✓ Inventory updated — {freezerUpdated.item_name}: {freezerUpdated.inventory_qty} in stock
           </div>
         )}
         {err && <div className="error-msg" style={{ marginTop: 8 }}>{err}</div>}
         <div className="modal-actions">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Add to Freezer'}</button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Add to Inventory'}</button>
         </div>
       </div>
     </div>
@@ -432,7 +432,7 @@ function MakeView({ recipe, onClose }) {
 
         <div className="modal-actions" style={{ marginTop:16 }}>
           <button className="btn btn-secondary" onClick={onClose}>Close</button>
-          <button className="btn btn-primary" onClick={() => setShowFreezer(true)}>+ Freezer</button>
+          <button className="btn btn-primary" onClick={() => setShowFreezer(true)}>+ Inventory</button>
         </div>
       </div>
       {showFreezer && (

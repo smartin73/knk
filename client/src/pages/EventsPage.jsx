@@ -47,7 +47,7 @@ function CloseEventModal({ event, onClose, onClosed }) {
             ) : (
               <>
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
-                  Sold quantities will be deducted from freezer stock. Leftovers will be logged as donations.
+                  Sold quantities will be deducted from inventory. Leftovers will be logged as donations.
                 </p>
                 <div className="table-wrap" style={{ marginBottom: 16 }}>
                   <table>
