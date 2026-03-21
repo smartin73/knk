@@ -135,7 +135,7 @@ function Layout() {
             : <><span>🔪</span><span>Knife & Knead</span></>
           }
         </div>
-        <NavLinks isAdmin={isAdmin} onClick={() => setNavOpen(false)} />
+        <NavLinks isAdmin={isAdmin} isFinance={isFinance} onClick={() => setNavOpen(false)} />
         {footer}
       </nav>
 
