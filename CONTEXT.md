@@ -189,7 +189,7 @@ made_at     date  DEFAULT CURRENT_DATE
 created_at  timestamptz
 ```
 Migration: `server/migrations/add_recipe_make_tracking.sql`
-API: `POST /recipes/:id/make` — records a make; auto-updates `item_builder.freezer_qty` if exactly one IB item uses this recipe
+API: `POST /recipes/:id/make` — records a make; auto-updates `item_builder.inventory_qty` if exactly one IB item uses this recipe
      `GET  /recipes/:id/makes` — returns make history
 
 ### recipe_ingredients
@@ -286,11 +286,13 @@ square_id           text
 woo_id              text
 is_active           boolean
 is_favorite         boolean  DEFAULT false
-freezer_qty         integer  DEFAULT 0   ← current unbaked stock in freezer
+inventory_qty       integer  DEFAULT 0   ← current unbaked stock in inventory
+square_variation_id text
+square_image_id     text
 created_at          timestamptz
 updated_at          timestamptz
 ```
-Migrations: `server/migrations/add_item_builder_favorites.sql`, `server/migrations/add_freezer_qty.sql`
+Migrations: `server/migrations/add_item_builder_favorites.sql`, `server/migrations/add_freezer_qty.sql`, `server/migrations/rename_freezer_to_inventory.sql`
 
 ### item_builder_items (junction)
 ```
@@ -442,34 +444,35 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 
 | Module | Status |
 |--------|--------|
-| Events | ✅ Full CRUD + CSV import + Repeat + Push to Web / Sync to Web / Unlink from Web (WordPress Simple Events plugin); "Generate from Location" button auto-fills map embed; **Close Event** (RowMenu) — deducts sold qty from freezer, auto-creates donation records for leftovers, marks event completed |
+| Events | ✅ Full CRUD + CSV import + Repeat + Push to Web / Sync to Web / Unlink from Web (WordPress Simple Events plugin); "Generate from Location" button auto-fills map embed; **Close Event** (RowMenu) — deducts sold qty from inventory, auto-creates donation records for leftovers + income_entries row, marks event completed |
 | Vendors | ✅ Full CRUD + CSV import |
 | Ingredients | ✅ Full CRUD + price history + CSV import + duplicate detection + merge tool + "Used In Recipes" cross-reference in detail modal |
-| Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage filter + MakeView (multiplier, fold tracking, ingredient checkboxes, make history, "+ Freezer") + test logging |
+| Recipes | ✅ Full CRUD + steps + ingredients + CSV import + stage filter + MakeView (multiplier, fold tracking, ingredient checkboxes, make history, "+ Inventory") + test logging |
 | Settings | ✅ Square, Pushover, WordPress + WooCommerce, Costing, Cloudinary, Branding (admin logo, menu display logo, sold-out image), Event Menus |
-| ItemBuilder | ✅ Full CRUD + components + costing + variants + Push to Square + Push to WooCommerce + Favorites (star toggle, filter, sort to top, integrated in Menu Builder picker) + Freezer stock (inline +/– in list; "Add to Freezer" from MakeView updates freezer_qty) + image display in detail modal |
-| Freezer | ✅ Dedicated `/freezer` page — all IB items with inline +/– and click-to-set-exact-qty; stats bar (total / in-stock / out-of-stock); out-of-stock items sorted to bottom |
+| ItemBuilder | ✅ Full CRUD + components + costing + variants + Push to Square (+ Unlink from Square) + Push to WooCommerce + Favorites (star toggle, filter, sort to top, integrated in Menu Builder picker) + Inventory stock (inline +/– in list; "+ Inventory" from MakeView updates inventory_qty) + image display in detail modal |
+| Inventory | ✅ Dedicated `/freezer` page — all IB items with inline +/– and click-to-set-exact-qty; stats bar (total / in-stock / out-of-stock); out-of-stock items sorted to bottom; auto-populates qty_initial when adding to event menu |
 | Branding | ✅ Admin logo (login + sidebar), Menu Display logo (public menu header), Sold-Out image (full-screen when all items sold out on a menu); all via Cloudinary image upload in Settings → Branding |
-| Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (Phase 2, fixed: uses square_id + item_variants lookup) + Menu Specials (is_special flag, star toggle in admin, MenuSpecialsPage at /menu/:id/specials, auto-redirect at /menu/specials); admin shows Started / On Hand / Sold per item |
+| Event Menus | ✅ Full CRUD admin + public display (/menu/:id) + landing page (/menu) + Square webhook (fixed: Apache proxied to /api/webhooks/square, uses square_variation_id lookup) + Menu Specials (is_special flag, star toggle in admin, MenuSpecialsPage at /menu/:id/specials, auto-redirect at /menu/specials); admin shows Started / On Hand / Sold per item; qty_initial auto-populated from inventory_qty on item add |
 | Donations | ✅ Full CRUD + CSV export (item-based, linked to events + item builder) |
 | Users | ✅ Admin/finance/member roles + user management + change password + role change via RowMenu (Make Admin / Make Finance / Make Member) |
 | Finance | ✅ Income + Expenses CRUD + CSV export (donations auto-included) + Log Sales action on Events + Dashboard tab (KPI cards, bar chart, donut chart, date range filter: This Month / This Year / All Time / Custom); `finance` role restricts access; nav label "Finance"; defaults to Dashboard tab |
 | WordPress/WooCommerce | ✅ Push events → WP plugin (RowMenu: "Push to Web" / "Sync to Web" / "Unlink from Web"); Push items → WooCommerce REST API; simple + variable products with variants |
-| Mobile Nav | ✅ Hamburger + slide-out drawer, auto-closes on route change |
+| Mobile Nav | ✅ Hamburger + slide-out drawer, auto-closes on route change; finance nav visible to finance/admin roles |
 | Monthly Tax Filing | ✅ RI STR (Form RI-STR) + MTM (Form MTM) AcroForm PDFs filled via pdf-lib; signature image embedded; auto-send via node-cron on 1st of month at 9am; manual send + preview at `/tax`; Schedule A Providence row filled on MTM page 2; tax settings in Settings → Tax Filing |
 | Event Menus Mobile | ✅ Admin add/edit flows fixed for small screens |
 | Android TWA | ✅ Dual APK fix applied — specials APK uses distinct packageId `com.knifeandknead.specials` |
-| Inventory Planner | ✅ `/inventory` — date range → events → baking plan (deficit vs freezer, batches needed) + shopping list (ingredient grams → units to buy, est. cost) |
+| Baking Plan | ✅ `/inventory` — date range → events → baking plan (deficit vs inventory, batches needed) + shopping list (ingredient grams → units to buy, est. cost) |
+| Square Integration | ✅ Push to Square (catalog item + image + variation IDs stored); webhook at `/api/webhooks/square` → decrements qty_on_hand on COMPLETED payments; Unlink from Square; order replay script at `server/scripts/replay-orders.mjs`; square_variation_id used for webhook matching |
 
 ---
 
 ## Pending Work
 
-- [ ] Kitchen Display System (KDS) — `kds_item` flag on item_builder; Square webhooks → SSE → full-screen `/kds` page; order cards with KDS line items + "Done" dismiss; display via Fully Kiosk Browser on Android tablet (no TWA needed)
+- [ ] Stripe migration — replace Square with Stripe (Terminal + webhooks + catalog sync); run both in parallel, validate, then cut over; KDS to be built on Stripe webhooks from the start
 
 ## Inventory Loop (how it all connects)
-1. Bake → add to freezer (Item Builder inline +/– or MakeView "Add to Freezer")
-2. Build event menu → set qty_initial (how many you're bringing)
+1. Bake → add to inventory (Item Builder inline +/– or MakeView "+ Inventory")
+2. Build event menu → qty_initial auto-populated from inventory_qty (override as needed)
 3. At event → Square webhook decrements qty_on_hand as sales come in
-4. After event → Log Sales (revenue), then Close Event (deducts sold from freezer, creates donation records for leftovers, marks event completed)
-5. Inventory Planner (Phase 2) → date range → events → deficit vs freezer → baking plan + shopping list
+4. After event → Log Sales (revenue), then Close Event (deducts sold from inventory, creates donation records for leftovers + income_entries row, marks event completed)
+5. Baking Plan → date range → events → deficit vs inventory → baking plan + shopping list
