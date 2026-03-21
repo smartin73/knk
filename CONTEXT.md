@@ -378,6 +378,24 @@ updated_at   timestamptz
 ```
 Migration: `server/migrations/add_income_reference_id.sql`
 
+### order_line_items
+```
+id              uuid  PK  DEFAULT gen_random_uuid()
+square_order_id text  NOT NULL
+item_builder_id uuid  FK → item_builder.id  ON DELETE SET NULL  (null if unmatched)
+item_name       text
+quantity        numeric
+unit_price      numeric
+total           numeric
+sale_date       date
+event_id        uuid  FK → events.id  ON DELETE SET NULL
+created_at      timestamptz  DEFAULT now()
+UNIQUE (square_order_id, item_name)
+```
+Migration: `server/migrations/add_order_line_items.sql`
+Backfill: `server/scripts/backfill-orders.js orders.json` (run from server/ directory)
+Used by: `GET /finance/top-items` — SUM(quantity) last 12 months, joined to item_builder, top 10
+
 ### expense_entries
 ```
 id           uuid  PK  DEFAULT gen_random_uuid()

@@ -74,15 +74,13 @@ router.get('/revenue-by-event', async (req, res) => {
 router.get('/top-items', async (req, res) => {
   try {
     const { rows } = await query(`
-      SELECT ib.item_name,
-             SUM(GREATEST(0, emi.qty_initial - emi.qty_on_hand)) AS qty_sold
-      FROM event_menu_items emi
-      JOIN item_builder ib ON emi.item_builder_id = ib.id
-      JOIN events e ON emi.event_id = e.id
-      WHERE e.status = 'completed'
-        AND emi.qty_initial IS NOT NULL
-        AND emi.qty_on_hand IS NOT NULL
-      GROUP BY ib.id, ib.item_name
+      SELECT
+        COALESCE(ib.item_name, oli.item_name) AS item_name,
+        SUM(oli.quantity)                      AS qty_sold
+      FROM order_line_items oli
+      LEFT JOIN item_builder ib ON oli.item_builder_id = ib.id
+      WHERE oli.sale_date >= CURRENT_DATE - INTERVAL '12 months'
+      GROUP BY COALESCE(ib.item_name, oli.item_name)
       ORDER BY qty_sold DESC
       LIMIT 10
     `);
