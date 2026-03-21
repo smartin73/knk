@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { RowMenu } from '../components/RowMenu.jsx';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-         PieChart, Pie, Cell } from 'recharts';
+         PieChart, Pie, Cell, LabelList } from 'recharts';
 
 const SOURCES = ['square', 'website', 'manual'];
 const SOURCE_LABELS = { square: 'Square', website: 'Website', manual: 'Manual' };
-const EXPENSE_CATEGORIES = ['Ingredients', 'Packaging', 'Supplies', 'Equipment', 'Fees', 'Marketing', 'Other'];
+const EXPENSE_CATEGORIES = ['Ingredients', 'Packaging', 'Supplies', 'Equipment', 'Fees', 'Event Fees', 'Marketing', 'Utilities', 'Labor', 'Other'];
 
 const COLOR_INCOME    = '#4caf82';
 const COLOR_EXPENSES  = '#e05c5c';
@@ -223,10 +223,14 @@ function ExpenseModal({ entry, onSave, onCancel }) {
           </div>
           <div className="field">
             <label>Category</label>
-            <input list="expense-cats" value={form.category} onChange={e => set('category', e.target.value)} placeholder="e.g. Ingredients" />
-            <datalist id="expense-cats">
-              {EXPENSE_CATEGORIES.map(c => <option key={c} value={c} />)}
-            </datalist>
+            <select value={form.category} onChange={e => set('category', e.target.value)}
+              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 14 }}>
+              <option value="">— Select category —</option>
+              {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              {form.category && !EXPENSE_CATEGORIES.includes(form.category) && (
+                <option value={form.category}>{form.category}</option>
+              )}
+            </select>
           </div>
           <div className="field">
             <label>Amount ($)</label>
@@ -391,7 +395,11 @@ function AmazonImportModal({ onClose, onImported }) {
 }
 
 // ── Finance Dashboard ──────────────────────────────────
-function FinanceDashboard({ summary, loading, range, from, to, onRangeChange, onFromChange, onToChange }) {
+function truncate(s, n = 22) {
+  return s && s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
+function FinanceDashboard({ summary, loading, range, from, to, onRangeChange, onFromChange, onToChange, chartData }) {
   if (loading) return <div className="loading">Loading…</div>;
   if (!summary) return null;
 
@@ -474,6 +482,76 @@ function FinanceDashboard({ summary, loading, range, from, to, onRangeChange, on
         </div>
       )}
 
+      {/* Event charts */}
+      {chartData && (
+        <>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16, marginTop:16 }}>
+            {/* Revenue per Event */}
+            <div className="card">
+              <div className="card-title" style={{ marginBottom:12 }}>Revenue by Event <span style={{ color:'var(--text-muted)', fontWeight:400, fontSize:12 }}>(last 10)</span></div>
+              {chartData.revenueByEvent.length === 0 ? (
+                <div style={{ color:'var(--text-muted)', fontSize:13 }}>No completed events yet.</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart
+                    layout="vertical"
+                    data={[...chartData.revenueByEvent].reverse().map(r => ({ ...r, name: truncate(r.event_name) }))}
+                    margin={{ top:4, right:60, left:0, bottom:0 }}>
+                    <XAxis type="number" tickFormatter={v => `$${v.toLocaleString()}`} tick={{ fill:'var(--text-muted)', fontSize:11 }} />
+                    <YAxis type="category" dataKey="name" width={130} tick={{ fill:'var(--text-muted)', fontSize:11 }} />
+                    <Tooltip formatter={v => fmtMoney(v)} contentStyle={tooltipStyle} labelFormatter={(_,p) => p?.[0]?.payload?.event_name || ''} />
+                    <Bar dataKey="revenue" fill={COLOR_INCOME} name="Revenue" radius={[0,3,3,0]}>
+                      <LabelList dataKey="revenue" position="right" formatter={v => fmtMoney(v)} style={{ fill:'var(--text-muted)', fontSize:10 }} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            {/* Top Selling Items */}
+            <div className="card">
+              <div className="card-title" style={{ marginBottom:12 }}>Top Selling Items <span style={{ color:'var(--text-muted)', fontWeight:400, fontSize:12 }}>(qty sold)</span></div>
+              {chartData.topItems.length === 0 ? (
+                <div style={{ color:'var(--text-muted)', fontSize:13 }}>No sales data yet.</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart
+                    layout="vertical"
+                    data={[...chartData.topItems].reverse().map(r => ({ ...r, name: truncate(r.item_name) }))}
+                    margin={{ top:4, right:50, left:0, bottom:0 }}>
+                    <XAxis type="number" tick={{ fill:'var(--text-muted)', fontSize:11 }} />
+                    <YAxis type="category" dataKey="name" width={130} tick={{ fill:'var(--text-muted)', fontSize:11 }} />
+                    <Tooltip formatter={v => `${v} units`} contentStyle={tooltipStyle} labelFormatter={(_,p) => p?.[0]?.payload?.item_name || ''} />
+                    <Bar dataKey="qty_sold" fill={COLOR_DONATIONS} name="Qty Sold" radius={[0,3,3,0]}>
+                      <LabelList dataKey="qty_sold" position="right" style={{ fill:'var(--text-muted)', fontSize:10 }} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          {/* Donations vs Sales */}
+          {chartData.donationsVsSales.length > 0 && (
+            <div className="card" style={{ marginBottom:16 }}>
+              <div className="card-title" style={{ marginBottom:12 }}>Donations vs Sales per Event <span style={{ color:'var(--text-muted)', fontWeight:400, fontSize:12 }}>(last 10 completed)</span></div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart
+                  data={chartData.donationsVsSales.map(r => ({ ...r, name: truncate(r.event_name, 18) }))}
+                  margin={{ top:4, right:8, left:0, bottom:0 }}>
+                  <XAxis dataKey="name" tick={{ fill:'var(--text-muted)', fontSize:11 }} />
+                  <YAxis tickFormatter={v => `$${v.toLocaleString()}`} tick={{ fill:'var(--text-muted)', fontSize:11 }} width={72} />
+                  <Tooltip formatter={v => fmtMoney(v)} contentStyle={tooltipStyle} labelFormatter={(_,p) => p?.[0]?.payload?.event_name || ''} />
+                  <Legend wrapperStyle={{ fontSize:12 }} />
+                  <Bar dataKey="sales"     fill={COLOR_INCOME}    name="Sales"     radius={[3,3,0,0]} />
+                  <Bar dataKey="donations" fill={COLOR_DONATIONS}  name="Donations" radius={[3,3,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </>
+      )}
+
       {/* Breakdown tables */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
         <div className="card" style={{ padding:0 }}>
@@ -543,6 +621,7 @@ export function FinancePage() {
   const [dashTo,         setDashTo]         = useState(today());
   const [summary,        setSummary]        = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [chartData,      setChartData]      = useState(null);
 
   // export state
   const [exportFrom, setExportFrom] = useState('');
@@ -583,6 +662,17 @@ export function FinancePage() {
   useEffect(() => {
     if (tab === 'dashboard') loadSummary(dashFrom, dashTo);
   }, [tab, dashFrom, dashTo, loadSummary]);
+
+  useEffect(() => {
+    if (tab !== 'dashboard' || chartData) return;
+    Promise.all([
+      api.get('/finance/revenue-by-event'),
+      api.get('/finance/top-items'),
+      api.get('/finance/donations-vs-sales'),
+    ]).then(([revenueByEvent, topItems, donationsVsSales]) => {
+      setChartData({ revenueByEvent, topItems, donationsVsSales });
+    }).catch(console.error);
+  }, [tab, chartData]);
 
   function handleRangeChange(r) {
     setDashRange(r);
@@ -801,6 +891,7 @@ export function FinancePage() {
           onRangeChange={handleRangeChange}
           onFromChange={v => setDashFrom(v)}
           onToChange={v => setDashTo(v)}
+          chartData={chartData}
         />
       )}
 

@@ -100,6 +100,40 @@ router.post('/square', async (req, res) => {
     const orderId = payment?.order_id;
     if (!orderId) return res.json({ ok: true, skipped: true });
 
+    // ── Persist income entry (idempotent via reference_id) ──────────────────
+    const paymentId   = payment.id;
+    const amountCents = payment.total_money?.amount;
+    const paymentDate = payment.created_at
+      ? payment.created_at.slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+
+    if (paymentId && amountCents != null) {
+      const { rowCount: alreadyExists } = await query(
+        'SELECT 1 FROM income_entries WHERE reference_id = $1',
+        [paymentId]
+      );
+      if (alreadyExists === 0) {
+        // Find the active event (event with an active menu, not yet completed)
+        const { rows: activeEvents } = await query(`
+          SELECT DISTINCT e.id FROM events e
+          JOIN event_menus em ON em.event_id = e.id
+          WHERE em.is_active = true AND e.status != 'completed'
+          LIMIT 1
+        `);
+        const eventId = activeEvents[0]?.id || null;
+
+        await query(
+          `INSERT INTO income_entries (source, amount, date, event_id, description, reference_id)
+           VALUES ('square', $1, $2, $3, 'Square Sale', $4)`,
+          [(amountCents / 100).toFixed(2), paymentDate, eventId, paymentId]
+        );
+        console.log('[webhook] income_entries inserted — payment', paymentId, 'amount', (amountCents / 100).toFixed(2), 'event', eventId);
+      } else {
+        console.log('[webhook] income_entries already exists for payment', paymentId, '— skipping');
+      }
+    }
+
+    // ── Decrement event_menu_items qty_on_hand ───────────────────────────────
     const result = await processOrderId(orderId, settings);
     console.log('[webhook] processed:', result);
     res.json({ ok: true });

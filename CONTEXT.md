@@ -372,9 +372,11 @@ date         date
 event_id     uuid  FK → events.id
 description  text
 notes        text
+reference_id text  UNIQUE (partial index, WHERE NOT NULL) ← Square payment ID for dedup
 created_at   timestamptz
 updated_at   timestamptz
 ```
+Migration: `server/migrations/add_income_reference_id.sql`
 
 ### expense_entries
 ```
@@ -462,7 +464,7 @@ Configured keys: `square_*`, `pushover_*`, `gemini_api_key`, `wordpress_site_url
 | Event Menus Mobile | ✅ Admin add/edit flows fixed for small screens |
 | Android TWA | ✅ Dual APK fix applied — specials APK uses distinct packageId `com.knifeandknead.specials` |
 | Baking Plan | ✅ `/inventory` — date range → events → baking plan (deficit vs inventory, batches needed) + shopping list (ingredient grams → units to buy, est. cost) |
-| Square Integration | ✅ Push to Square (catalog item + image + variation IDs stored); webhook at `/api/webhooks/square` → decrements qty_on_hand on COMPLETED payments; Unlink from Square; order replay script at `server/scripts/replay-orders.mjs`; square_variation_id used for webhook matching |
+| Square Integration | ✅ Push to Square (catalog item + image + variation IDs stored); webhook at `/api/webhooks/square` → decrements qty_on_hand on COMPLETED payments + auto-inserts income_entries row (idempotent via reference_id = Square payment ID); Unlink from Square; order replay script at `server/scripts/replay-orders.mjs`; square_variation_id used for webhook matching |
 
 ---
 

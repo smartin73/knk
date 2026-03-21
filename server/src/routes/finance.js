@@ -52,6 +52,75 @@ router.get('/summary', async (req, res) => {
   }
 });
 
+// ── Event / item charts ───────────────────────────────────
+router.get('/revenue-by-event', async (req, res) => {
+  try {
+    const { rows } = await query(`
+      SELECT e.event_name, COALESCE(SUM(i.amount), 0) AS revenue
+      FROM events e
+      LEFT JOIN income_entries i ON i.event_id = e.id
+      WHERE e.status = 'completed'
+      GROUP BY e.id, e.event_name, e.event_date
+      ORDER BY e.event_date DESC
+      LIMIT 10
+    `);
+    res.json(rows.map(r => ({ event_name: r.event_name, revenue: Number(r.revenue) })));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/top-items', async (req, res) => {
+  try {
+    const { rows } = await query(`
+      SELECT ib.item_name,
+             SUM(GREATEST(0, emi.qty_initial - emi.qty_on_hand)) AS qty_sold
+      FROM event_menu_items emi
+      JOIN item_builder ib ON emi.item_builder_id = ib.id
+      JOIN events e ON emi.event_id = e.id
+      WHERE e.status = 'completed'
+        AND emi.qty_initial IS NOT NULL
+        AND emi.qty_on_hand IS NOT NULL
+      GROUP BY ib.id, ib.item_name
+      ORDER BY qty_sold DESC
+      LIMIT 10
+    `);
+    res.json(rows.map(r => ({ item_name: r.item_name, qty_sold: Number(r.qty_sold) })));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/donations-vs-sales', async (req, res) => {
+  try {
+    const { rows } = await query(`
+      SELECT
+        e.event_name,
+        COALESCE(SUM(i.amount), 0) AS sales,
+        COALESCE((
+          SELECT SUM(d.quantity * d.unit_value)
+          FROM donations d WHERE d.event_id = e.id
+        ), 0) AS donations
+      FROM events e
+      LEFT JOIN income_entries i ON i.event_id = e.id
+      WHERE e.status = 'completed'
+      GROUP BY e.id, e.event_name, e.event_date
+      ORDER BY e.event_date DESC
+      LIMIT 10
+    `);
+    res.json(rows.map(r => ({
+      event_name: r.event_name,
+      sales:     Number(r.sales),
+      donations: Number(r.donations),
+    })));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── CSV export (must be before /:id style routes) ─────────
 router.get('/export', async (req, res) => {
   try {
@@ -232,7 +301,7 @@ router.delete('/expenses/:id', async (req, res) => {
 });
 
 // ── Receipt / CSV import helpers ──────────────────────────
-const EXPENSE_CATS = ['Ingredients', 'Packaging', 'Supplies', 'Equipment', 'Fees', 'Marketing', 'Other'];
+const EXPENSE_CATS = ['Ingredients', 'Packaging', 'Supplies', 'Equipment', 'Fees', 'Event Fees', 'Marketing', 'Utilities', 'Labor', 'Other'];
 
 const VENDOR_CATEGORIES = {
   'restaurant depot': 'Ingredients',
