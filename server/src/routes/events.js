@@ -203,6 +203,37 @@ router.post('/:id/close', async (req, res) => {
     }
 
     await query(`UPDATE events SET status = 'completed' WHERE id = $1`, [eventId]);
+
+    // Aggregate donations into a single income_entries row
+    const { rows: donationTotals } = await query(
+      `SELECT SUM(d.quantity * d.unit_value) AS total, e.event_date, e.event_name
+       FROM donations d
+       JOIN events e ON e.id = d.event_id
+       WHERE d.event_id = $1
+       GROUP BY e.event_date, e.event_name`,
+      [eventId]
+    );
+    const donationTotal = parseFloat(donationTotals[0]?.total || 0);
+    if (donationTotal > 0) {
+      const { event_date, event_name } = donationTotals[0];
+      const { rows: existing } = await query(
+        `SELECT id FROM income_entries WHERE event_id = $1 AND description LIKE 'Donations%'`,
+        [eventId]
+      );
+      if (existing.length > 0) {
+        await query(
+          `UPDATE income_entries SET amount = $1, updated_at = now() WHERE id = $2`,
+          [donationTotal, existing[0].id]
+        );
+      } else {
+        await query(
+          `INSERT INTO income_entries (source, amount, date, event_id, description)
+           VALUES ('manual', $1, $2, $3, $4)`,
+          [donationTotal, event_date, eventId, `Donations — ${event_name}`]
+        );
+      }
+    }
+
     res.json({ ok: true, freezer_updates, donations_created });
   } catch (e) {
     console.error(e);
