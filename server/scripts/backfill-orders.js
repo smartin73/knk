@@ -119,13 +119,17 @@ async function main() {
     );
 
     if (alreadyExists === 0) {
-      const eventId = await findEventId(saleDate);
-      await query(
-        `INSERT INTO income_entries (source, amount, date, event_id, description, reference_id)
-         VALUES ('square', $1, $2, $3, 'Square Sale', $4)`,
-        [amount, saleDate, eventId, orderId]
-      );
-      incomeInserted++;
+      if (amount == null) {
+        console.warn(`  ⚠ ${orderId} — no total_money.amount, skipping income_entries`);
+      } else {
+        const eventId = await findEventId(saleDate);
+        await query(
+          `INSERT INTO income_entries (source, amount, date, event_id, description, reference_id)
+           VALUES ('square', $1, $2, $3, 'Square Sale', $4)`,
+          [amount, saleDate, eventId, orderId]
+        );
+        incomeInserted++;
+      }
     }
 
     // ── order_line_items ────────────────────────────────────────────────────
