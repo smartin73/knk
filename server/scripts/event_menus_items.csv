@@ -1,4 +1,4 @@
-EventMenus::em_fk_eventId,emi_fk_squareId,emi_QtyMade,emi_QtySold_Calc,emi_Special,limited_threshold,emi_eventDate,emi_eventStartTime,emi_eventEndTime
+em_fk_eventId,emi_fk_squareId,emi_QtyMade,emi_QtySold_Calc,emi_Special,limited_threshold,emi_eventDate,emi_eventStartTime,emi_eventEndTime
 691BE159-4BB9-9B47-B09C-CE9ACFC91C74,T2AB23573QGM3HG2Z5UOYM5L,6,2,,3,04/04/2025,17h 0m 0s 0ms,20h 0m 0s 0ms
 691BE159-4BB9-9B47-B09C-CE9ACFC91C74,SW4NO3N2MQJFVE2JBQJI5EUO,6,,,3,04/04/2025,17h 0m 0s 0ms,20h 0m 0s 0ms
 691BE159-4BB9-9B47-B09C-CE9ACFC91C74,MIHBEUHZROYTRLNGKXSL7LJP,6,2,,3,04/04/2025,17h 0m 0s 0ms,20h 0m 0s 0ms

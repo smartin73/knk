@@ -201,12 +201,12 @@ router.get('/income', async (req, res) => {
 
 router.post('/income', async (req, res) => {
   try {
-    const { source, amount, date, event_id, description, notes } = req.body;
+    const { source, amount, date, event_id, description, notes, account } = req.body;
     if (!source || !amount || !date) return res.status(400).json({ error: 'source, amount, and date are required' });
     const { rows } = await query(
-      `INSERT INTO income_entries (source, amount, date, event_id, description, notes)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [source, amount, date, event_id || null, description || null, notes || null]
+      `INSERT INTO income_entries (source, amount, date, event_id, description, notes, account)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [source, amount, date, event_id || null, description || null, notes || null, account || null]
     );
     res.status(201).json(rows[0]);
   } catch (e) {
@@ -217,12 +217,12 @@ router.post('/income', async (req, res) => {
 
 router.put('/income/:id', async (req, res) => {
   try {
-    const { source, amount, date, event_id, description, notes } = req.body;
+    const { source, amount, date, event_id, description, notes, account } = req.body;
     const { rows } = await query(
       `UPDATE income_entries SET source=$1, amount=$2, date=$3, event_id=$4,
-              description=$5, notes=$6, updated_at=now()
-       WHERE id=$7 RETURNING *`,
-      [source, amount, date, event_id || null, description || null, notes || null, req.params.id]
+              description=$5, notes=$6, account=$7, updated_at=now()
+       WHERE id=$8 RETURNING *`,
+      [source, amount, date, event_id || null, description || null, notes || null, account || null, req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Not found' });
     res.json(rows[0]);

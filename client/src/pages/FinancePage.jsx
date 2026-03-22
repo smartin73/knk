@@ -23,7 +23,7 @@ function fmtMonth(m) {
   return new Date(+y, +mo-1, 1).toLocaleString('en-US', { month: 'short', year: '2-digit' });
 }
 
-const EMPTY_INCOME  = { source: 'square', amount: '', date: '', event_id: '', description: '', notes: '' };
+const EMPTY_INCOME  = { source: 'square', amount: '', date: '', event_id: '', description: '', notes: '', account: '' };
 const EMPTY_EXPENSE = { category: '', amount: '', date: '', vendor: '', description: '', notes: '', receipt_url: '' };
 
 function fmtDate(val) {
@@ -46,6 +46,7 @@ function IncomeModal({ entry, events, onSave, onCancel }) {
     event_id:    entry.event_id || '',
     description: entry.description || '',
     notes:       entry.notes || '',
+    account:     entry.account || '',
   } : { ...EMPTY_INCOME, date: today() });
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState('');
@@ -94,6 +95,10 @@ function IncomeModal({ entry, events, onSave, onCancel }) {
           <div className="field full">
             <label>Notes</label>
             <input value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Optional" />
+          </div>
+          <div className="field full">
+            <label>Account <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
+            <input value={form.account} onChange={e => set('account', e.target.value)} placeholder="e.g. Farmers Market Sales" />
           </div>
         </div>
         {err && <div className="error-msg" style={{ marginTop: 8 }}>{err}</div>}
