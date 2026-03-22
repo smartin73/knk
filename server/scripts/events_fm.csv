@@ -1,0 +1,67 @@
+event_pk_uuid,eventDate,eventName,eventStartTime,eventEndTime,eventLocation,eventDescription,eventImage_url,eventStatus
+0A01D150-0B21-4C8D-8A67-385249E905F3,03/30/2024,Moniker Pop Up 3/30/24,10h 30m 0s 0ms,14h 30m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+70B00146-494B-4803-9E51-546357925277,05/11/2024,Spring Cookie Fest,13h 0m 0s 0ms,17h 0m 0s 0ms,Long Live Beer Works,,,Past
+A6D325F8-3A9B-40BA-932F-634AE6425C01,03/16/2024,Moniker Pop Up 3/16/24,12h 30m 0s 0ms,17h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+D6590A67-F14C-5445-BAE7-1437E70E6E79,03/31/2024,Long Live Sweet Treats Pop Up 3/31/24,12h 0m 0s 0ms,16h 0m 0s 0ms,Long Live Beer Works,,,Past
+A781E088-C2C2-45EB-821A-54873F7FCC6A,02/18/2024,Moniker Pop Up 2/18/24,12h 30m 0s 0ms,16h 30m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+3934A479-D66B-40C6-B797-5E890E635417,12/09/2023,Cookie Fest,12h 0m 0s 0ms,17h 0m 0s 0ms,Long Live Beer Works,,,Past
+E19D202A-0336-E747-9D6E-5E0024650AA3,04/28/2024,Smug Brewing Sweet Treats Pop Up 4/28/24,0w,17h 0m 0s 0ms,Smug Brewing,,,Past
+09CB604C-CDA2-C349-BC17-6C1B59F407E0,05/03/2024,Moniker Sweet Treats Pop Up 5/3/24,18h 0m 0s 0ms,21h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+66FA6D09-E657-6F40-9E72-BDE266B340F1,05/04/2024,Long Live Sweet Treats Pop Up 5/4/24,12h 0m 0s 0ms,17h 0m 0s 0ms,Long Live Beer Works,,,Past
+B0D4CB4E-4F8E-B743-B851-272C35A8E24B,05/19/2024,Smug Sweet Treats Pop up 5/19/24,12h 0m 0s 0ms,17h 0m 0s 0ms,Smug Brewing,,,Past
+4718CA13-F296-4823-87AF-F9333FFA92EF,06/02/2024,Smug Sweet Treats Pop up 6/2/24,12h 0m 0s 0ms,17h 0m 0s 0ms,Smug Brewing,,,Past
+29F13EC4-5C4E-5346-A175-DDB1ED34BF17,06/14/2024,Pride Puppy Party @ Moniker,17h 30m 0s 0ms,21h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+1196C8AB-67C3-4898-BF30-D22BBDCAFC8C,07/05/2024,Moniker July First Friday!,16h 0m 0s 0ms,21h 0m 0s 0ms,Moniker Brewing,"Come celebrate First Friday with us and our friends at Moniker! They'll be food, music, and of course our sweet treats!",,Past
+7992B6D6-E9CF-0943-914D-C48F5983583B,07/14/2024,GameDay Flag Football Pop up,8h 30m 0s 0ms,13h 30m 0s 0ms,GameDay Flag Football,,,Past
+F9DBD307-8EB2-014A-819B-B1CCFA1BCEB0,07/21/2024,Cardi's Christmas in July,10h 0m 0s 0ms,15h 30m 0s 0ms,Cardi's Furniture West Warwick,,,Past
+09DAD0F8-3D0F-CC45-8DD7-A8C6C92B86E5,08/04/2024,Sweet Treats Popup @ Long Live,13h 0m 0s 0ms,17h 0m 0s 0ms,Long Live Beer Works,,,Past
+8D2AC6D5-782F-46D4-AA36-3C776A4CDF23,08/02/2024,"First Friday @ Moniker - August 2, 2024",16h 0m 0s 0ms,21h 0m 0s 0ms,Moniker Brewing,"Come celebrate First Friday with us and our friends at Moniker! They'll be food, music, and of course our sweet treats!",,Past
+A07B0DE6-7842-4D3A-B7D4-D068E8CC73ED,08/11/2024,Sweet Treats Popup @ Long Live,12h 0m 0s 0ms,17h 0m 0s 0ms,Long Live Beer Works,,,Past
+1EE75AC7-0028-FC48-93A9-CDB04CB2B5E2,09/22/2024,"Proclamation Ale Company September 22, 2024",13h 0m 0s 0ms,18h 0m 0s 0ms,Proclamation Ale Company,,,Past
+A165714F-CD1E-D649-961A-99B3EA82CBB8,10/20/2024,"Proclamation Ale Company October 20, 2024",13h 0m 0s 0ms,18h 0m 0s 0ms,Proclamation Ale Company,,,Past
+A1159269-CDE5-4DF5-B84F-0CE10EB4B0A6,10/04/2024,"First Friday @ Moniker – October 4, 2024",17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,"Come celebrate First Friday with us and our friends at Moniker! They'll be food, music, and of course our sweet treats!",,Past
+D6581749-42AA-B348-AD26-AF13DB56CE8B,10/26/2024,Halloween celebration at Long Live 10/26/2024,12h 0m 0s 0ms,17h 0m 0s 0ms,Long Live Beer Works,,,Past
+FD47C9C4-2043-8649-B9EA-0EA9373342D9,11/03/2024,Smug Brewing Pop Up!,12h 0m 0s 0ms,17h 0m 0s 0ms,Smug Brewing,,,Past
+5771E49C-A472-8A41-98CD-6A2AF32BFD8B,11/10/2024,"Proclamation Ale Company November 10, 2024",13h 0m 0s 0ms,18h 0m 0s 0ms,Proclamation Ale Company,,,Past
+5EC6739C-3309-D541-8AC0-06CBBF088538,11/17/2024,"Moniker Sweet Treats Pop Up November 17, 2024",12h 0m 0s 0ms,17h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+2A5E9F9E-6404-4A44-AF19-46A45237CDE0,12/01/2024,"Proclamation Ale Company December 1, 2024",13h 0m 0s 0ms,18h 0m 0s 0ms,Proclamation Ale Company,,,Past
+34A9C206-D912-7841-B2AC-9BE274EF7206,12/08/2024,"Smug Brewing December 8, 2024",12h 0m 0s 0ms,17h 0m 0s 0ms,Smug Brewing,,,Past
+777AFF3C-5029-5B47-AFAF-9C471D303C19,12/14/2024,"Cookie Fest @ Long Live December 14, 2024",13h 0m 0s 0ms,17h 0m 0s 0ms,Long Live Beer Works,,,Past
+88FFCE18-9350-724B-95C9-3FC303C4568C,12/07/2024,Monny Holiday Market Saturday December 7th,11h 0m 0s 0ms,15h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+9409899F-5475-C146-B321-07838979C7A3,01/19/2025,Moniker Brewery 4th Anniversary,13h 0m 0s 0ms,17h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+E22BEE27-172C-4D82-9ACD-081C5B9C220B,02/14/2025,Moniker Brewery Doggy Date Night,17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+FC2F9DC1-B02C-4769-8F3C-5BD0E582488F,02/23/2025,"Proclamation Ale Company February 23, 2025",13h 0m 0s 0ms,18h 0m 0s 0ms,Proclamation Ale Company,,,Past
+9FC93B5D-072B-3A4D-9EE7-CBA44CBA22CF,03/02/2025,Sweet Treats Popup @ Long Live,13h 0m 0s 0ms,17h 0m 0s 0ms,Long Live Beer Works,,,Past
+B170484D-83D2-B849-BF58-41CCE03A76E5,03/16/2025,"Smug Brewing March 16, 2025",13h 0m 0s 0ms,17h 0m 0s 0ms,Smug Brewing,,,Past
+7FDA6E33-49AD-1F4B-9AD7-626B0FDE77C0,03/14/2025,Moniker Brewery National Pie Day,17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+274C4160-846B-D041-8A5D-3C56F9DE7EB5,04/13/2025,Moniker Brewery Easter Egg Hunt,10h 0m 0s 0ms,13h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+0EC77B69-F0F2-2C45-92CB-8DB0830F7C58,05/02/2025,"First Friday @ Moniker – May 2, 2025",17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,"Come celebrate First Friday with us and our friends at Moniker! They'll be food, music, and of course our sweet treats!",,Past
+C64CD55B-B6EC-D642-999F-05A8320C005F,05/04/2025,Moniker Brewery May the Force/Cinco de Mayo Day,13h 0m 0s 0ms,17h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+A988CD1B-0F2D-D34C-9D5E-3F57A33CBE73,05/18/2025,"Proclamation Ale Company May 18, 2025",12h 0m 0s 0ms,16h 0m 0s 0ms,Proclamation Ale Company,,,Past
+F15E4EB6-B5A9-D446-A34B-E77805EF6AE1,08/01/2025,"First Friday @ Moniker – August 1, 2025",17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,"Come celebrate First Friday with us and our friends at Moniker! They'll be food, music, and of course our sweet treats!",,Past
+1F34F96B-4CA9-224E-A049-3854C31D48F1,09/05/2025,"First Friday @ Moniker – September 5, 2025",17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,"Come celebrate First Friday with us and our friends at Moniker! They'll be food, music, and of course our sweet treats!",,Past
+691BE159-4BB9-9B47-B09C-CE9ACFC91C74,04/04/2025,Moniker Brewery,17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+9EAB7065-C3DB-4E96-A1F1-253F60172173,04/18/2025,Moniker Brewery 4/18/25,17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+FD60E28F-1CB3-E24F-B906-07CA53E69EDB,04/25/2025,Moniker Brewery 4/25/2025,17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+9184B4F7-513C-41CE-ABB5-B0B76AEA288A,05/16/2025,Moniker Brewery 5/30/2025,17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+1F6883CD-0D88-0645-9178-29E5D0726944,06/13/2025,"Crush Cancer event at Smug Brewing June 13, 2025",17h 0m 0s 0ms,21h 0m 0s 0ms,Smug Brewing,,,Past
+1FF83801-CBCF-40B7-956A-4955D9493DB9,07/25/2025,Moniker Brewery 7/25/2025,17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+0D909E7D-82C9-4129-A702-14F241F95B80,08/17/2025,"Smug Brewing August 17, 2025",13h 0m 0s 0ms,17h 0m 0s 0ms,Smug Brewing,Join us for our last fun-filled Sunday at Smug Brewing! We'll be celebrating Smug and Scott's b-day!,,Past
+090526E9-490F-4689-9370-F9C831250445,08/15/2025,Moniker Brewery 8/15/2025,17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+DDDB9F2B-E0A3-4845-BEF6-54DB722D907C,08/22/2025,Moniker Brewery 8/22/2025,17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,We're hanging out with Moniker on Friday night with Pizza Envy slinging pizza's! ,,Past
+0B44AB4B-CE1E-4D61-BE59-525524BE8BFE,09/21/2025,Rootstock 2025,11h 45m 0s 0ms,18h 0m 0s 0ms,Rootstock,"Join us along with Revive the Roots for the 5th Annual Rootstock at 374 Farnum Pike, Smithfield, RI. This event it 12-6 pm we're the exclusive sweets vendor! Donations for entry start at $15.",https://res.cloudinary.com/dqackn8fh/image/upload/v1768246076/Rootstock_logo.jpg,Past
+89E2BF6D-9724-4D25-B771-9438E33FAABA,08/27/2025,Fry Open Farm Night,16h 0m 0s 0ms,20h 0m 0s 0ms,Fry Farm,"Join us along with Revive the Roots for the 5th Annual Rootstock at 374 Farnum Pike, Smithfield, RI. This event it 12-6 pm we're the exclusive sweets vendor! Tickets for the event start at $10.",https://res.cloudinary.com/dqackn8fh/image/upload/v1768244340/FryOpenFarmNight_logo.jpg,Past
+40106A76-88E2-4763-8E39-B678445E4101,09/12/2025,Moniker Brewery 9/12/2025,17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,,,Past
+8C0DCE1D-C00B-41DA-83BD-8AC6C4E5AAF8,09/20/2025,Taste of 02908,12h 0m 0s 0ms,16h 0m 0s 0ms,Davis Park,,,Past
+CB63A483-98A3-42DB-8DEE-38BA7F992AFB,10/01/2025,Open Farm Night,16h 0m 0s 0ms,20h 0m 0s 0ms,Fry Farm,,,Past
+C832B29C-14A0-4EB8-A440-CDDC84973B35,10/11/2025,Fry Farm Fall Fest,12h 0m 0s 0ms,20h 0m 0s 0ms,Fry Farm,,https://res.cloudinary.com/dqackn8fh/image/upload/v1768244685/FryFarmFallFest_logo.jpg,Past
+3D62A677-23AE-41F7-A83E-49B09E2E5C2E,10/03/2025,First Friday @ Moniker,17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,,https://res.cloudinary.com/dqackn8fh/image/upload/v1768244678/FirstFriday%40Moniker_logo.jpg,Past
+71A71B8C-606B-4F23-8352-BA22A692385E,10/25/2025,Halloween Marketplace at Dexter Park,12h 0m 0s 0ms,18h 0m 0s 0ms,Dexter Park,,,Past
+7213BAD5-458A-4146-AA84-558EEC38B6C4,11/02/2025,Doggie Halloween party with PARL,14h 0m 0s 0ms,18h 0m 0s 0ms,Moniker Brewing,,https://res.cloudinary.com/dqackn8fh/image/upload/v1768244273/DoggieHalloweenpartywithPARL_logo.jpg,Past
+AF559BA5-9750-4A8E-859E-CAB10EB7BEC0,12/20/2025,Cookie Fest 2025,13h 0m 0s 0ms,16h 0m 0s 0ms,Long Live Beer Works,Join us along with other cookie vendors for the best Local R.l. Cookie Pop-up Extravaganza!,https://res.cloudinary.com/dqackn8fh/image/upload/v1768237747/CookieFest2025_logo.png,Past
+8C85F14F-E09C-4A36-AD8E-AC5C4B2F3158,12/13/2025,Moniker Holiday Market,11h 0m 0s 0ms,15h 0m 0s 0ms,Moniker Brewing,"We’ll be joining by some wonderful vendors along with food, hot drinks, our sweet treats, crafts, beer, and a visit from Santa himself! Santa will be there from 11am-3pm🎅",https://res.cloudinary.com/dqackn8fh/image/upload/w_1000/q_auto/f_auto/MonikerHolidayMarket_logo.png,Past
+37EA33E6-A8CA-4438-8DD3-207182A8DDED,02/13/2026,Moniker Friday,17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,"Join us at Moniker for an evening of Pokeys, BBQ, and Sweet Treats!",,Past
+2BD4723B-313D-4777-B8C4-A1C955C5417A,01/16/2026,Moniker Anniversary Party,17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,Come join us in Celebrating 5 years of Moniker!,,Past
+2850DF6F-629D-4B63-80D3-0609A70BF6AF,03/20/2026,Moniker Friday,17h 0m 0s 0ms,20h 0m 0s 0ms,Moniker Brewing,"Join us at Moniker for an evening of Pokeys, BBQ, and Sweet Treats!",,Past
+BAC11A01-29B6-4AB5-820E-F2B0A8BEF11C,05/31/2026,Stance and Start Golf Tournament,12h 0m 0s 0ms,18h 0m 0s 0ms,Richmond Country club,Stance and Start Foundation Golf Tournament fundraiser. We'll be on the course serving up some great sweet treats!,,Current
+45F9AE65-0CD6-47E0-89E3-9EFC2C9AF751,04/04/2026,Moniker Brewery Easter Egg Hunt,10h 0m 0s 0ms,13h 0m 0s 0ms,Moniker Brewing,Mr. Bunny will be dropping off some fun goodies so there can have an EASTER EGG HUNT! Join us at Moniker on Sunday April 4th starting at 10:00am!,,Current
