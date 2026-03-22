@@ -339,15 +339,17 @@ updated_at     timestamptz
 id               uuid  PK  DEFAULT gen_random_uuid()
 menu_id          uuid  FK → event_menus.id  ON DELETE CASCADE
 item_builder_id  uuid  FK → item_builder.id
+variant_id       uuid  FK → item_variants.id  ON DELETE SET NULL  (null if not a variant)
 qty_initial      integer  DEFAULT 0   ← starting stock brought to event (fixed)
 qty_on_hand      integer  DEFAULT 0   ← counts down via Square webhook as items sell
+qty_sold         integer  DEFAULT 0   ← historical sold count (from FM import)
 limited_threshold integer  DEFAULT 0
 sort_order       integer  DEFAULT 0
 is_special       boolean  DEFAULT false   ← migration: add_menu_specials.sql
 created_at       timestamptz
 updated_at       timestamptz
 ```
-Migration: `server/migrations/add_menu_specials.sql`
+Migrations: `server/migrations/add_menu_specials.sql`, `server/migrations/add_event_menu_item_variant_qty_sold.sql`
 
 ### donations
 ```
