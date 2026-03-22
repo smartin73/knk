@@ -137,9 +137,10 @@ async function main() {
     // ── Event matching ────────────────────────────────────────────────────────
 
     let eventId = null;
+    let fmUuid  = null;
 
     if (isEvent) {
-      const fmUuid = isEvent.toLowerCase();
+      fmUuid = isEvent.toLowerCase();
       const ev = eventByFmUuid.get(fmUuid);
       if (ev) {
         eventId = ev.id;
