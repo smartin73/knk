@@ -68,7 +68,7 @@ async function loadEvents() {
   const { rows } = await query(
     `SELECT id, event_name, fm_uuid FROM events WHERE fm_uuid IS NOT NULL`
   );
-  for (const r of rows) eventByFmUuid.set(r.fm_uuid, r);
+  for (const r of rows) eventByFmUuid.set(r.fm_uuid.toLowerCase(), r);
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -139,13 +139,14 @@ async function main() {
     let eventId = null;
 
     if (isEvent) {
-      const ev = eventByFmUuid.get(isEvent);
+      const fmUuid = isEvent.toLowerCase();
+      const ev = eventByFmUuid.get(fmUuid);
       if (ev) {
         eventId = ev.id;
         eventMatched++;
       } else {
-        if (!unmatchedFmUuids.has(isEvent)) {
-          unmatchedFmUuids.set(isEvent, { description, date });
+        if (!unmatchedFmUuids.has(fmUuid)) {
+          unmatchedFmUuids.set(fmUuid, { description, date });
         }
       }
     }
@@ -153,7 +154,7 @@ async function main() {
     // ── Insert ────────────────────────────────────────────────────────────────
 
     if (dryRun) {
-      console.log(`  ${date}  $${Number(amount).toFixed(2).padStart(8)}  [${source}]  "${description}"${eventId ? `  → event ${eventByFmUuid.get(isEvent)?.event_name}` : ''}`);
+      console.log(`  ${date}  $${Number(amount).toFixed(2).padStart(8)}  [${source}]  "${description}"${eventId ? `  → event ${eventByFmUuid.get(fmUuid)?.event_name}` : ''}`);
     } else {
       await query(
         `INSERT INTO income_entries (source, amount, date, event_id, description, account)
