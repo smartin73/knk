@@ -1,12 +1,12 @@
 Account,Category,Income,Date,Description
-Checking,Orders,20,11/04/2023,order 297
-Checking,Orders,38,11/15/2023,"cash orders, rolls"
-Checking,Orders,97,11/15/2023,thaksgiving orders
-Checking,Orders,10,11/15/2023,order 354
-Checking,Orders,514,12/08/2023,Cookie Fest
-Checking,Orders,36,12/12/2023,christmas orders
-Checking,Orders,148,02/18/2024,Moniker Brewing Popup
-Checking,Orders,141,03/16/2024,Moniker Brewing Popup
+Business Checking,Orders,20,11/04/2023,order 297
+Business Checking,Orders,38,11/15/2023,"cash orders, rolls"
+Business Checking,Orders,97,11/15/2023,thaksgiving orders
+Business Checking,Orders,10,11/15/2023,order 354
+Business Checking,Orders,514,12/08/2023,Cookie Fest
+Business Checking,Orders,36,12/12/2023,christmas orders
+Business Checking,Orders,148,02/18/2024,Moniker Brewing Popup
+Business Checking,Orders,141,03/16/2024,Moniker Brewing Popup
 Business Checking,Orders,116,03/30/2024,Moniker Pop Up 3/30/24
 Business Checking,Orders,83,03/31/2024,Long Live Sweet Treats Pop Up 3/31/24
 Business Checking,Orders,85,04/01/2024,Cupcake Order
