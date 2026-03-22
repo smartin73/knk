@@ -3,7 +3,7 @@
 //   node scripts/import-income.js fm_income.csv
 //   node scripts/import-income.js fm_income.csv --dry-run
 //
-// CSV columns expected: Account, Category, Income, Date, Description
+// CSV columns expected: Account, Category, Income, Date, Description, isEvent, Source
 
 import 'dotenv/config';
 import { readFileSync } from 'fs';
@@ -12,8 +12,8 @@ import pool, { query } from '../src/db/pool.js';
 
 // ── Args ──────────────────────────────────────────────────────────────────────
 
-const args    = process.argv.slice(2).filter(a => a !== '--dry-run');
-const dryRun  = process.argv.includes('--dry-run');
+const args     = process.argv.slice(2).filter(a => a !== '--dry-run');
+const dryRun   = process.argv.includes('--dry-run');
 const filePath = args[0];
 
 if (!filePath) {
@@ -52,62 +52,23 @@ function normalizeDate(raw) {
   return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
 }
 
-// Strip $ signs, commas, and whitespace then parse float
+// Strip $, commas, whitespace then parse float
 function parseAmount(raw) {
   if (!raw) return null;
   const n = parseFloat(raw.replace(/[$,\s]/g, ''));
   return isNaN(n) ? null : n;
 }
 
-// Returns true if description looks like a Square-imported sale (already in system)
-function looksLikeSquareSale(description) {
-  if (!description) return false;
-  const d = description.toLowerCase();
-  return d === 'square sale' || d.includes('square sale');
-}
+// ── Event lookup (cached) ─────────────────────────────────────────────────────
 
-// ── Event matching ────────────────────────────────────────────────────────────
-
-// Cache events to avoid repeated DB hits
-let eventsCache = null;
+const eventByFmUuid = new Map();
 
 async function loadEvents() {
-  if (eventsCache) return eventsCache;
-  const { rows } = await query(`SELECT id, event_name, event_date::text AS event_date FROM events`);
-  eventsCache = rows;
-  return rows;
-}
-
-async function findEventId(date, description) {
-  const events = await loadEvents();
-
-  // 1. Match by exact date — if exactly one event on that day, use it
-  const byDate = events.filter(e => e.event_date === date);
-  if (byDate.length === 1) return { id: byDate[0].id, how: 'date' };
-
-  // 2. If multiple on same date, try to narrow by name match in description
-  if (byDate.length > 1 && description) {
-    const desc = description.toLowerCase();
-    const nameMatches = byDate.filter(e =>
-      e.event_name.toLowerCase().split(/\s+/).some(word =>
-        word.length >= 4 && desc.includes(word)
-      )
-    );
-    if (nameMatches.length === 1) return { id: nameMatches[0].id, how: 'date+name' };
-  }
-
-  // 3. No date match — try ILIKE on description keywords against all events
-  if (description) {
-    const words = description.split(/\s+/).filter(w => w.length >= 5);
-    for (const word of words) {
-      const matches = events.filter(e =>
-        e.event_name.toLowerCase().includes(word.toLowerCase())
-      );
-      if (matches.length === 1) return { id: matches[0].id, how: `name:"${word}"` };
-    }
-  }
-
-  return { id: null, how: null };
+  if (eventByFmUuid.size > 0) return;
+  const { rows } = await query(
+    `SELECT id, event_name, fm_uuid FROM events WHERE fm_uuid IS NOT NULL`
+  );
+  for (const r of rows) eventByFmUuid.set(r.fm_uuid, r);
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -129,7 +90,6 @@ async function main() {
     process.exit(1);
   }
 
-  // Parse headers, strip BOM
   const headers = parseCSVLine(lines[0]).map(h => h.replace(/^\uFEFF/, '').trim());
 
   function col(row, name) {
@@ -137,12 +97,14 @@ async function main() {
     return idx !== -1 ? (row[idx] || '').trim() : '';
   }
 
+  await loadEvents();
+
   // Tracking
   let totalProcessed = 0;
   let inserted       = 0;
-  const skipped      = [];   // { row, reason }
-  const noEventMatch = [];   // { date, description, amount }
-  const eventMatched = [];   // { date, description, eventName, how }
+  const skipped      = [];   // { line, description, reason }
+  let   eventMatched = 0;
+  const unmatchedFmUuids = new Map(); // fm_uuid → { description, date }
 
   for (let i = 1; i < lines.length; i++) {
     const row = parseCSVLine(lines[i]);
@@ -154,6 +116,8 @@ async function main() {
     const description = col(row, 'Description');
     const rawDate     = col(row, 'Date');
     const rawAmount   = col(row, 'Income');
+    const isEvent     = col(row, 'isEvent');
+    const source      = col(row, 'Source') || 'manual';
 
     const date   = normalizeDate(rawDate);
     const amount = parseAmount(rawAmount);
@@ -170,30 +134,31 @@ async function main() {
       continue;
     }
 
-    if (looksLikeSquareSale(description)) {
-      skipped.push({ line: i + 1, description, reason: 'looks like Square sale — already imported' });
-      continue;
-    }
-
     // ── Event matching ────────────────────────────────────────────────────────
 
-    const { id: eventId, how } = await findEventId(date, description);
+    let eventId = null;
 
-    if (eventId) {
-      const eventsLocal = await loadEvents();
-      const ev = eventsLocal.find(e => e.id === eventId);
-      eventMatched.push({ date, description, amount, eventName: ev?.event_name, how });
-    } else {
-      noEventMatch.push({ date, description, amount });
+    if (isEvent) {
+      const ev = eventByFmUuid.get(isEvent);
+      if (ev) {
+        eventId = ev.id;
+        eventMatched++;
+      } else {
+        if (!unmatchedFmUuids.has(isEvent)) {
+          unmatchedFmUuids.set(isEvent, { description, date });
+        }
+      }
     }
 
     // ── Insert ────────────────────────────────────────────────────────────────
 
-    if (!dryRun) {
+    if (dryRun) {
+      console.log(`  ${date}  $${Number(amount).toFixed(2).padStart(8)}  [${source}]  "${description}"${eventId ? `  → event ${eventByFmUuid.get(isEvent)?.event_name}` : ''}`);
+    } else {
       await query(
-        `INSERT INTO income_entries (source, amount, date, event_id, description, notes)
-         VALUES ('manual', $1, $2, $3, $4, $5)`,
-        [amount, date, eventId, description || null, account || null]
+        `INSERT INTO income_entries (source, amount, date, event_id, description, account)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [source, amount, date, eventId, description || null, account || null]
       );
     }
 
@@ -206,8 +171,8 @@ async function main() {
   console.log(`Total rows processed:  ${totalProcessed}`);
   console.log(`Inserted:              ${inserted}${dryRun ? ' (dry run — not written)' : ''}`);
   console.log(`Skipped:               ${skipped.length}`);
-  console.log(`Matched to event:      ${eventMatched.length}`);
-  console.log(`No event match:        ${noEventMatch.length}`);
+  console.log(`Matched to event:      ${eventMatched}`);
+  console.log(`Unmatched isEvent:     ${unmatchedFmUuids.size}`);
 
   if (skipped.length > 0) {
     console.log('\n── Skipped ──────────────────────────────────────────────────────');
@@ -216,17 +181,10 @@ async function main() {
     }
   }
 
-  if (eventMatched.length > 0) {
-    console.log('\n── Matched to event ─────────────────────────────────────────────');
-    for (const r of eventMatched) {
-      console.log(`  ${r.date}  $${Number(r.amount).toFixed(2).padStart(8)}  "${r.description}"  → "${r.eventName}"  [${r.how}]`);
-    }
-  }
-
-  if (noEventMatch.length > 0) {
-    console.log('\n── No event match (review manually) ─────────────────────────────');
-    for (const r of noEventMatch) {
-      console.log(`  ${r.date}  $${Number(r.amount).toFixed(2).padStart(8)}  "${r.description}"`);
+  if (unmatchedFmUuids.size > 0) {
+    console.log('\n── Unmatched isEvent values (no knk event with this fm_uuid) ────');
+    for (const [fmUuid, { description, date }] of unmatchedFmUuids) {
+      console.log(`  ${date}  "${description}"  fm_uuid: ${fmUuid}`);
     }
   }
 

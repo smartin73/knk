@@ -372,11 +372,12 @@ date         date
 event_id     uuid  FK → events.id
 description  text
 notes        text
+account      text  ← FM account/category label (e.g. "Farmers Market Sales")
 reference_id text  UNIQUE (partial index, WHERE NOT NULL) ← Square payment ID for dedup
 created_at   timestamptz
 updated_at   timestamptz
 ```
-Migration: `server/migrations/add_income_reference_id.sql`
+Migrations: `server/migrations/add_income_reference_id.sql`, `server/migrations/add_income_account.sql`
 
 ### order_line_items
 ```
